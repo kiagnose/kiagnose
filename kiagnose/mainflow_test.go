@@ -28,7 +28,7 @@ import (
 )
 
 func TestRun(t *testing.T) {
-    t.Run("kiagnose entry point (placeholder test)", func(t *testing.T) {
+	t.Run("kiagnose entry point (placeholder test)", func(t *testing.T) {
 		assert.NoError(t, kiagnose.Run())
-    })
+	})
 }
