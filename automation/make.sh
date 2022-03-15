@@ -25,12 +25,15 @@ options=$(getopt --options "" \
 eval set -- "$options"
 while true; do
     case "$1" in
+    --lint)
+        OPT_LINT=1
+        ;;
     --unit-test)
         OPT_UNIT_TEST=1
         ;;
     --help)
         set +x
-        echo "$0 [--unit-test]"
+        echo "$0 [--lint] [--unit-test]"
         exit
         ;;
     --)
@@ -41,8 +44,17 @@ while true; do
     shift
 done
 
-if [ -z "${OPT_UNIT_TEST}" ]; then
+if  [ -z "${OPT_LINT}" ] && [ -z "${OPT_UNIT_TEST}" ]; then
+    OPT_LINT=1
     OPT_UNIT_TEST=1
+fi
+
+if [ -n "${OPT_LINT}" ]; then
+    golangci_lint_version=v1.44.2
+    if [ ! -f $(go env GOPATH)/bin/golangci-lint ]; then
+        curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b $(go env GOPATH)/bin $golangci_lint_version
+    fi
+    golangci-lint run
 fi
 
 if [ -n "${OPT_UNIT_TEST}" ]; then
