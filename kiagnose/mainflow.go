@@ -17,8 +17,8 @@
  *
  */
 
- package kiagnose
+package kiagnose
 
- func Run() error {
-	 return nil
- }
+func Run() error {
+	return nil
+}
