@@ -22,13 +22,13 @@ package kiagnose_test
 import (
 	"testing"
 
+	assert "github.com/stretchr/testify/require"
+
 	"github.com/kiagnose/kiagnose/kiagnose"
 )
 
 func TestRun(t *testing.T) {
     t.Run("kiagnose entry point (placeholder test)", func(t *testing.T) {
-        if err := kiagnose.Run(); err != nil {
-	    t.Errorf("failed execution of Run(): %v", err)
-	}
+		assert.NoError(t, kiagnose.Run())
     })
 }
