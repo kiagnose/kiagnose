@@ -1,0 +1,123 @@
+#!/usr/bin/env bash
+
+#
+# This file is part of the kiagnose project
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
+# Copyright 2022 Red Hat, Inc.
+#
+
+# echo-checkup
+# Input:
+# The checkup expects the following environment variables to be supplied:
+#   RESULT_CONFIGMAP_NAMESPACE - namespace of result ConfigMap object
+#   RESULT_CONFIGMAP_NAME - name of result ConfigMap object
+#   MESSAGE: a message to write as a result back to the framework
+# Output:
+# Fills the data field of the ConfigMap object supplied by the framework with the following key-value pairs:
+#   status.succeeded: "true"
+#   status.failureReason: none
+#   status.result.echo: "$MESSAGE"
+
+KUBECTL=${KUBECTL:-kubectl}
+RESULTS_CM_MANIFEST="/tmp/result_configmap.yaml"
+
+check_required_env_vars_from_framework() {
+  if [ -z "$RESULT_CONFIGMAP_NAMESPACE" ]; then
+    echo "error: RESULT_CONFIGMAP_NAMESPACE is empty" >&2
+    return 1
+  fi
+
+  if [ -z "$RESULT_CONFIGMAP_NAME" ]; then
+    echo "error: RESULT_CONFIGMAP_NAME is empty" >&2
+    return 1
+  fi
+}
+
+check_required_env_vars_by_echo_checkup() {
+    if [ -z "$MESSAGE" ]; then
+      echo "Warning: MESSAGE is empty" >&2
+      return 1
+    fi
+}
+
+print_all_inputs() {
+  echo " - RESULT_CONFIGMAP_NAMESPACE: $RESULT_CONFIGMAP_NAMESPACE"
+  echo " - RESULT_CONFIGMAP_NAME: $RESULT_CONFIGMAP_NAME"
+  echo " - MESSAGE: $MESSAGE"
+}
+
+create_results_manifest_file() {
+  local output_file="$1"
+  local error="$2"
+
+  if [ -z "${error}" ]; then
+    cat <<EOF > "${output_file}"
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: $RESULT_CONFIGMAP_NAME
+  namespace: $RESULT_CONFIGMAP_NAMESPACE
+data:
+  status.succeeded: "true"
+  status.failureReason: ""
+  status.result.echo: "$MESSAGE"
+...
+EOF
+  else
+    cat <<EOF > "${output_file}"
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: $RESULT_CONFIGMAP_NAME
+  namespace: $RESULT_CONFIGMAP_NAMESPACE
+data:
+  status.succeeded: "false"
+  status.failureReason: "MESSAGE environment variable is missing"
+...
+EOF
+  fi
+
+}
+
+main() {
+  echo "*** Starting echo checkup ***"
+
+  if ! check_required_env_vars_from_framework; then
+    exit 1
+  fi
+
+  local message_var_is_missing
+  if ! check_required_env_vars_by_echo_checkup; then
+    message_var_is_missing=1
+  fi
+
+  print_all_inputs
+  create_results_manifest_file "${RESULTS_CM_MANIFEST}" "${message_var_is_missing}"
+
+  echo "Trying to patch the result ConfigMap object..."
+  ${KUBECTL} patch configmap "${RESULT_CONFIGMAP_NAME}" -n "${RESULT_CONFIGMAP_NAMESPACE}" --patch-file "${RESULTS_CM_MANIFEST}"
+  if [ "$?" -ne 0 ]; then
+    echo "error: Failed to patch result ConfigMap object" >&2
+  fi
+
+  echo "*** Done ***"
+  if [ -n "${message_var_is_missing}" ]; then
+    exit 2
+  fi
+}
+
+main
