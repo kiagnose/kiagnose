@@ -1,0 +1,161 @@
+#!/usr/bin/env bash
+
+#
+# This file is part of the kiagnose project
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
+# Copyright 2022 Red Hat, Inc.
+#
+
+ACTUAL_CM_MANIFEST="/tmp/result_configmap.yaml"
+EXPECTED_CM_MANIFEST="/tmp/expected_cm_manifest.yaml"
+
+
+entrypoint_should_succeed_with_all_env_vars() {
+  echo "entrypoint should exit(0) with all required env variables"
+
+  RESULT_CONFIGMAP_NAMESPACE=ns1 \
+  RESULT_CONFIGMAP_NAME=cm1 \
+  MESSAGE="message 1" \
+  KUBECTL="./fake_kubectl" \
+  ./entrypoint &> /dev/null
+  if [ "$?" -ne 0 ]; then
+    return 1
+  fi
+
+  echo "Compare created yaml manifest"
+  cat <<EOF > ${EXPECTED_CM_MANIFEST}
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: cm1
+  namespace: ns1
+data:
+  status.succeeded: "true"
+  status.failureReason: ""
+  status.result.echo: "message 1"
+...
+EOF
+
+  if diff ${EXPECTED_CM_MANIFEST} ${ACTUAL_CM_MANIFEST}; then
+    rm -v ${EXPECTED_CM_MANIFEST}
+  else
+    rm -v ${EXPECTED_CM_MANIFEST}
+    return 1
+  fi
+}
+
+entrypoint_should_fail_without_env_vars() {
+  echo "entrypoint should exit(1) when all required env variables are missing"
+  ./entrypoint &> /dev/null
+  if [ "$?" -ne 1 ]; then
+    return 1
+  fi
+}
+
+entrypoint_should_fail_without_ns_env_var() {
+  echo "entrypoint should exit(1) when RESULT_CONFIGMAP_NAMESPACE env variable is missing"
+  RESULT_CONFIGMAP_NAME=cm1 \
+  MESSAGE="message 1" \
+  ./entrypoint &> /dev/null
+  if [ "$?" -ne 1 ]; then
+    return 1
+  fi
+}
+
+entrypoint_should_fail_without_name_env_var() {
+  echo "entrypoint should exit(1) when RESULT_CONFIGMAP_NAME env variable is missing"
+  RESULT_CONFIGMAP_NAMESPACE=ns1 \
+  MESSAGE="message 1" \
+  ./entrypoint &> /dev/null
+  if [ "$?" -ne 1 ]; then
+    return 1
+  fi
+}
+
+entrypoint_should_fail_without_message_env_var() {
+  echo "entrypoint should exit(2) when MESSAGE env variable is missing"
+  RESULT_CONFIGMAP_NAMESPACE=ns1 \
+  RESULT_CONFIGMAP_NAME=cm1 \
+  ./entrypoint &> /dev/null
+  if [ "$?" -ne 2 ]; then
+    return 1
+  fi
+
+  echo "Compare created yaml manifest"
+  cat <<EOF > ${EXPECTED_CM_MANIFEST}
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: cm1
+  namespace: ns1
+data:
+  status.succeeded: "false"
+  status.failureReason: "MESSAGE environment variable is missing"
+...
+EOF
+
+  if diff ${EXPECTED_CM_MANIFEST} ${ACTUAL_CM_MANIFEST}; then
+    rm -v ${EXPECTED_CM_MANIFEST}
+  else
+    rm -v ${EXPECTED_CM_MANIFEST}
+    return 1
+  fi
+}
+
+main() {
+  local failure
+  if entrypoint_should_succeed_with_all_env_vars; then
+    echo "PASSED"
+  else
+    failure=1
+    echo "FAILED"
+  fi
+
+  if entrypoint_should_fail_without_env_vars; then
+    echo "PASSED"
+  else
+    failure=1
+    echo "FAILED"
+  fi
+
+  if entrypoint_should_fail_without_ns_env_var; then
+    echo "PASSED"
+  else
+    failure=1
+    echo "FAILED"
+  fi
+
+  if entrypoint_should_fail_without_name_env_var; then
+    echo "PASSED"
+  else
+    failure=1
+    echo "FAILED"
+  fi
+
+  if entrypoint_should_fail_without_message_env_var; then
+    echo "PASSED"
+  else
+    failure=1
+    echo "FAILED"
+  fi
+
+  if [ -n "${failure}" ]; then
+    exit 1
+  fi
+}
+
+main
