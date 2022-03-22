@@ -20,6 +20,7 @@
 package kiagnose_test
 
 import (
+	"errors"
 	"testing"
 
 	assert "github.com/stretchr/testify/require"
@@ -28,7 +29,88 @@ import (
 )
 
 func TestRun(t *testing.T) {
-	t.Run("kiagnose entry point (placeholder test)", func(t *testing.T) {
-		assert.NoError(t, kiagnose.Run())
+	t.Run("should run successfully", func(t *testing.T) {
+		assert.NoError(t, kiagnose.Run(launcherStub{}))
 	})
+
+	t.Run("should fail when report is failing", func(t *testing.T) {
+		assert.ErrorContains(t, kiagnose.Run(launcherStub{failReport: errorReport}), errorReport.Error())
+	})
+
+	t.Run("should fail when setup is failing", func(t *testing.T) {
+		assert.ErrorContains(t, kiagnose.Run(launcherStub{failSetup: errorSetup}), errorSetup.Error())
+	})
+
+	t.Run("should fail when setup and report are failing", func(t *testing.T) {
+		err := kiagnose.Run(launcherStub{
+			failSetup:  errorSetup,
+			failReport: errorReport,
+		})
+		assert.ErrorContains(t, err, errorSetup.Error())
+		assert.ErrorContains(t, err, errorReport.Error())
+	})
+
+	t.Run("should fail when run is failing", func(t *testing.T) {
+		assert.ErrorContains(t, kiagnose.Run(launcherStub{failRun: errorRun}), errorRun.Error())
+	})
+
+	t.Run("should fail when teardown is failing", func(t *testing.T) {
+		assert.ErrorContains(t, kiagnose.Run(launcherStub{failTeardown: errorTeardown}), errorTeardown.Error())
+	})
+
+	t.Run("should fail when run and report are failing", func(t *testing.T) {
+		err := kiagnose.Run(launcherStub{
+			failRun:    errorRun,
+			failReport: errorReport})
+		assert.ErrorContains(t, err, errorRun.Error())
+		assert.ErrorContains(t, err, errorReport.Error())
+	})
+
+	t.Run("should fail when teardown and report are failing", func(t *testing.T) {
+		err := kiagnose.Run(launcherStub{
+			failTeardown: errorTeardown,
+			failReport:   errorReport})
+		assert.ErrorContains(t, err, errorTeardown.Error())
+		assert.ErrorContains(t, err, errorReport.Error())
+	})
+
+	t.Run("should fail when run, teardown and report are failing", func(t *testing.T) {
+		err := kiagnose.Run(launcherStub{
+			failRun:      errorRun,
+			failTeardown: errorTeardown,
+			failReport:   errorReport})
+		assert.ErrorContains(t, err, errorRun.Error())
+		assert.ErrorContains(t, err, errorTeardown.Error())
+		assert.ErrorContains(t, err, errorReport.Error())
+	})
+}
+
+var (
+	errorSetup    = errors.New("setup error")
+	errorRun      = errors.New("run error")
+	errorTeardown = errors.New("teardown error")
+	errorReport   = errors.New("report error")
+)
+
+type launcherStub struct {
+	failSetup    error
+	failRun      error
+	failTeardown error
+	failReport   error
+}
+
+func (s launcherStub) Setup() error {
+	return s.failSetup
+}
+
+func (s launcherStub) Run() error {
+	return s.failRun
+}
+
+func (s launcherStub) Teardown() error {
+	return s.failTeardown
+}
+
+func (s launcherStub) Report() error {
+	return s.failReport
 }
