@@ -17,15 +17,23 @@
  *
  */
 
-package kiagnose
+package checkup
 
-import (
-	"github.com/kiagnose/kiagnose/kiagnose/internal/checkup"
-	"github.com/kiagnose/kiagnose/kiagnose/internal/launcher"
-	"github.com/kiagnose/kiagnose/kiagnose/internal/reporter"
-)
+type Checkup struct {
+}
 
-func Run() error {
-	l := launcher.New(checkup.New(), reporter.New())
-	return l.Run()
+func New() *Checkup {
+	return &Checkup{}
+}
+
+func (s *Checkup) Setup() error {
+	return nil
+}
+
+func (s *Checkup) Run() error {
+	return nil
+}
+
+func (s *Checkup) Teardown() error {
+	return nil
 }
