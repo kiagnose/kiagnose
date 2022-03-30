@@ -17,15 +17,15 @@
  *
  */
 
-package kiagnose
+package reporter
 
-import (
-	"github.com/kiagnose/kiagnose/kiagnose/internal/checkup"
-	"github.com/kiagnose/kiagnose/kiagnose/internal/launcher"
-	"github.com/kiagnose/kiagnose/kiagnose/internal/reporter"
-)
+type Reporter struct {
+}
 
-func Run() error {
-	l := launcher.New(checkup.New(), reporter.New())
-	return l.Run()
+func New() Reporter {
+	return Reporter{}
+}
+
+func (r Reporter) Report() error {
+	return nil
 }
