@@ -17,20 +17,18 @@
  *
  */
 
-package kiagnose
+package client
 
 import (
-	"github.com/kiagnose/kiagnose/kiagnose/internal/checkup"
-	"github.com/kiagnose/kiagnose/kiagnose/internal/client"
-	"github.com/kiagnose/kiagnose/kiagnose/internal/launcher"
-	"github.com/kiagnose/kiagnose/kiagnose/internal/reporter"
+	"k8s.io/client-go/kubernetes"
+	"k8s.io/client-go/rest"
 )
 
-func Run() error {
-	c, err := client.New()
+func New() (*kubernetes.Clientset, error) {
+	config, err := rest.InClusterConfig()
 	if err != nil {
-		return err
+		return nil, err
 	}
-	l := launcher.New(checkup.New(c, "", 0, nil, nil, nil), reporter.New())
-	return l.Run()
+
+	return kubernetes.NewForConfig(config)
 }
