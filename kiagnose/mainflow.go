@@ -26,6 +26,6 @@ import (
 )
 
 func Run() error {
-	l := launcher.New(checkup.New(), reporter.New())
+	l := launcher.New(checkup.New("", 0, nil, nil, nil), reporter.New())
 	return l.Run()
 }
