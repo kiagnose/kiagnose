@@ -52,7 +52,7 @@ const (
 	rbacResourceGroup = "rbac.authorization.k8s.io"
 
 	testImage   = "framework:v1"
-	testTimeout = time.Minute * 10
+	testTimeout = time.Minute
 )
 
 type checkupSetupTestCase struct {
@@ -123,6 +123,96 @@ func TestCheckupSetupShould(t *testing.T) {
 	})
 }
 
+func TestCheckupTeardownShould(t *testing.T) {
+	t.Run("perform checkup teardown successfully", func(t *testing.T) {
+		testClient := newNormalizedFakeClientset()
+		testCheckup := checkup.New(testClient, testImage, testTimeout, nil, nil, nil)
+
+		assert.NoError(t, testCheckup.Setup())
+		assert.NoError(t, testCheckup.Teardown())
+	})
+
+	t.Run("fail when failed to delete ClusterRoleBinding", func(t *testing.T) {
+		testClient := newNormalizedFakeClientset()
+		testCheckup := checkup.New(testClient, testImage, testTimeout, nil, newTestClusterRoles(), nil)
+
+		assert.NoError(t, testCheckup.Setup())
+
+		const expectedErr = "failed to delete ClusterRoleBinding"
+		testClient.injectDeleteErrorForResource(clusterRoleBindingResource, expectedErr)
+
+		assert.ErrorContains(t, testCheckup.Teardown(), expectedErr)
+		assertNoNamespaceExists(t, testClient)
+	})
+
+	t.Run("fail when failed to delete Namespace", func(t *testing.T) {
+		testClient := newNormalizedFakeClientset()
+		testCheckup := checkup.New(testClient, testImage, testTimeout, nil, nil, nil)
+
+		assert.NoError(t, testCheckup.Setup())
+
+		const expectedErr = "failed to delete ClusterRoleBinding"
+		testClient.injectDeleteErrorForResource(namespaceResource, expectedErr)
+
+		assert.ErrorContains(t, testCheckup.Teardown(), expectedErr)
+		assertNoClusterRoleBindingExists(t, testClient)
+	})
+
+	t.Run("fail when Namespace wont dispose on time", func(t *testing.T) {
+		testClient := newNormalizedFakeClientset()
+		testCheckup := checkup.New(testClient, testImage, testTimeout, nil, nil, nil)
+
+		testCheckup.SetTeardownTimeout(time.Nanosecond)
+
+		assert.NoError(t, testCheckup.Setup())
+
+		const (
+			getNamespaceError = "failed to get Namespace"
+			expectedErrMatch  = "timed out"
+		)
+		testClient.injectGetErrorForResource(namespaceResource, getNamespaceError)
+
+		assert.ErrorContains(t, testCheckup.Teardown(), expectedErrMatch)
+		assertNoClusterRoleBindingExists(t, testClient)
+	})
+
+	t.Run("fail when ClusterRoleBinding wont dispose on time", func(t *testing.T) {
+		testClient := newNormalizedFakeClientset()
+		testCheckup := checkup.New(testClient, testImage, testTimeout, nil, newTestClusterRoles(), nil)
+
+		testCheckup.SetTeardownTimeout(time.Nanosecond)
+
+		assert.NoError(t, testCheckup.Setup())
+
+		const (
+			getClusterRoleBindingsError = "failed to get ClusterRoleBinding"
+			expectedErrMatch            = "timed out"
+		)
+		testClient.injectGetErrorForResource(clusterRoleBindingResource, getClusterRoleBindingsError)
+
+		assert.ErrorContains(t, testCheckup.Teardown(), expectedErrMatch)
+		assertNoNamespaceExists(t, testClient)
+	})
+
+	t.Run("fail when failed to delete both Namespace and ClusterRoleBindings", func(t *testing.T) {
+		testClient := newNormalizedFakeClientset()
+		testCheckup := checkup.New(testClient, testImage, testTimeout, nil, newTestClusterRoles(), nil)
+
+		assert.NoError(t, testCheckup.Setup())
+
+		const (
+			deleteNamespaceError          = "failed to delete Namespace"
+			deleteClusterRoleBindingError = "failed to delete ClusterRoleBindings"
+		)
+		testClient.injectDeleteErrorForResource(namespaceResource, deleteNamespaceError)
+		testClient.injectDeleteErrorForResource(clusterRoleBindingResource, deleteClusterRoleBindingError)
+
+		err := testCheckup.Teardown()
+		assert.ErrorContains(t, err, deleteNamespaceError)
+		assert.ErrorContains(t, err, deleteClusterRoleBindingError)
+	})
+}
+
 func newTestClusterRoles() []*rbacv1.ClusterRole {
 	return []*rbacv1.ClusterRole{
 		{TypeMeta: metav1.TypeMeta{Kind: "ClusterRole"}, ObjectMeta: metav1.ObjectMeta{Name: "cluster-role1"}},
@@ -161,10 +251,24 @@ func newNormalizedFakeClientset() *testsClient {
 
 func (c *testsClient) injectCreateErrorForResource(resourceName, err string) {
 	const createVerb = "create"
+	c.injectResourceManipulationError(createVerb, resourceName, err)
+}
+
+func (c *testsClient) injectGetErrorForResource(resourceName, err string) {
+	const getVerb = "get"
+	c.injectResourceManipulationError(getVerb, resourceName, err)
+}
+
+func (c *testsClient) injectDeleteErrorForResource(resourceName, err string) {
+	const deleteVerb = "delete"
+	c.injectResourceManipulationError(deleteVerb, resourceName, err)
+}
+
+func (c *testsClient) injectResourceManipulationError(verb, resourceName, err string) {
 	reactionFn := func(action clienttesting.Action) (bool, runtime.Object, error) {
 		return true, nil, errors.New(err)
 	}
-	c.PrependReactor(createVerb, resourceName, reactionFn)
+	c.PrependReactor(verb, resourceName, reactionFn)
 }
 
 // injectClusterRoleBindingCreateError injects an error when the given ClusterRoleBinding name is created.
@@ -269,11 +373,18 @@ func assertConfigMapWriterRoleBindingCreated(t *testing.T, testClient *fake.Clie
 // associated object, Thus other objects that were created inside the checkup Namespace
 // are not being checked explicitly.
 func assertNoObjectExists(t *testing.T, testClient *testsClient) {
-	actualNamespaces, err := testClient.listNamespaces()
-	assert.NoError(t, err)
-	assert.Equal(t, []corev1.Namespace{}, actualNamespaces)
+	assertNoNamespaceExists(t, testClient)
+	assertNoClusterRoleBindingExists(t, testClient)
+}
 
-	actualClusterRoleBindings, err := testClient.listClusterRoleBindings()
+func assertNoClusterRoleBindingExists(t *testing.T, testClient *testsClient) {
+	ns, err := testClient.listClusterRoleBindings()
 	assert.NoError(t, err)
-	assert.Equal(t, []rbacv1.ClusterRoleBinding{}, actualClusterRoleBindings)
+	assert.Empty(t, ns)
+}
+
+func assertNoNamespaceExists(t *testing.T, testClient *testsClient) {
+	ns, err := testClient.listNamespaces()
+	assert.NoError(t, err)
+	assert.Empty(t, ns)
 }
