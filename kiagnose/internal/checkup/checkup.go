@@ -20,15 +20,29 @@
 package checkup
 
 import (
+	"fmt"
 	"time"
 
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	corev1client "k8s.io/client-go/kubernetes/typed/core/v1"
+	rbacv1client "k8s.io/client-go/kubernetes/typed/rbac/v1"
+
+	"github.com/kiagnose/kiagnose/kiagnose/internal/checkup/configmap"
+	"github.com/kiagnose/kiagnose/kiagnose/internal/checkup/namespace"
+	"github.com/kiagnose/kiagnose/kiagnose/internal/checkup/rbac"
 )
 
+type client interface {
+	CoreV1() corev1client.CoreV1Interface
+	RbacV1() rbacv1client.RbacV1Interface
+}
+
 type Checkup struct {
+	client              client
+	teardownTimeout     time.Duration
 	namespace           *corev1.Namespace
 	serviceAccount      *corev1.ServiceAccount
 	resultConfigMap     *corev1.ConfigMap
@@ -49,7 +63,8 @@ const (
 	ResultsConfigMapNameEnvVarNamespace = "RESULT_CONFIGMAP_NAMESPACE"
 )
 
-func New(image string, timeout time.Duration, envVars []corev1.EnvVar, clusterRoles []*rbacv1.ClusterRole, _ []*rbacv1.Role) *Checkup {
+func New(c client, image string, timeout time.Duration, envVars []corev1.EnvVar, clusterRoles []*rbacv1.ClusterRole,
+	_ []*rbacv1.Role) *Checkup {
 	checkupRoles := []*rbacv1.Role{NewConfigMapWriterRole(ResultsConfigMapWriterRoleName, NamespaceName, ResultsConfigMapName)}
 
 	subject := rbacv1.Subject{Kind: rbacv1.ServiceAccountKind, Name: ServiceAccountName, Namespace: NamespaceName}
@@ -68,7 +83,10 @@ func New(image string, timeout time.Duration, envVars []corev1.EnvVar, clusterRo
 	}
 	checkupEnvVars = append(checkupEnvVars, envVars...)
 
+	const defaultTeardownTimeout = time.Minute * 5
 	return &Checkup{
+		client:              c,
+		teardownTimeout:     defaultTeardownTimeout,
 		namespace:           NewNamespace(NamespaceName),
 		serviceAccount:      NewServiceAccount(ServiceAccountName, NamespaceName),
 		resultConfigMap:     NewConfigMap(ResultsConfigMapName, NamespaceName),
@@ -197,7 +215,43 @@ func newCheckupJob(name, namespaceName, serviceAccountName, image string, active
 	}
 }
 
+// Setup creates each of the checkup objects inside the cluster.
+// In case of failure, an attempt to clean up the objects that already been created is made,
+// by deleting the Namespace and eventually all the objects inside it
+// https://kubernetes.io/docs/concepts/architecture/garbage-collection/#background-deletion
 func (c *Checkup) Setup() error {
+	const errMessage = "checkup setup failed"
+	var err error
+
+	if c.namespace, err = namespace.Create(c.client.CoreV1(), c.namespace); err != nil {
+		return fmt.Errorf("%s: %v", errMessage, err)
+	}
+	defer func() {
+		if err != nil {
+			_ = namespace.DeleteAndWait(c.client.CoreV1(), c.namespace.Name, c.teardownTimeout)
+		}
+	}()
+
+	if c.serviceAccount, err = rbac.CreateServiceAccount(c.client.CoreV1(), c.serviceAccount); err != nil {
+		return fmt.Errorf("%s: %v", errMessage, err)
+	}
+
+	if c.resultConfigMap, err = configmap.Create(c.client.CoreV1(), c.resultConfigMap); err != nil {
+		return fmt.Errorf("%s: %v", errMessage, err)
+	}
+
+	if c.roles, err = rbac.CreateRoles(c.client.RbacV1(), c.roles); err != nil {
+		return fmt.Errorf("%s: %v", errMessage, err)
+	}
+
+	if c.roleBindings, err = rbac.CreateRoleBindings(c.client.RbacV1(), c.roleBindings); err != nil {
+		return fmt.Errorf("%s: %v", errMessage, err)
+	}
+
+	if c.clusterRoleBindings, err = rbac.CreateClusterRoleBindings(c.client.RbacV1(), c.clusterRoleBindings, c.teardownTimeout); err != nil {
+		return fmt.Errorf("%s: %v", errMessage, err)
+	}
+
 	return nil
 }
 

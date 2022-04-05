@@ -17,20 +17,22 @@
  *
  */
 
-package kiagnose
+package configmap
 
 import (
-	"github.com/kiagnose/kiagnose/kiagnose/internal/checkup"
-	"github.com/kiagnose/kiagnose/kiagnose/internal/client"
-	"github.com/kiagnose/kiagnose/kiagnose/internal/launcher"
-	"github.com/kiagnose/kiagnose/kiagnose/internal/reporter"
+	"context"
+	"log"
+
+	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	corev1client "k8s.io/client-go/kubernetes/typed/core/v1"
 )
 
-func Run() error {
-	c, err := client.New()
+func Create(client corev1client.CoreV1Interface, cm *corev1.ConfigMap) (*corev1.ConfigMap, error) {
+	createdConfigMap, err := client.ConfigMaps(cm.Namespace).Create(context.Background(), cm, metav1.CreateOptions{})
 	if err != nil {
-		return err
+		return nil, err
 	}
-	l := launcher.New(checkup.New(c, "", 0, nil, nil, nil), reporter.New())
-	return l.Run()
+	log.Printf("ConfigMap '%s/%s' successfully created", cm.Namespace, cm.Name)
+	return createdConfigMap, nil
 }
