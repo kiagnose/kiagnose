@@ -20,12 +20,43 @@
 package kiagnose
 
 import (
+	"fmt"
+	"log"
+	"os"
+
 	"github.com/kiagnose/kiagnose/kiagnose/internal/checkup"
 	"github.com/kiagnose/kiagnose/kiagnose/internal/launcher"
 	"github.com/kiagnose/kiagnose/kiagnose/internal/reporter"
 )
 
+const (
+	configMapNamespaceEnvVarName = "CONFIGMAP_NAMESPACE"
+	configMapNameEnvVarName      = "CONFIGMAP_NAME"
+)
+
 func Run() error {
+	configMapNamespace, configMapName, err := readConfigMapFullNameFromEnv()
+	if err != nil {
+		return err
+	}
+	log.Printf("ConfigMap fullname: \"%s/%s\"", configMapNamespace, configMapName)
+
 	l := launcher.New(checkup.New(), reporter.New())
 	return l.Run()
+}
+
+func readConfigMapFullNameFromEnv() (namespace, name string, err error) {
+	var exists bool
+
+	namespace, exists = os.LookupEnv(configMapNamespaceEnvVarName)
+	if !exists {
+		return "", "", fmt.Errorf("missing %q environment variable", configMapNamespaceEnvVarName)
+	}
+
+	name, exists = os.LookupEnv(configMapNameEnvVarName)
+	if !exists {
+		return "", "", fmt.Errorf("missing %q environment variable", configMapNameEnvVarName)
+	}
+
+	return
 }
