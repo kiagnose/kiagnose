@@ -20,7 +20,9 @@
 package checkup
 
 import (
+	"errors"
 	"fmt"
+	"strings"
 	"time"
 
 	batchv1 "k8s.io/api/batch/v1"
@@ -273,6 +275,34 @@ func (c *Checkup) Run() error {
 	return nil
 }
 
+func (c *Checkup) SetTeardownTimeout(duration time.Duration) {
+	c.teardownTimeout = duration
+}
+
 func (c *Checkup) Teardown() error {
+	var errs []error
+
+	if err := rbac.DeleteClusterRoleBindings(c.client.RbacV1(), c.clusterRoleBindings, c.teardownTimeout); err != nil {
+		errs = append(errs, err)
+	}
+
+	if err := namespace.DeleteAndWait(c.client.CoreV1(), c.namespace.Name, c.teardownTimeout); err != nil {
+		errs = append(errs, err)
+	}
+
+	if len(errs) > 0 {
+		return fmt.Errorf("failed to teardown checkup: %v", concentrateErrors(errs))
+	}
+
 	return nil
+}
+
+func concentrateErrors(errs []error) error {
+	sb := strings.Builder{}
+	for _, err := range errs {
+		sb.WriteString(err.Error())
+		sb.WriteString("\n")
+	}
+
+	return errors.New(sb.String())
 }
