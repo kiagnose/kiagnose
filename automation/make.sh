@@ -20,7 +20,7 @@
 set -e
 
 options=$(getopt --options "" \
-    --long unit-test,help\
+    --long lint,unit-test,help\
     -- "${@}")
 eval set -- "$options"
 while true; do
