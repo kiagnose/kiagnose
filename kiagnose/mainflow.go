@@ -22,15 +22,23 @@ package kiagnose
 import (
 	"github.com/kiagnose/kiagnose/kiagnose/internal/checkup"
 	"github.com/kiagnose/kiagnose/kiagnose/internal/client"
+	"github.com/kiagnose/kiagnose/kiagnose/internal/config"
 	"github.com/kiagnose/kiagnose/kiagnose/internal/launcher"
 	"github.com/kiagnose/kiagnose/kiagnose/internal/reporter"
 )
 
-func Run() error {
+func Run(env map[string]string) error {
 	c, err := client.New()
 	if err != nil {
 		return err
 	}
+
+	configLoader := config.NewLoader(c, env)
+	_, err = configLoader.Load()
+	if err != nil {
+		return err
+	}
+
 	l := launcher.New(checkup.New(c, "", 0, nil, nil, nil), reporter.New())
 	return l.Run()
 }
