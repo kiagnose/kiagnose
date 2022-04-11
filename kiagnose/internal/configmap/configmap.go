@@ -25,6 +25,7 @@ import (
 
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/client-go/kubernetes"
 	corev1client "k8s.io/client-go/kubernetes/typed/core/v1"
 )
 
@@ -35,4 +36,13 @@ func Create(client corev1client.CoreV1Interface, cm *corev1.ConfigMap) (*corev1.
 	}
 	log.Printf("ConfigMap '%s/%s' successfully created", cm.Namespace, cm.Name)
 	return createdConfigMap, nil
+}
+
+func GetData(client kubernetes.Interface, namespace, name string) (map[string]string, error) {
+	configMap, err := client.CoreV1().ConfigMaps(namespace).Get(context.Background(), name, metav1.GetOptions{})
+	if err != nil {
+		return nil, err
+	}
+
+	return configMap.Data, nil
 }
