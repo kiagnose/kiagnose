@@ -32,6 +32,7 @@ import (
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/wait"
+	"k8s.io/client-go/kubernetes"
 	corev1client "k8s.io/client-go/kubernetes/typed/core/v1"
 	rbacv1client "k8s.io/client-go/kubernetes/typed/rbac/v1"
 )
@@ -80,6 +81,63 @@ func createClusterRoleBinding(c rbacv1client.RbacV1Interface, bindings *rbacv1.C
 	log.Printf("ClusterRoleBinding %q successfully created\n", createdClusterRoleBinding.Name)
 
 	return createdClusterRoleBinding, nil
+}
+
+func GetClusterRoles(client kubernetes.Interface, clusterRoleNames []string) ([]*rbacv1.ClusterRole, error) {
+	var clusterRoles []*rbacv1.ClusterRole
+
+	for _, name := range clusterRoleNames {
+		clusterRole, err := getClusterRole(client, name)
+		if err != nil {
+			return nil, err
+		}
+
+		clusterRoles = append(clusterRoles, clusterRole)
+	}
+
+	return clusterRoles, nil
+}
+
+func GetRoles(client kubernetes.Interface, roleNames []string) ([]*rbacv1.Role, error) {
+	const requiredPartsCount = 2
+	var roles []*rbacv1.Role
+
+	for _, roleFullName := range roleNames {
+		nameParts := strings.Split(roleFullName, "/")
+		if len(nameParts) != requiredPartsCount {
+			return nil, fmt.Errorf("role name: %q is illeagal", roleFullName)
+		}
+
+		roleNamespace := nameParts[0]
+		roleName := nameParts[1]
+
+		role, err := getRole(client, roleNamespace, roleName)
+		if err != nil {
+			return nil, err
+		}
+
+		roles = append(roles, role)
+	}
+
+	return roles, nil
+}
+
+func getClusterRole(client kubernetes.Interface, name string) (*rbacv1.ClusterRole, error) {
+	clusterRole, err := client.RbacV1().ClusterRoles().Get(context.Background(), name, metav1.GetOptions{})
+	if err != nil {
+		return nil, err
+	}
+
+	return clusterRole, nil
+}
+
+func getRole(client kubernetes.Interface, namespace, name string) (*rbacv1.Role, error) {
+	role, err := client.RbacV1().Roles(namespace).Get(context.Background(), name, metav1.GetOptions{})
+	if err != nil {
+		return nil, err
+	}
+
+	return role, nil
 }
 
 // DeleteClusterRoleBindings delete and waits for the given ClusterRoleBindings to dispose.
