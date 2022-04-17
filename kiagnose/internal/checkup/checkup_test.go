@@ -135,6 +135,7 @@ func TestCheckupTeardownShould(t *testing.T) {
 	t.Run("fail when failed to delete ClusterRoleBinding", func(t *testing.T) {
 		testClient := newNormalizedFakeClientset()
 		testCheckup := checkup.New(testClient, testImage, testTimeout, nil, newTestClusterRoles(), nil)
+		testCheckup.SetTeardownTimeout(time.Nanosecond)
 
 		assert.NoError(t, testCheckup.Setup())
 
@@ -148,6 +149,7 @@ func TestCheckupTeardownShould(t *testing.T) {
 	t.Run("fail when failed to delete Namespace", func(t *testing.T) {
 		testClient := newNormalizedFakeClientset()
 		testCheckup := checkup.New(testClient, testImage, testTimeout, nil, nil, nil)
+		testCheckup.SetTeardownTimeout(time.Nanosecond)
 
 		assert.NoError(t, testCheckup.Setup())
 
@@ -161,7 +163,6 @@ func TestCheckupTeardownShould(t *testing.T) {
 	t.Run("fail when Namespace wont dispose on time", func(t *testing.T) {
 		testClient := newNormalizedFakeClientset()
 		testCheckup := checkup.New(testClient, testImage, testTimeout, nil, nil, nil)
-
 		testCheckup.SetTeardownTimeout(time.Nanosecond)
 
 		assert.NoError(t, testCheckup.Setup())
@@ -197,6 +198,7 @@ func TestCheckupTeardownShould(t *testing.T) {
 	t.Run("fail when failed to delete both Namespace and ClusterRoleBindings", func(t *testing.T) {
 		testClient := newNormalizedFakeClientset()
 		testCheckup := checkup.New(testClient, testImage, testTimeout, nil, newTestClusterRoles(), nil)
+		testCheckup.SetTeardownTimeout(time.Nanosecond)
 
 		assert.NoError(t, testCheckup.Setup())
 

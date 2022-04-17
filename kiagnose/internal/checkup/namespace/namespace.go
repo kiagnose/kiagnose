@@ -43,32 +43,33 @@ func Create(client corev1client.CoreV1Interface, namespace *corev1.Namespace) (*
 	return namespace, nil
 }
 
-// DeleteAndWait delete and waits for the given namespace to dispose.
-func DeleteAndWait(client corev1client.CoreV1Interface, nsName string, timeout time.Duration) error {
+// Delete deletes the given namespace.
+func Delete(client corev1client.CoreV1Interface, nsName string) error {
 	if err := client.Namespaces().Delete(context.Background(), nsName, metav1.DeleteOptions{}); err != nil {
 		return err
 	}
 	log.Printf("deleted namespace '%s' request sent", nsName)
 
-	if err := waitForDeletion(client, nsName, timeout); err != nil {
-		return err
-	}
-	log.Printf("namespace '%s' successfully deleted", nsName)
-
 	return nil
 }
 
-// waitForDeletion waits until the given namespace is disposed.
-func waitForDeletion(client corev1client.CoreV1Interface, nsName string, timeout time.Duration) error {
+// WaitForDeletion waits until the given namespace is disposed.
+func WaitForDeletion(client corev1client.CoreV1Interface, nsName string, timeout time.Duration) error {
 	log.Printf("waiting for namespace '%s' to dispose", nsName)
 
 	const pollInterval = time.Second * 5
-	return wait.PollImmediate(pollInterval, timeout, func() (bool, error) {
+	conditionFn := func() (bool, error) {
 		_, err := client.Namespaces().Get(context.Background(), nsName, metav1.GetOptions{})
 		namespaceNotFound := errors.IsNotFound(err)
 		if err != nil && !namespaceNotFound {
 			log.Printf("failed to get namespace '%s' while waiting for it to dispose: %v", nsName, err)
 		}
 		return namespaceNotFound, nil
-	})
+	}
+	if err := wait.PollImmediate(pollInterval, timeout, conditionFn); err != nil {
+		return err
+	}
+	log.Printf("namespace '%s' successfully deleted", nsName)
+
+	return nil
 }

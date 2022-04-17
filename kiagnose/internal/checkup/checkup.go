@@ -230,7 +230,8 @@ func (c *Checkup) Setup() error {
 	}
 	defer func() {
 		if err != nil {
-			_ = namespace.DeleteAndWait(c.client.CoreV1(), c.namespace.Name, c.teardownTimeout)
+			_ = namespace.Delete(c.client.CoreV1(), c.namespace.Name)
+			_ = namespace.WaitForDeletion(c.client.CoreV1(), c.namespace.Name, c.teardownTimeout)
 		}
 	}()
 
@@ -250,7 +251,13 @@ func (c *Checkup) Setup() error {
 		return fmt.Errorf("%s: %v", errMessage, err)
 	}
 
-	if c.clusterRoleBindings, err = rbac.CreateClusterRoleBindings(c.client.RbacV1(), c.clusterRoleBindings, c.teardownTimeout); err != nil {
+	defer func() {
+		if err != nil {
+			_ = rbac.DeleteClusterRoleBindings(c.client.RbacV1(), c.clusterRoleBindings)
+			_ = rbac.WaitForClusterRoleBindingsDeletion(c.client.RbacV1(), c.clusterRoleBindings, c.teardownTimeout)
+		}
+	}()
+	if c.clusterRoleBindings, err = rbac.CreateClusterRoleBindings(c.client.RbacV1(), c.clusterRoleBindings); err != nil {
 		return fmt.Errorf("%s: %v", errMessage, err)
 	}
 
@@ -268,11 +275,17 @@ func (c *Checkup) SetTeardownTimeout(duration time.Duration) {
 func (c *Checkup) Teardown() error {
 	var errs []error
 
-	if err := rbac.DeleteClusterRoleBindings(c.client.RbacV1(), c.clusterRoleBindings, c.teardownTimeout); err != nil {
+	if err := rbac.DeleteClusterRoleBindings(c.client.RbacV1(), c.clusterRoleBindings); err != nil {
+		errs = append(errs, err)
+	}
+	if err := namespace.Delete(c.client.CoreV1(), c.namespace.Name); err != nil {
 		errs = append(errs, err)
 	}
 
-	if err := namespace.DeleteAndWait(c.client.CoreV1(), c.namespace.Name, c.teardownTimeout); err != nil {
+	if err := namespace.WaitForDeletion(c.client.CoreV1(), c.namespace.Name, c.teardownTimeout); err != nil {
+		errs = append(errs, err)
+	}
+	if err := rbac.WaitForClusterRoleBindingsDeletion(c.client.RbacV1(), c.clusterRoleBindings, c.teardownTimeout); err != nil {
 		errs = append(errs, err)
 	}
 

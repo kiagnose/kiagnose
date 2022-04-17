@@ -48,8 +48,8 @@ func CreateServiceAccount(client corev1client.CoreV1Interface, sa *corev1.Servic
 
 // CreateClusterRoleBindings creates the given ClusterRoleBindings in the cluster.
 // In case of failure it will delete and waits for the ClusterRoleBindings to dispose.
-func CreateClusterRoleBindings(client rbacv1client.RbacV1Interface, clusterRoleBindings []*rbacv1.ClusterRoleBinding,
-	timeout time.Duration) ([]*rbacv1.ClusterRoleBinding, error) {
+func CreateClusterRoleBindings(client rbacv1client.RbacV1Interface,
+	clusterRoleBindings []*rbacv1.ClusterRoleBinding) ([]*rbacv1.ClusterRoleBinding, error) {
 	var createdClusterRoleBindings []*rbacv1.ClusterRoleBinding
 	var createErr error
 	for _, clusterRoleBinding := range clusterRoleBindings {
@@ -63,7 +63,7 @@ func CreateClusterRoleBindings(client rbacv1client.RbacV1Interface, clusterRoleB
 
 	if createErr != nil {
 		createErrMsg := fmt.Sprintf("failed for create ClusterRoleBindings: %v", createErr)
-		if deleteErr := DeleteClusterRoleBindings(client, createdClusterRoleBindings, timeout); deleteErr != nil {
+		if deleteErr := DeleteClusterRoleBindings(client, createdClusterRoleBindings); deleteErr != nil {
 			return nil, fmt.Errorf("%s, clean up failed: %v", createErrMsg, deleteErr)
 		}
 		return nil, errors.New(createErrMsg)
@@ -82,23 +82,13 @@ func createClusterRoleBinding(c rbacv1client.RbacV1Interface, bindings *rbacv1.C
 	return createdClusterRoleBinding, nil
 }
 
-// DeleteClusterRoleBindings delete and waits for the given ClusterRoleBindings to dispose.
-func DeleteClusterRoleBindings(client rbacv1client.RbacV1Interface, clusterRoleBindings []*rbacv1.ClusterRoleBinding,
-	timeout time.Duration) error {
+// DeleteClusterRoleBindings delete the given ClusterRoleBindings.
+func DeleteClusterRoleBindings(client rbacv1client.RbacV1Interface, clusterRoleBindings []*rbacv1.ClusterRoleBinding) error {
 	var danglingClusterRoleBindings []string
-	var deletedClusterRoleBindings []string
 
 	for _, clusterRoleBinding := range clusterRoleBindings {
 		if err := deleteClusterRoleBinding(client, clusterRoleBinding.Name); err != nil {
 			danglingClusterRoleBindings = append(danglingClusterRoleBindings, fmt.Sprintf("name: %s reasone: %v", clusterRoleBinding.Name, err))
-			continue
-		}
-		deletedClusterRoleBindings = append(deletedClusterRoleBindings, clusterRoleBinding.Name)
-	}
-
-	for _, deletedClusterRoleBinding := range deletedClusterRoleBindings {
-		if err := waitForClusterRoleBindingDeletion(client, deletedClusterRoleBinding, timeout); err != nil {
-			danglingClusterRoleBindings = append(danglingClusterRoleBindings, fmt.Sprintf("name: %s reasone: %v", deletedClusterRoleBinding, err))
 			continue
 		}
 	}
@@ -115,6 +105,26 @@ func deleteClusterRoleBinding(client rbacv1client.RbacV1Interface, clusterRoleBi
 		return err
 	}
 	log.Printf("delete ClusterRoleBinding '%s' request sent", clusterRoleBindingName)
+
+	return nil
+}
+
+// WaitForClusterRoleBindingsDeletion wait for the given ClusterRoleBindings to dispose.
+func WaitForClusterRoleBindingsDeletion(client rbacv1client.RbacV1Interface, clusterRoleBindings []*rbacv1.ClusterRoleBinding,
+	timeout time.Duration) error {
+	var danglingClusterRoleBindings []string
+
+	for _, clusterRoleBinding := range clusterRoleBindings {
+		if err := waitForClusterRoleBindingDeletion(client, clusterRoleBinding.Name, timeout); err != nil {
+			danglingClusterRoleBindings = append(danglingClusterRoleBindings, fmt.Sprintf("name: %s reasone: %v", clusterRoleBinding, err))
+			continue
+		}
+	}
+
+	if len(danglingClusterRoleBindings) > 0 {
+		return fmt.Errorf("failed to wait for ClusterRoleBindings to delete: %s", strings.Join(danglingClusterRoleBindings, ", "))
+	}
+
 	return nil
 }
 
@@ -134,8 +144,8 @@ func waitForClusterRoleBindingDeletion(client rbacv1client.RbacV1Interface, name
 	if err := wait.PollImmediate(pollInterval, timeout, conditionFn); err != nil {
 		return err
 	}
-
 	log.Printf("ClusterRoleBinding '%s' successfully deleted", name)
+
 	return nil
 }
 
