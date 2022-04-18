@@ -19,8 +19,10 @@
 
 set -e
 
+BINARY_NAME="kiagnose"
+
 options=$(getopt --options "" \
-    --long lint,unit-test,help\
+    --long lint,unit-test,build-core,help\
     -- "${@}")
 eval set -- "$options"
 while true; do
@@ -30,6 +32,9 @@ while true; do
         ;;
     --unit-test)
         OPT_UNIT_TEST=1
+        ;;
+    --build-core)
+        OPT_BUILD_CORE=1
         ;;
     --help)
         set +x
@@ -44,9 +49,10 @@ while true; do
     shift
 done
 
-if  [ -z "${OPT_LINT}" ] && [ -z "${OPT_UNIT_TEST}" ]; then
+if  [ -z "${OPT_LINT}" ] && [ -z "${OPT_UNIT_TEST}" ] && [ -z "${OPT_BUILD_CORE}" ]; then
     OPT_LINT=1
     OPT_UNIT_TEST=1
+    OPT_BUILD_CORE=1
 fi
 
 if [ -n "${OPT_LINT}" ]; then
@@ -59,4 +65,10 @@ fi
 
 if [ -n "${OPT_UNIT_TEST}" ]; then
     go test -v ./kiagnose/...
+fi
+
+if [ -n "${OPT_BUILD_CORE}" ]; then
+  echo "Trying to build \"${BINARY_NAME}\"..."
+  go build -v -o ./bin/${BINARY_NAME} ./kiagnose/cmd/
+  echo "Successfully built \"${BINARY_NAME}\""
 fi
