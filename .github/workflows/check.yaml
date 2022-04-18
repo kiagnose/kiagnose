@@ -72,3 +72,29 @@ jobs:
           go-version: ${{ needs.go-versions.outputs.minimal }}
       - name: Run build
         run: ./automation/make.sh --build-core
+  e2e-test:
+    name: E2E Test
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out code
+        uses: actions/checkout@v2
+      - name: Install kind
+        run: |
+          curl -Lo ./kind https://kind.sigs.k8s.io/dl/v0.12.0/kind-linux-amd64
+          chmod +x ./kind
+          sudo mv ./kind /usr/local/bin/kind
+      - name: Install kubectl
+        run: |
+          curl -LO https://dl.k8s.io/release/v1.23.0/bin/linux/amd64/kubectl
+          chmod +x ./kubectl
+          sudo mv ./kubectl /usr/local/bin/kubectl
+      - name: Create cluster
+        run: sudo kind create cluster --wait 2m
+      - name: Get cluster status
+        run: |
+          # wait network is ready
+          sudo kubectl wait --for=condition=ready pods --namespace=kube-system -l k8s-app=kube-dns
+          sudo kubectl get nodes -o wide
+          sudo kubectl get pods -A
+      - name: Delete cluster
+        run: sudo kind delete cluster
