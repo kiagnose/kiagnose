@@ -37,6 +37,7 @@ import (
 	clienttesting "k8s.io/client-go/testing"
 
 	"github.com/kiagnose/kiagnose/kiagnose/internal/checkup"
+	"github.com/kiagnose/kiagnose/kiagnose/internal/config"
 )
 
 const (
@@ -71,7 +72,13 @@ func TestCheckupWith(t *testing.T) {
 	for _, testCase := range checkupCreateTestCases {
 		t.Run(testCase.description, func(t *testing.T) {
 			c := fake.NewSimpleClientset()
-			testCheckup := checkup.New(c, testImage, testTimeout, testCase.envVars, testCase.clusterRole, testCase.roles)
+			testCheckup := checkup.New(c, &config.Config{
+				Image:        testImage,
+				Timeout:      testTimeout,
+				EnvVars:      testCase.envVars,
+				ClusterRoles: testCase.clusterRole,
+				Roles:        testCase.roles,
+			})
 
 			assert.NoError(t, testCheckup.Setup())
 			assertNamespaceCreated(t, c)
@@ -99,7 +106,13 @@ func TestCheckupSetupShouldFailWhen(t *testing.T) {
 			testClient := newNormalizedFakeClientset()
 			expectedErr := fmt.Sprintf("failed to create resource %q object", testCase.resource)
 			testClient.injectCreateErrorForResource(testCase.resource, expectedErr)
-			testCheckup := checkup.New(testClient, testImage, testTimeout, testCase.envVars, testCase.clusterRole, testCase.roles)
+			testCheckup := checkup.New(testClient, &config.Config{
+				Image:        testImage,
+				Timeout:      testTimeout,
+				EnvVars:      testCase.envVars,
+				ClusterRoles: testCase.clusterRole,
+				Roles:        testCase.roles,
+			})
 
 			assert.ErrorContains(t, testCheckup.Setup(), expectedErr)
 
@@ -114,7 +127,7 @@ func TestCheckupSetupShould(t *testing.T) {
 		expectedErr := fmt.Sprintf("failed to create resource %q object", clusterRoleBindingResource)
 		expectedClusterRoles := newTestClusterRoles()
 		testClient.injectClusterRoleBindingCreateError(expectedClusterRoles[1].Name, expectedErr)
-		testCheckup := checkup.New(testClient, testImage, testTimeout, nil, expectedClusterRoles, nil)
+		testCheckup := checkup.New(testClient, &config.Config{Image: testImage, Timeout: testTimeout, ClusterRoles: expectedClusterRoles})
 
 		assert.ErrorContains(t, testCheckup.Setup(), expectedErr)
 
@@ -125,7 +138,7 @@ func TestCheckupSetupShould(t *testing.T) {
 func TestCheckupTeardownShould(t *testing.T) {
 	t.Run("perform checkup teardown successfully", func(t *testing.T) {
 		testClient := newNormalizedFakeClientset()
-		testCheckup := checkup.New(testClient, testImage, testTimeout, nil, nil, nil)
+		testCheckup := checkup.New(testClient, &config.Config{Image: testImage, Timeout: testTimeout})
 
 		assert.NoError(t, testCheckup.Setup())
 		assert.NoError(t, testCheckup.Teardown())
@@ -133,7 +146,7 @@ func TestCheckupTeardownShould(t *testing.T) {
 
 	t.Run("fail when failed to delete ClusterRoleBinding", func(t *testing.T) {
 		testClient := newNormalizedFakeClientset()
-		testCheckup := checkup.New(testClient, testImage, testTimeout, nil, newTestClusterRoles(), nil)
+		testCheckup := checkup.New(testClient, &config.Config{Image: testImage, Timeout: testTimeout, ClusterRoles: newTestClusterRoles()})
 
 		assert.NoError(t, testCheckup.Setup())
 
@@ -146,7 +159,7 @@ func TestCheckupTeardownShould(t *testing.T) {
 
 	t.Run("fail when failed to delete Namespace", func(t *testing.T) {
 		testClient := newNormalizedFakeClientset()
-		testCheckup := checkup.New(testClient, testImage, testTimeout, nil, nil, nil)
+		testCheckup := checkup.New(testClient, &config.Config{Image: testImage, Timeout: testTimeout})
 
 		assert.NoError(t, testCheckup.Setup())
 
@@ -159,7 +172,7 @@ func TestCheckupTeardownShould(t *testing.T) {
 
 	t.Run("fail when Namespace wont dispose on time", func(t *testing.T) {
 		testClient := newNormalizedFakeClientset()
-		testCheckup := checkup.New(testClient, testImage, testTimeout, nil, nil, nil)
+		testCheckup := checkup.New(testClient, &config.Config{Image: testImage, Timeout: testTimeout})
 
 		testCheckup.SetTeardownTimeout(time.Nanosecond)
 
@@ -177,7 +190,7 @@ func TestCheckupTeardownShould(t *testing.T) {
 
 	t.Run("fail when ClusterRoleBinding wont dispose on time", func(t *testing.T) {
 		testClient := newNormalizedFakeClientset()
-		testCheckup := checkup.New(testClient, testImage, testTimeout, nil, newTestClusterRoles(), nil)
+		testCheckup := checkup.New(testClient, &config.Config{Image: testImage, Timeout: testTimeout, ClusterRoles: newTestClusterRoles()})
 
 		testCheckup.SetTeardownTimeout(time.Nanosecond)
 
@@ -195,7 +208,7 @@ func TestCheckupTeardownShould(t *testing.T) {
 
 	t.Run("fail when failed to delete both Namespace and ClusterRoleBindings", func(t *testing.T) {
 		testClient := newNormalizedFakeClientset()
-		testCheckup := checkup.New(testClient, testImage, testTimeout, nil, newTestClusterRoles(), nil)
+		testCheckup := checkup.New(testClient, &config.Config{Image: testImage, Timeout: testTimeout, ClusterRoles: newTestClusterRoles()})
 
 		assert.NoError(t, testCheckup.Setup())
 

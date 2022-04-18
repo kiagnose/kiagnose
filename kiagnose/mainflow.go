@@ -34,11 +34,11 @@ func Run(env map[string]string) error {
 	}
 
 	configLoader := config.NewLoader(c, env)
-	_, err = configLoader.Load()
+	checkupConfig, err := configLoader.Load()
 	if err != nil {
 		return err
 	}
 
-	l := launcher.New(checkup.New(c, "", 0, nil, nil, nil), reporter.New())
+	l := launcher.New(checkup.New(c, checkupConfig), reporter.New())
 	return l.Run()
 }
