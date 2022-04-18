@@ -33,6 +33,7 @@ import (
 	rbacv1client "k8s.io/client-go/kubernetes/typed/rbac/v1"
 
 	"github.com/kiagnose/kiagnose/kiagnose/internal/checkup/namespace"
+	"github.com/kiagnose/kiagnose/kiagnose/internal/config"
 	"github.com/kiagnose/kiagnose/kiagnose/internal/configmap"
 	"github.com/kiagnose/kiagnose/kiagnose/internal/rbac"
 )
@@ -61,8 +62,7 @@ const (
 	ResultsConfigMapWriterRoleName = "results-configmap-writer"
 )
 
-func New(c client, image string, timeout time.Duration, envVars []corev1.EnvVar, clusterRoles []*rbacv1.ClusterRole,
-	_ []*rbacv1.Role) *Checkup {
+func New(c client, checkupConfig *config.Config) *Checkup {
 	const (
 		jobName = "checkup-job"
 
@@ -83,7 +83,7 @@ func New(c client, image string, timeout time.Duration, envVars []corev1.EnvVar,
 		{Name: resultsConfigMapNameEnvVarName, Value: ResultsConfigMapName},
 		{Name: resultsConfigMapNameEnvVarNamespace, Value: NamespaceName},
 	}
-	checkupEnvVars = append(checkupEnvVars, envVars...)
+	checkupEnvVars = append(checkupEnvVars, checkupConfig.EnvVars...)
 
 	return &Checkup{
 		client:              c,
@@ -93,8 +93,13 @@ func New(c client, image string, timeout time.Duration, envVars []corev1.EnvVar,
 		resultConfigMap:     NewConfigMap(ResultsConfigMapName, NamespaceName),
 		roles:               checkupRoles,
 		roleBindings:        checkupRoleBindings,
-		clusterRoleBindings: NewClusterRoleBindings(clusterRoles, ServiceAccountName, NamespaceName),
-		job:                 newCheckupJob(jobName, NamespaceName, ServiceAccountName, image, int64(timeout.Seconds()), checkupEnvVars),
+		clusterRoleBindings: NewClusterRoleBindings(checkupConfig.ClusterRoles, ServiceAccountName, NamespaceName),
+		job: newCheckupJob(jobName,
+			NamespaceName,
+			ServiceAccountName,
+			checkupConfig.Image,
+			int64(checkupConfig.Timeout.Seconds()),
+			checkupEnvVars),
 	}
 }
 
