@@ -32,9 +32,9 @@ import (
 	corev1client "k8s.io/client-go/kubernetes/typed/core/v1"
 	rbacv1client "k8s.io/client-go/kubernetes/typed/rbac/v1"
 
-	"github.com/kiagnose/kiagnose/kiagnose/internal/checkup/configmap"
 	"github.com/kiagnose/kiagnose/kiagnose/internal/checkup/namespace"
 	"github.com/kiagnose/kiagnose/kiagnose/internal/checkup/rbac"
+	"github.com/kiagnose/kiagnose/kiagnose/internal/configmap"
 )
 
 type client interface {
