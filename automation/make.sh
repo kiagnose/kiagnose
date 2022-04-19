@@ -38,7 +38,7 @@ while true; do
         ;;
     --help)
         set +x
-        echo "$0 [--lint] [--unit-test]"
+        echo "$0 [--lint] [--unit-test] [--build-core]"
         exit
         ;;
     --)
