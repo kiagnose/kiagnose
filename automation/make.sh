@@ -21,14 +21,17 @@ set -e
 
 CRI=${CRI:-podman}
 
-CORE_BINARY_NAME="kiagnose"
-CORE_IMAGE_REPO=${CORE_IMAGE_REPO:-quay.io}
-CORE_IMAGE_ORG=${CORE_IMAGE_ORG:-kiagnose}
+IMAGE_REGISTRY=${IMAGE_REGISTRY:-quay.io}
+IMAGE_ORG=${IMAGE_ORG:-kiagnose}
+
 CORE_IMAGE_NAME="kiagnose"
 CORE_IMAGE_TAG=${CORE_IMAGE_TAG:-devel}
+CORE_IMAGE="${IMAGE_REGISTRY}/${IMAGE_ORG}/${CORE_IMAGE_NAME}:${CORE_IMAGE_TAG}"
+
+CORE_BINARY_NAME="kiagnose"
 
 options=$(getopt --options "" \
-    --long lint,unit-test,build-core,build-core-image,help\
+    --long lint,unit-test,build-core,build-core-image,push-core-image,help\
     -- "${@}")
 eval set -- "$options"
 while true; do
@@ -45,9 +48,12 @@ while true; do
     --build-core-image)
         OPT_BUILD_CORE_IMAGE=1
         ;;
+    --push-core-image)
+        OPT_PUSH_CORE_IMAGE=1
+        ;;
     --help)
         set +x
-        echo "$0 [--lint] [--unit-test] [--build-core] [--build-core-image]"
+        echo "$0 [--lint] [--unit-test] [--build-core] [--build-core-image] [--push-core-image]"
         exit
         ;;
     --)
@@ -58,7 +64,7 @@ while true; do
     shift
 done
 
-if  [ -z "${OPT_LINT}" ] && [ -z "${OPT_UNIT_TEST}" ] && [ -z "${OPT_BUILD_CORE}" ] && [ -z "${OPT_BUILD_CORE_IMAGE}" ]; then
+if  [ -z "${OPT_LINT}" ] && [ -z "${OPT_UNIT_TEST}" ] && [ -z "${OPT_BUILD_CORE}" ] && [ -z "${OPT_BUILD_CORE_IMAGE}" ] && [ -z "${OPT_PUSH_CORE_IMAGE}" ]; then
     OPT_LINT=1
     OPT_UNIT_TEST=1
     OPT_BUILD_CORE=1
@@ -83,7 +89,11 @@ if [ -n "${OPT_BUILD_CORE}" ]; then
 fi
 
 if [ -n "${OPT_BUILD_CORE_IMAGE}" ]; then
-    full_image_name="${CORE_IMAGE_REPO}/${CORE_IMAGE_ORG}/${CORE_IMAGE_NAME}:${CORE_IMAGE_TAG}"
-    echo "Trying to build image \"${full_image_name}\"..."
-    ${CRI} build . --file dockerfiles/Dockerfile.kiagnose --tag "${full_image_name}"
+    echo "Trying to build image \"${CORE_IMAGE}\"..."
+    ${CRI} build . --file dockerfiles/Dockerfile.kiagnose --tag "${CORE_IMAGE}"
+fi
+
+if [ -n "${OPT_PUSH_CORE_IMAGE}" ]; then
+   echo "Pushing \"${CORE_IMAGE}\"..."
+   ${CRI} push ${CORE_IMAGE} 
 fi
