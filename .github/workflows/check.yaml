@@ -51,6 +51,14 @@ jobs:
         go-version: ${{ matrix.version }}
     - name: Run unit tests
       run: ./automation/make.sh --unit-test
+  echo-unit-test:
+    name: Echo checkup Unit Test
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out code
+        uses: actions/checkout@v2
+      - name: Run unit tests
+        run: ./automation/make.sh --echo-unit-test
   build:
     name: Build
     runs-on: ubuntu-latest
