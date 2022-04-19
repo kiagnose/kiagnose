@@ -20,6 +20,9 @@ jobs:
   publish:
     runs-on: ubuntu-latest
     needs: go-versions
+    env:
+      CORE_IMAGE_TAG: main
+      CRI: podman
     steps:
       - name: Check out code
         uses: actions/checkout@v2
@@ -27,15 +30,8 @@ jobs:
         uses: actions/setup-go@v2
         with:
           go-version: ${{ needs.go-versions.outputs.minimal }}
-      - name: Build binary and core image
-        env:
-          CORE_IMAGE_TAG: main
-        run: ./automation/make.sh --build-core --build-core-image
-      - name: Log in to Quay.io
-        uses: redhat-actions/podman-login@v1
-        with:
-          username: ${{ secrets.QUAY_USER }}
-          password: ${{ secrets.QUAY_TOKEN }}
-          registry: quay.io
-      - name: Push to quay.io
-        run: podman push quay.io/kiagnose/kiagnose:main
+      - name: Logging to quay.io
+        run: 
+          ${CRI} login -u ${{ secrets.QUAY_USER }} -p ${{ secrets.QUAY_TOKEN }} quay.io
+      - name: Build and push core image
+        run: ./automation/make.sh --build-core --build-core-image --push-core-image
