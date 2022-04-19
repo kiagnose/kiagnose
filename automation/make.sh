@@ -19,10 +19,14 @@
 
 set -e
 
+CRI=${CRI:-podman}
+
 CORE_BINARY_NAME="kiagnose"
+CORE_IMAGE_NAME="kiagnose"
+CORE_IMAGE_TAG=${CORE_IMAGE_TAG:-devel}
 
 options=$(getopt --options "" \
-    --long lint,unit-test,build-core,help\
+    --long lint,unit-test,build-core,build-core-image,help\
     -- "${@}")
 eval set -- "$options"
 while true; do
@@ -36,9 +40,12 @@ while true; do
     --build-core)
         OPT_BUILD_CORE=1
         ;;
+    --build-core-image)
+        OPT_BUILD_CORE_IMAGE=1
+        ;;
     --help)
         set +x
-        echo "$0 [--lint] [--unit-test] [--build-core]"
+        echo "$0 [--lint] [--unit-test] [--build-core] [--build-core-image]"
         exit
         ;;
     --)
@@ -49,7 +56,7 @@ while true; do
     shift
 done
 
-if  [ -z "${OPT_LINT}" ] && [ -z "${OPT_UNIT_TEST}" ] && [ -z "${OPT_BUILD_CORE}" ]; then
+if  [ -z "${OPT_LINT}" ] && [ -z "${OPT_UNIT_TEST}" ] && [ -z "${OPT_BUILD_CORE}" ] && [ -z "${OPT_BUILD_CORE_IMAGE}" ]; then
     OPT_LINT=1
     OPT_UNIT_TEST=1
     OPT_BUILD_CORE=1
@@ -71,4 +78,10 @@ if [ -n "${OPT_BUILD_CORE}" ]; then
   echo "Trying to build \"${CORE_BINARY_NAME}\"..."
   go build -v -o ./bin/${CORE_BINARY_NAME} ./kiagnose/cmd/
   echo "Successfully built \"${CORE_BINARY_NAME}\""
+fi
+
+if [ -n "${OPT_BUILD_CORE_IMAGE}" ]; then
+    full_image_name="${CORE_IMAGE_NAME}:${CORE_IMAGE_TAG}"
+    echo "Trying to build image \"${full_image_name}\"..."
+    ${CRI} build . --file dockerfiles/Dockerfile.kiagnose --tag "${full_image_name}"
 fi
