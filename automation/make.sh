@@ -22,6 +22,8 @@ set -e
 CRI=${CRI:-podman}
 
 CORE_BINARY_NAME="kiagnose"
+CORE_IMAGE_REPO=${CORE_IMAGE_REPO:-quay.io}
+CORE_IMAGE_ORG=${CORE_IMAGE_ORG:-kiagnose}
 CORE_IMAGE_NAME="kiagnose"
 CORE_IMAGE_TAG=${CORE_IMAGE_TAG:-devel}
 
@@ -81,7 +83,7 @@ if [ -n "${OPT_BUILD_CORE}" ]; then
 fi
 
 if [ -n "${OPT_BUILD_CORE_IMAGE}" ]; then
-    full_image_name="${CORE_IMAGE_NAME}:${CORE_IMAGE_TAG}"
+    full_image_name="${CORE_IMAGE_REPO}/${CORE_IMAGE_ORG}/${CORE_IMAGE_NAME}:${CORE_IMAGE_TAG}"
     echo "Trying to build image \"${full_image_name}\"..."
     ${CRI} build . --file dockerfiles/Dockerfile.kiagnose --tag "${full_image_name}"
 fi
