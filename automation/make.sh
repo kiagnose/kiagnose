@@ -31,7 +31,7 @@ CORE_IMAGE="${IMAGE_REGISTRY}/${IMAGE_ORG}/${CORE_IMAGE_NAME}:${CORE_IMAGE_TAG}"
 CORE_BINARY_NAME="kiagnose"
 
 options=$(getopt --options "" \
-    --long lint,unit-test,build-core,build-core-image,push-core-image,help\
+    --long lint,unit-test,build-core,build-core-image,push-core-image,echo-unit-test,help\
     -- "${@}")
 eval set -- "$options"
 while true; do
@@ -51,9 +51,12 @@ while true; do
     --push-core-image)
         OPT_PUSH_CORE_IMAGE=1
         ;;
+    --echo-unit-test)
+        OPT_ECHO_UNIT_TEST=1
+        ;;
     --help)
         set +x
-        echo "$0 [--lint] [--unit-test] [--build-core] [--build-core-image] [--push-core-image]"
+        echo "$0 [--lint] [--unit-test] [--build-core] [--build-core-image] [--push-core-image] [--echo-unit-test]"
         exit
         ;;
     --)
@@ -64,7 +67,7 @@ while true; do
     shift
 done
 
-if  [ -z "${OPT_LINT}" ] && [ -z "${OPT_UNIT_TEST}" ] && [ -z "${OPT_BUILD_CORE}" ] && [ -z "${OPT_BUILD_CORE_IMAGE}" ] && [ -z "${OPT_PUSH_CORE_IMAGE}" ]; then
+if  [ -z "${OPT_LINT}" ] && [ -z "${OPT_UNIT_TEST}" ] && [ -z "${OPT_BUILD_CORE}" ] && [ -z "${OPT_BUILD_CORE_IMAGE}" ] && [ -z "${OPT_PUSH_CORE_IMAGE}" ] && [ -z "${OPT_ECHO_UNIT_TEST}" ]; then
     OPT_LINT=1
     OPT_UNIT_TEST=1
     OPT_BUILD_CORE=1
@@ -96,4 +99,10 @@ fi
 if [ -n "${OPT_PUSH_CORE_IMAGE}" ]; then
    echo "Pushing \"${CORE_IMAGE}\"..."
    ${CRI} push ${CORE_IMAGE} 
+fi
+
+if [ -n "${OPT_ECHO_UNIT_TEST}" ]; then
+  cd ./checkups/echo/
+  ./entrypoint_test
+  cd -
 fi
