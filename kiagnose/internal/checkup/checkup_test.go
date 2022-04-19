@@ -34,6 +34,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
+	"k8s.io/apimachinery/pkg/watch"
 	"k8s.io/client-go/kubernetes/fake"
 	clienttesting "k8s.io/client-go/testing"
 
@@ -228,8 +229,9 @@ func TestCheckupTeardownShould(t *testing.T) {
 }
 
 type checkupRunTestCase struct {
-	description string
-	envVars     []corev1.EnvVar
+	description  string
+	envVars      []corev1.EnvVar
+	jobCondition batchv1.JobConditionType
 }
 
 func TestCheckupRunShouldCreateAJob(t *testing.T) {
@@ -240,6 +242,7 @@ func TestCheckupRunShouldCreateAJob(t *testing.T) {
 	for _, testCase := range checkupRunTestCases {
 		t.Run(testCase.description, func(t *testing.T) {
 			testClient := newNormalizedFakeClientset()
+			testClient.injectJobWatchEvent(newJobWithCondition(checkup.JobName, checkup.NamespaceName, batchv1.JobComplete))
 			testCheckup := checkup.New(testClient, &config.Config{Image: testImage, Timeout: testTimeout, EnvVars: testCase.envVars})
 
 			assert.NoError(t, testCheckup.Run())
@@ -249,14 +252,45 @@ func TestCheckupRunShouldCreateAJob(t *testing.T) {
 	}
 }
 
+func TestCheckupRunShouldSucceed(t *testing.T) {
+	checkupRunTestCases := []checkupRunTestCase{
+		{description: "when job is completed", jobCondition: batchv1.JobComplete},
+		{description: "when job failed", jobCondition: batchv1.JobFailed},
+	}
+	for _, testCase := range checkupRunTestCases {
+		t.Run(testCase.description, func(t *testing.T) {
+			testClient := newNormalizedFakeClientset()
+			testClient.injectJobWatchEvent(newJobWithCondition(checkup.JobName, checkup.NamespaceName, testCase.jobCondition))
+			testCheckup := checkup.New(testClient, &config.Config{Image: testImage, Timeout: testTimeout})
+
+			assert.NoError(t, testCheckup.Run())
+		})
+	}
+}
+
 func TestCheckupRunShouldFailWhen(t *testing.T) {
 	t.Run("failed to create Job", func(t *testing.T) {
 		const expectedErr = "failed to create Job"
 		testClient := newNormalizedFakeClientset()
 		testClient.injectCreateErrorForResource(jobResource, expectedErr)
+		testCheckup := checkup.New(testClient, &config.Config{Image: testImage, Timeout: testTimeout})
+
+		assert.ErrorContains(t, testCheckup.Run(), expectedErr)
+	})
+
+	t.Run("fail to watch Job", func(t *testing.T) {
+		const expectedErr = "failed to watch Job"
+		testClient := newNormalizedFakeClientset()
+		testClient.injectJobWatchError(expectedErr)
 		testCheckup := checkup.New(testClient, &config.Config{Image: testImage})
 
 		assert.ErrorContains(t, testCheckup.Run(), expectedErr)
+	})
+
+	t.Run("Job wont finish on time", func(t *testing.T) {
+		testCheckup := checkup.New(fake.NewSimpleClientset(), &config.Config{Image: testImage, Timeout: time.Nanosecond})
+
+		assert.ErrorContains(t, testCheckup.Run(), context.DeadlineExceeded.Error())
 	})
 }
 
@@ -276,6 +310,16 @@ func newTestEnvVars() []corev1.EnvVar {
 	return []corev1.EnvVar{
 		{Name: "env-var-1", Value: "env-var-1-value"},
 		{Name: "env-var-1", Value: "env-var-1-value"}}
+}
+
+func newJobWithCondition(name, namespace string, condition batchv1.JobConditionType) *batchv1.Job {
+	return &batchv1.Job{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      name,
+			Namespace: namespace},
+		Status: batchv1.JobStatus{
+			Conditions: []batchv1.JobCondition{
+				{Type: condition}}}}
 }
 
 type testsClient struct{ *fake.Clientset }
@@ -333,6 +377,22 @@ func (c *testsClient) injectClusterRoleBindingCreateError(clusterRoleBindingName
 		return false, nil, nil
 	}
 	c.PrependReactor(createVerb, clusterRoleBindingResource, reactionFn)
+}
+
+func (c *testsClient) injectJobWatchError(err string) {
+	watchReactionFn := func(action clienttesting.Action) (bool, watch.Interface, error) {
+		return true, nil, errors.New(err)
+	}
+	c.PrependWatchReactor(jobResource, watchReactionFn)
+}
+
+func (c *testsClient) injectJobWatchEvent(job *batchv1.Job) {
+	watchReactionFn := func(action clienttesting.Action) (bool, watch.Interface, error) {
+		watcher := watch.NewRaceFreeFake()
+		watcher.Add(job)
+		return true, watcher, nil
+	}
+	c.PrependWatchReactor(jobResource, watchReactionFn)
 }
 
 func (c *testsClient) listNamespaces() ([]corev1.Namespace, error) {

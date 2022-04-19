@@ -285,6 +285,10 @@ func (c *Checkup) Run() error {
 		return err
 	}
 
+	if c.job, err = job.WaitForJobToFinish(c.client.BatchV1(), c.job, c.jobTimeout); err != nil {
+		return err
+	}
+
 	return nil
 }
 
