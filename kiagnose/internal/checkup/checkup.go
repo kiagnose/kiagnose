@@ -29,9 +29,11 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	batchv1client "k8s.io/client-go/kubernetes/typed/batch/v1"
 	corev1client "k8s.io/client-go/kubernetes/typed/core/v1"
 	rbacv1client "k8s.io/client-go/kubernetes/typed/rbac/v1"
 
+	"github.com/kiagnose/kiagnose/kiagnose/internal/checkup/job"
 	"github.com/kiagnose/kiagnose/kiagnose/internal/checkup/namespace"
 	"github.com/kiagnose/kiagnose/kiagnose/internal/config"
 	"github.com/kiagnose/kiagnose/kiagnose/internal/configmap"
@@ -41,6 +43,7 @@ import (
 type client interface {
 	CoreV1() corev1client.CoreV1Interface
 	RbacV1() rbacv1client.RbacV1Interface
+	BatchV1() batchv1client.BatchV1Interface
 }
 
 type Checkup struct {
@@ -52,6 +55,7 @@ type Checkup struct {
 	roles               []*rbacv1.Role
 	roleBindings        []*rbacv1.RoleBinding
 	clusterRoleBindings []*rbacv1.ClusterRoleBinding
+	jobTimeout          time.Duration
 	job                 *batchv1.Job
 }
 
@@ -60,17 +64,13 @@ const (
 	ServiceAccountName             = "checkup-sa"
 	ResultsConfigMapName           = "checkup-results"
 	ResultsConfigMapWriterRoleName = "results-configmap-writer"
+	JobName                        = "checkup-job"
+
+	ResultsConfigMapNameEnvVarName      = "RESULT_CONFIGMAP_NAME"
+	ResultsConfigMapNameEnvVarNamespace = "RESULT_CONFIGMAP_NAMESPACE"
 )
 
 func New(c client, checkupConfig *config.Config) *Checkup {
-	const (
-		jobName = "checkup-job"
-
-		resultsConfigMapNameEnvVarName      = "RESULT_CONFIGMAP_NAME"
-		resultsConfigMapNameEnvVarNamespace = "RESULT_CONFIGMAP_NAMESPACE"
-
-		defaultTeardownTimeout = time.Minute * 5
-	)
 	checkupRoles := []*rbacv1.Role{NewConfigMapWriterRole(ResultsConfigMapWriterRoleName, NamespaceName, ResultsConfigMapName)}
 
 	subject := newServiceAccountSubject(ServiceAccountName, NamespaceName)
@@ -80,11 +80,12 @@ func New(c client, checkupConfig *config.Config) *Checkup {
 	}
 
 	checkupEnvVars := []corev1.EnvVar{
-		{Name: resultsConfigMapNameEnvVarName, Value: ResultsConfigMapName},
-		{Name: resultsConfigMapNameEnvVarNamespace, Value: NamespaceName},
+		{Name: ResultsConfigMapNameEnvVarName, Value: ResultsConfigMapName},
+		{Name: ResultsConfigMapNameEnvVarNamespace, Value: NamespaceName},
 	}
 	checkupEnvVars = append(checkupEnvVars, checkupConfig.EnvVars...)
 
+	const defaultTeardownTimeout = time.Minute * 5
 	return &Checkup{
 		client:              c,
 		teardownTimeout:     defaultTeardownTimeout,
@@ -93,8 +94,9 @@ func New(c client, checkupConfig *config.Config) *Checkup {
 		resultConfigMap:     NewConfigMap(ResultsConfigMapName, NamespaceName),
 		roles:               checkupRoles,
 		roleBindings:        checkupRoleBindings,
+		jobTimeout:          checkupConfig.Timeout,
 		clusterRoleBindings: NewClusterRoleBindings(checkupConfig.ClusterRoles, ServiceAccountName, NamespaceName),
-		job: newCheckupJob(jobName,
+		job: NewCheckupJob(JobName,
 			NamespaceName,
 			ServiceAccountName,
 			checkupConfig.Image,
@@ -204,7 +206,7 @@ func newClusterRoleBinding(clusterRoleName string, subject rbacv1.Subject) *rbac
 	}
 }
 
-func newCheckupJob(name, namespaceName, serviceAccountName, image string, activeDeadlineSeconds int64, envs []corev1.EnvVar) *batchv1.Job {
+func NewCheckupJob(name, namespaceName, serviceAccountName, image string, activeDeadlineSeconds int64, envs []corev1.EnvVar) *batchv1.Job {
 	const containerName = "checkup"
 
 	checkupContainer := corev1.Container{
@@ -277,6 +279,12 @@ func (c *Checkup) Setup() error {
 }
 
 func (c *Checkup) Run() error {
+	var err error
+
+	if c.job, err = job.Create(c.client.BatchV1(), c.job); err != nil {
+		return err
+	}
+
 	return nil
 }
 

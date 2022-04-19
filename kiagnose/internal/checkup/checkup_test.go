@@ -28,6 +28,7 @@ import (
 
 	assert "github.com/stretchr/testify/require"
 
+	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -49,6 +50,7 @@ const (
 	rolesBindingResource       = "rolebindings"
 	serviceAccountResource     = "serviceaccounts"
 	configMapResource          = "configmaps"
+	jobResource                = "jobs"
 
 	testImage   = "framework:v1"
 	testTimeout = time.Minute
@@ -225,6 +227,39 @@ func TestCheckupTeardownShould(t *testing.T) {
 	})
 }
 
+type checkupRunTestCase struct {
+	description string
+	envVars     []corev1.EnvVar
+}
+
+func TestCheckupRunShouldCreateAJob(t *testing.T) {
+	checkupRunTestCases := []checkupRunTestCase{
+		{description: "with no additional env vars"},
+		{description: "with additional env vars", envVars: newTestEnvVars()},
+	}
+	for _, testCase := range checkupRunTestCases {
+		t.Run(testCase.description, func(t *testing.T) {
+			testClient := newNormalizedFakeClientset()
+			testCheckup := checkup.New(testClient, &config.Config{Image: testImage, Timeout: testTimeout, EnvVars: testCase.envVars})
+
+			assert.NoError(t, testCheckup.Run())
+
+			assertJobCreated(t, testClient, testImage, testTimeout, testCase.envVars)
+		})
+	}
+}
+
+func TestCheckupRunShouldFailWhen(t *testing.T) {
+	t.Run("failed to create Job", func(t *testing.T) {
+		const expectedErr = "failed to create Job"
+		testClient := newNormalizedFakeClientset()
+		testClient.injectCreateErrorForResource(jobResource, expectedErr)
+		testCheckup := checkup.New(testClient, &config.Config{Image: testImage})
+
+		assert.ErrorContains(t, testCheckup.Run(), expectedErr)
+	})
+}
+
 func newTestClusterRoles() []*rbacv1.ClusterRole {
 	return []*rbacv1.ClusterRole{
 		{TypeMeta: metav1.TypeMeta{Kind: "ClusterRole"}, ObjectMeta: metav1.ObjectMeta{Name: "cluster-role1"}},
@@ -387,6 +422,22 @@ func assertClusterRoleBindingsCreated(t *testing.T, testClient testsClient, clus
 		expectedClusterRoleBindings = append(expectedClusterRoleBindings, *clusterRoleBindingPtr)
 	}
 	assert.Subset(t, actualClusterRoleBindings, expectedClusterRoleBindings)
+}
+
+func assertJobCreated(t *testing.T, testClient *testsClient, image string, timeout time.Duration, envVars []corev1.EnvVar) {
+	gvr := schema.GroupVersionResource{Group: batchv1.GroupName, Version: "v1", Resource: jobResource}
+	actualJob, err := testClient.Tracker().Get(gvr, checkup.NamespaceName, checkup.JobName)
+	assert.NoError(t, err)
+
+	expectedEnvVars := []corev1.EnvVar{
+		{Name: checkup.ResultsConfigMapNameEnvVarName, Value: checkup.ResultsConfigMapName},
+		{Name: checkup.ResultsConfigMapNameEnvVarNamespace, Value: checkup.NamespaceName},
+	}
+	expectedEnvVars = append(expectedEnvVars, envVars...)
+	expectedJob := checkup.NewCheckupJob(
+		checkup.JobName, checkup.NamespaceName, checkup.ServiceAccountName, image, int64(timeout.Seconds()), expectedEnvVars)
+
+	assert.Equal(t, actualJob, expectedJob)
 }
 
 // assertNoObjectExists checks that the checkup's Namespace and ClusterRoleBinding's are deleted.
