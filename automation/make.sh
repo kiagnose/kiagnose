@@ -76,7 +76,7 @@ fi
 
 if [ -n "${OPT_BUILD_CORE}" ]; then
   echo "Trying to build \"${CORE_BINARY_NAME}\"..."
-  go build -v -o ./bin/${CORE_BINARY_NAME} ./kiagnose/cmd/
+  go build -v -o ./bin/${CORE_BINARY_NAME} ./cmd/
   echo "Successfully built \"${CORE_BINARY_NAME}\""
 fi
 
