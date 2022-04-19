@@ -28,11 +28,13 @@ import (
 
 	assert "github.com/stretchr/testify/require"
 
+	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
+	"k8s.io/apimachinery/pkg/watch"
 	"k8s.io/client-go/kubernetes/fake"
 	clienttesting "k8s.io/client-go/testing"
 
@@ -227,8 +229,9 @@ func TestCheckupTeardownShould(t *testing.T) {
 }
 
 type checkupRunTestCase struct {
-	description string
-	envVars     []corev1.EnvVar
+	description  string
+	envVars      []corev1.EnvVar
+	jobCondition *batchv1.JobCondition
 }
 
 func TestCheckupRunShouldCreateAJob(t *testing.T) {
@@ -239,6 +242,8 @@ func TestCheckupRunShouldCreateAJob(t *testing.T) {
 	for _, testCase := range checkupRunTestCases {
 		t.Run(testCase.description, func(t *testing.T) {
 			testClient := newNormalizedFakeClientset()
+			completeTrueJobCondition := &batchv1.JobCondition{Type: batchv1.JobComplete, Status: corev1.ConditionTrue}
+			testClient.injectJobWatchEvent(newJobWithCondition(checkup.NamespaceName, checkup.JobName, completeTrueJobCondition))
 			testCheckup := checkup.New(testClient, &config.Config{Image: testImage, Timeout: testTimeout, EnvVars: testCase.envVars})
 
 			assert.NoError(t, testCheckup.Setup())
@@ -262,6 +267,25 @@ func TestCheckupRunShouldCreateAJob(t *testing.T) {
 	}
 }
 
+func TestCheckupRunShouldSucceed(t *testing.T) {
+	checkupRunTestCases := []checkupRunTestCase{
+		{description: "when job is completed", jobCondition: &batchv1.JobCondition{Type: batchv1.JobComplete, Status: corev1.ConditionTrue}},
+		{description: "when job failed", jobCondition: &batchv1.JobCondition{Type: batchv1.JobFailed, Status: corev1.ConditionTrue}},
+	}
+	for _, testCase := range checkupRunTestCases {
+		t.Run(testCase.description, func(t *testing.T) {
+			testClient := newNormalizedFakeClientset()
+			testClient.injectJobWatchEvent(newJobWithCondition(checkup.NamespaceName, checkup.JobName, testCase.jobCondition))
+			testCheckup := checkup.New(testClient, &config.Config{Image: testImage, Timeout: testTimeout})
+
+			assert.NoError(t, testCheckup.Setup())
+			assert.NoError(t, testCheckup.Run())
+			assert.NoError(t, testCheckup.Teardown())
+			assertNoObjectExists(t, testClient)
+		})
+	}
+}
+
 func TestCheckupRunShouldFailWhen(t *testing.T) {
 	t.Run("failed to create Job", func(t *testing.T) {
 		const expectedErr = "failed to create Job"
@@ -270,9 +294,41 @@ func TestCheckupRunShouldFailWhen(t *testing.T) {
 		testCheckup := checkup.New(testClient, &config.Config{Image: testImage, Timeout: testTimeout})
 
 		assert.NoError(t, testCheckup.Setup())
-
 		assert.ErrorContains(t, testCheckup.Run(), expectedErr)
+		assert.NoError(t, testCheckup.Teardown())
+		assertNoObjectExists(t, testClient)
+	})
 
+	t.Run("fail to watch Job", func(t *testing.T) {
+		const expectedErr = "failed to watch Job"
+		testClient := newNormalizedFakeClientset()
+		testClient.injectJobWatchError(expectedErr)
+		testCheckup := checkup.New(testClient, &config.Config{Image: testImage, Timeout: testTimeout})
+
+		assert.NoError(t, testCheckup.Setup())
+		assert.ErrorContains(t, testCheckup.Run(), expectedErr)
+		assert.NoError(t, testCheckup.Teardown())
+		assertNoObjectExists(t, testClient)
+	})
+
+	t.Run("Job wont finish on time", func(t *testing.T) {
+		testClient := newNormalizedFakeClientset()
+		testCheckup := checkup.New(testClient, &config.Config{Image: testImage, Timeout: time.Nanosecond})
+
+		assert.NoError(t, testCheckup.Setup())
+		assert.ErrorContains(t, testCheckup.Run(), context.DeadlineExceeded.Error())
+		assert.NoError(t, testCheckup.Teardown())
+		assertNoObjectExists(t, testClient)
+	})
+
+	t.Run("Job wont finish on time with complete condition status false", func(t *testing.T) {
+		testClient := newNormalizedFakeClientset()
+		testCheckup := checkup.New(testClient, &config.Config{Image: testImage, Timeout: time.Second})
+		completeFalseJobCondition := &batchv1.JobCondition{Type: batchv1.JobComplete, Status: corev1.ConditionFalse}
+		testClient.injectJobWatchEvent(newJobWithCondition(checkup.NamespaceName, checkup.JobName, completeFalseJobCondition))
+
+		assert.NoError(t, testCheckup.Setup())
+		assert.ErrorContains(t, testCheckup.Run(), context.DeadlineExceeded.Error())
 		assert.NoError(t, testCheckup.Teardown())
 		assertNoObjectExists(t, testClient)
 	})
@@ -294,6 +350,18 @@ func newTestEnvVars() []corev1.EnvVar {
 	return []corev1.EnvVar{
 		{Name: "env-var-1", Value: "env-var-1-value"},
 		{Name: "env-var-1", Value: "env-var-1-value"}}
+}
+
+func newJobWithCondition(namespace, name string, condition *batchv1.JobCondition) *batchv1.Job {
+	return &batchv1.Job{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      name,
+			Namespace: namespace,
+		},
+		Status: batchv1.JobStatus{
+			Conditions: []batchv1.JobCondition{*condition},
+		},
+	}
 }
 
 type testsClient struct{ *fake.Clientset }
@@ -351,6 +419,22 @@ func (c *testsClient) injectClusterRoleBindingCreateError(clusterRoleBindingName
 		return false, nil, nil
 	}
 	c.PrependReactor(createVerb, clusterRoleBindingResource, reactionFn)
+}
+
+func (c *testsClient) injectJobWatchError(err string) {
+	watchReactionFn := func(action clienttesting.Action) (bool, watch.Interface, error) {
+		return true, nil, errors.New(err)
+	}
+	c.PrependWatchReactor(jobResource, watchReactionFn)
+}
+
+func (c *testsClient) injectJobWatchEvent(job *batchv1.Job) {
+	watchReactionFn := func(action clienttesting.Action) (bool, watch.Interface, error) {
+		watcher := watch.NewRaceFreeFake()
+		watcher.Add(job)
+		return true, watcher, nil
+	}
+	c.PrependWatchReactor(jobResource, watchReactionFn)
 }
 
 func (c *testsClient) listNamespaces() ([]corev1.Namespace, error) {
