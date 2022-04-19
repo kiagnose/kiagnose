@@ -19,7 +19,7 @@
 
 set -e
 
-BINARY_NAME="kiagnose"
+CORE_BINARY_NAME="kiagnose"
 
 options=$(getopt --options "" \
     --long lint,unit-test,build-core,help\
@@ -68,7 +68,7 @@ if [ -n "${OPT_UNIT_TEST}" ]; then
 fi
 
 if [ -n "${OPT_BUILD_CORE}" ]; then
-  echo "Trying to build \"${BINARY_NAME}\"..."
-  go build -v -o ./bin/${BINARY_NAME} ./kiagnose/cmd/
-  echo "Successfully built \"${BINARY_NAME}\""
+  echo "Trying to build \"${CORE_BINARY_NAME}\"..."
+  go build -v -o ./bin/${CORE_BINARY_NAME} ./kiagnose/cmd/
+  echo "Successfully built \"${CORE_BINARY_NAME}\""
 fi
