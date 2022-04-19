@@ -49,6 +49,7 @@ const (
 	rolesBindingResource       = "rolebindings"
 	serviceAccountResource     = "serviceaccounts"
 	configMapResource          = "configmaps"
+	jobResource                = "jobs"
 
 	testImage   = "framework:v1"
 	testTimeout = time.Minute
@@ -222,6 +223,58 @@ func TestCheckupTeardownShould(t *testing.T) {
 		err := testCheckup.Teardown()
 		assert.ErrorContains(t, err, deleteNamespaceError)
 		assert.ErrorContains(t, err, deleteClusterRoleBindingError)
+	})
+}
+
+type checkupRunTestCase struct {
+	description string
+	envVars     []corev1.EnvVar
+}
+
+func TestCheckupRunShouldCreateAJob(t *testing.T) {
+	checkupRunTestCases := []checkupRunTestCase{
+		{description: "with no checkup parameters"},
+		{description: "with additional checkup parameters", envVars: newTestEnvVars()},
+	}
+	for _, testCase := range checkupRunTestCases {
+		t.Run(testCase.description, func(t *testing.T) {
+			testClient := newNormalizedFakeClientset()
+			testCheckup := checkup.New(testClient, &config.Config{Image: testImage, Timeout: testTimeout, EnvVars: testCase.envVars})
+
+			assert.NoError(t, testCheckup.Setup())
+			assert.NoError(t, testCheckup.Run())
+
+			expectedEnvVars := []corev1.EnvVar{
+				{Name: checkup.ResultsConfigMapNameEnvVarName, Value: checkup.ResultsConfigMapName},
+				{Name: checkup.ResultsConfigMapNameEnvVarNamespace, Value: checkup.NamespaceName},
+			}
+			expectedEnvVars = append(expectedEnvVars, testCase.envVars...)
+			expectedJob := checkup.NewCheckupJob(
+				checkup.JobName, checkup.NamespaceName, checkup.ServiceAccountName, testImage, int64(testTimeout.Seconds()), expectedEnvVars)
+			actualJob, err := testClient.BatchV1().Jobs(checkup.NamespaceName).Get(context.Background(), checkup.JobName, metav1.GetOptions{})
+			assert.NoError(t, err)
+
+			assert.Equal(t, actualJob, expectedJob)
+
+			assert.NoError(t, testCheckup.Teardown())
+			assertNoObjectExists(t, testClient)
+		})
+	}
+}
+
+func TestCheckupRunShouldFailWhen(t *testing.T) {
+	t.Run("failed to create Job", func(t *testing.T) {
+		const expectedErr = "failed to create Job"
+		testClient := newNormalizedFakeClientset()
+		testClient.injectCreateErrorForResource(jobResource, expectedErr)
+		testCheckup := checkup.New(testClient, &config.Config{Image: testImage, Timeout: testTimeout})
+
+		assert.NoError(t, testCheckup.Setup())
+
+		assert.ErrorContains(t, testCheckup.Run(), expectedErr)
+
+		assert.NoError(t, testCheckup.Teardown())
+		assertNoObjectExists(t, testClient)
 	})
 }
 
