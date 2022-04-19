@@ -27,7 +27,7 @@ import (
 )
 
 func main() {
-	env := EnvToMap(os.Environ())
+	env := envToMap(os.Environ())
 	if err := kiagnose.Run(env); err != nil {
 		log.Fatalf("%s had failed: %v", os.Args[0], err)
 	}

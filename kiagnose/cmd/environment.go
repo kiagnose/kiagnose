@@ -21,7 +21,7 @@ package main
 
 import "strings"
 
-func EnvToMap(rawEnv []string) map[string]string {
+func envToMap(rawEnv []string) map[string]string {
 	const requiredElementsCount = 2
 
 	env := map[string]string{}
