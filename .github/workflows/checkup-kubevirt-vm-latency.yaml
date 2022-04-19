@@ -1,0 +1,72 @@
+name: checkup-kubevirt-vm-latency-checks
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+  # Allows you to run this workflow manually from the Actions tab
+  workflow_dispatch:
+
+jobs:
+  go-versions:
+    name: Lookup go versions
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ./checkups/kubevirt-vm-latency
+    outputs:
+      matrix: ${{ steps.versions.outputs.matrix }}
+      minimal: ${{ steps.versions.outputs.minimal }}
+    steps:
+      - uses: actions/checkout@v2
+      - uses: arnested/go-version-action@v1
+        id: versions
+  lint:
+    name: lint
+    runs-on: ubuntu-latest
+    needs: go-versions
+    steps:
+      - name: Check out code
+        uses: actions/checkout@v2
+      - name: Set up Go
+        uses: actions/setup-go@v2
+        with:
+          go-version: ${{ needs.go-versions.outputs.minimal }}
+      - name: golangci-lint
+        uses: golangci/golangci-lint-action@v3
+        with:
+          version: v1.44.2
+          working-directory: ./checkups/kubevirt-vm-latency
+  unit-test:
+    name: Unit Test
+    runs-on: ubuntu-latest
+    needs: go-versions
+    strategy:
+      matrix:
+        version: ${{ fromJSON(needs.go-versions.outputs.matrix) }}
+    steps:
+    - name: Check out code
+      uses: actions/checkout@v2
+    - name: Setup Go
+      uses: actions/setup-go@v2
+      with:
+        go-version: ${{ matrix.version }}
+    - name: Run unit tests
+      working-directory: ./checkups/kubevirt-vm-latency
+      run: ./automation/make.sh --unit-test
+  build:
+    name: Build
+    runs-on: ubuntu-latest
+    needs: go-versions
+    steps:
+      - name: Check out code
+        uses: actions/checkout@v2
+      - name: Setup Go
+        uses: actions/setup-go@v2
+        with:
+          go-version: ${{ needs.go-versions.outputs.minimal }}
+      - name: Run build
+        working-directory: ./checkups/kubevirt-vm-latency
+        run: ./automation/make.sh --build-checkup
