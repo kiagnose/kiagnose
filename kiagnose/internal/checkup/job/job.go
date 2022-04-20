@@ -22,14 +22,13 @@ package job
 import (
 	"context"
 	"encoding/json"
-	"fmt"
 	"log"
 	"time"
 
 	batchv1 "k8s.io/api/batch/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	k8swatch "k8s.io/apimachinery/pkg/watch"
 	batchv1client "k8s.io/client-go/kubernetes/typed/batch/v1"
+	"k8s.io/client-go/tools/cache"
 )
 
 func Create(client batchv1client.BatchV1Interface, job *batchv1.Job) (*batchv1.Job, error) {
@@ -41,41 +40,29 @@ func Create(client batchv1client.BatchV1Interface, job *batchv1.Job) (*batchv1.J
 	return job, nil
 }
 
-func WaitForJobToFinish(client batchv1client.BatchV1Interface, job *batchv1.Job, timeout time.Duration) (*batchv1.Job, error) {
-	const JobNameLabel = "job-name"
+func WaitForJobToFinish(lw cache.ListerWatcher, timeout time.Duration) (*batchv1.Job, error) {
+	const rsyncPeriod = time.Minute * 5
 
-	jobLabel := fmt.Sprintf("%s=%s", JobNameLabel, job.Name)
-	ctx, cancel := context.WithTimeout(context.Background(), timeout)
+	jobCh := make(chan interface{}, 1)
+	jobEventHandler := cache.ResourceEventHandlerFuncs{
+		AddFunc:    func(obj interface{}) { jobCh <- obj },
+		UpdateFunc: func(oldObj, newObj interface{}) { jobCh <- newObj },
+	}
+	_, controller := cache.NewInformer(lw, &batchv1.Job{}, rsyncPeriod, jobEventHandler)
+
+	ctx, cancel := context.WithTimeout(context.TODO(), timeout)
 	defer cancel()
-	jobWatcher, err := client.Jobs(job.Namespace).Watch(ctx, metav1.ListOptions{LabelSelector: jobLabel})
-	if err != nil {
-		return nil, err
-	}
-	log.Printf("'%s/%s' Job watcher obtained", job.Namespace, job.Name)
+	go controller.Run(ctx.Done())
 
-	finishedJob, err := waitForJob(ctx, jobWatcher)
-	if err != nil {
-		return nil, fmt.Errorf("failed to wait for Job '%s/%s' to finish: %v", job.Namespace, job.Name, err)
-	}
-	log.Printf("Job '%s/%s' is finished", job.Namespace, job.Name)
-
-	return finishedJob, nil
-}
-
-func waitForJob(ctx context.Context, watcher k8swatch.Interface) (*batchv1.Job, error) {
-	eventsCh := watcher.ResultChan()
-	defer watcher.Stop()
 	for {
 		select {
-		case event := <-eventsCh:
-			job, ok := event.Object.(*batchv1.Job)
-			if !ok {
-				continue
-			}
-			if jobStatus, err := json.MarshalIndent(job.Status, "", " "); err == nil {
-				log.Printf("received job event '%s/%s': \n%v\n", job.Namespace, job.Name, string(jobStatus))
+		case obj := <-jobCh:
+			job := obj.(*batchv1.Job)
+			if raw, err := json.MarshalIndent(job.Status, "", " "); err == nil {
+				log.Printf("received job event '%s/%s', job status: \n%v\n", job.Namespace, job.Name, string(raw))
 			}
 			if finished(job) {
+				log.Printf("job '%s/%s' is finished", job.Namespace, job.Name)
 				return job, nil
 			}
 		case <-ctx.Done():

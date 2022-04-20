@@ -34,9 +34,9 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
-	"k8s.io/apimachinery/pkg/watch"
 	"k8s.io/client-go/kubernetes/fake"
 	clienttesting "k8s.io/client-go/testing"
+	cachetesting "k8s.io/client-go/tools/cache/testing"
 
 	"github.com/kiagnose/kiagnose/kiagnose/internal/checkup"
 	"github.com/kiagnose/kiagnose/kiagnose/internal/config"
@@ -242,8 +242,11 @@ func TestCheckupRunShouldCreateAJob(t *testing.T) {
 	for _, testCase := range checkupRunTestCases {
 		t.Run(testCase.description, func(t *testing.T) {
 			testClient := newNormalizedFakeClientset()
-			testClient.injectJobWatchEvent(newJobWithCondition(checkup.JobName, checkup.NamespaceName, batchv1.JobComplete))
 			testCheckup := checkup.New(testClient, &config.Config{Image: testImage, Timeout: testTimeout, EnvVars: testCase.envVars})
+
+			fc := cachetesting.NewFakeControllerSource()
+			testCheckup.SetJobWatcher(fc)
+			fc.Modify(newJobWithCondition(checkup.JobName, checkup.NamespaceName, batchv1.JobComplete))
 
 			assert.NoError(t, testCheckup.Run())
 
@@ -260,8 +263,11 @@ func TestCheckupRunShouldSucceed(t *testing.T) {
 	for _, testCase := range checkupRunTestCases {
 		t.Run(testCase.description, func(t *testing.T) {
 			testClient := newNormalizedFakeClientset()
-			testClient.injectJobWatchEvent(newJobWithCondition(checkup.JobName, checkup.NamespaceName, testCase.jobCondition))
 			testCheckup := checkup.New(testClient, &config.Config{Image: testImage, Timeout: testTimeout})
+
+			fc := cachetesting.NewFakeControllerSource()
+			testCheckup.SetJobWatcher(fc)
+			fc.Modify(newJobWithCondition(checkup.JobName, checkup.NamespaceName, testCase.jobCondition))
 
 			assert.NoError(t, testCheckup.Run())
 		})
@@ -278,19 +284,10 @@ func TestCheckupRunShouldFailWhen(t *testing.T) {
 		assert.ErrorContains(t, testCheckup.Run(), expectedErr)
 	})
 
-	t.Run("fail to watch Job", func(t *testing.T) {
-		const expectedErr = "failed to watch Job"
-		testClient := newNormalizedFakeClientset()
-		testClient.injectJobWatchError(expectedErr)
-		testCheckup := checkup.New(testClient, &config.Config{Image: testImage})
-
-		assert.ErrorContains(t, testCheckup.Run(), expectedErr)
-	})
-
 	t.Run("Job wont finish on time", func(t *testing.T) {
 		testCheckup := checkup.New(fake.NewSimpleClientset(), &config.Config{Image: testImage, Timeout: time.Nanosecond})
 
-		assert.ErrorContains(t, testCheckup.Run(), context.DeadlineExceeded.Error())
+		assert.Equal(t, testCheckup.Run(), context.DeadlineExceeded)
 	})
 }
 
@@ -377,22 +374,6 @@ func (c *testsClient) injectClusterRoleBindingCreateError(clusterRoleBindingName
 		return false, nil, nil
 	}
 	c.PrependReactor(createVerb, clusterRoleBindingResource, reactionFn)
-}
-
-func (c *testsClient) injectJobWatchError(err string) {
-	watchReactionFn := func(action clienttesting.Action) (bool, watch.Interface, error) {
-		return true, nil, errors.New(err)
-	}
-	c.PrependWatchReactor(jobResource, watchReactionFn)
-}
-
-func (c *testsClient) injectJobWatchEvent(job *batchv1.Job) {
-	watchReactionFn := func(action clienttesting.Action) (bool, watch.Interface, error) {
-		watcher := watch.NewRaceFreeFake()
-		watcher.Add(job)
-		return true, watcher, nil
-	}
-	c.PrependWatchReactor(jobResource, watchReactionFn)
 }
 
 func (c *testsClient) listNamespaces() ([]corev1.Namespace, error) {

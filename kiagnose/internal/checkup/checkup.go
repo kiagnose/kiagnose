@@ -32,6 +32,7 @@ import (
 	batchv1client "k8s.io/client-go/kubernetes/typed/batch/v1"
 	corev1client "k8s.io/client-go/kubernetes/typed/core/v1"
 	rbacv1client "k8s.io/client-go/kubernetes/typed/rbac/v1"
+	"k8s.io/client-go/tools/cache"
 
 	"github.com/kiagnose/kiagnose/kiagnose/internal/checkup/job"
 	"github.com/kiagnose/kiagnose/kiagnose/internal/checkup/namespace"
@@ -56,6 +57,7 @@ type Checkup struct {
 	roleBindings        []*rbacv1.RoleBinding
 	clusterRoleBindings []*rbacv1.ClusterRoleBinding
 	jobTimeout          time.Duration
+	jobWatcher          cache.ListerWatcher
 	job                 *batchv1.Job
 }
 
@@ -96,6 +98,7 @@ func New(c client, checkupConfig *config.Config) *Checkup {
 		roleBindings:        checkupRoleBindings,
 		jobTimeout:          checkupConfig.Timeout,
 		clusterRoleBindings: NewClusterRoleBindings(checkupConfig.ClusterRoles, ServiceAccountName, NamespaceName),
+		jobWatcher:          newJobWatcher(c.BatchV1().RESTClient(), JobName, NamespaceName),
 		job: NewCheckupJob(JobName,
 			NamespaceName,
 			ServiceAccountName,
@@ -238,6 +241,16 @@ func NewCheckupJob(name, namespaceName, serviceAccountName, image string, active
 	}
 }
 
+func newJobWatcher(client cache.Getter, jobName, jobNamespace string) cache.ListerWatcher {
+	const (
+		jobNameLabel    = "job-name"
+		jobResourceName = "jobs"
+	)
+	return cache.NewFilteredListWatchFromClient(client, jobResourceName, jobNamespace, func(options *metav1.ListOptions) {
+		options.LabelSelector = fmt.Sprintf("%s=%s", jobNameLabel, jobName)
+	})
+}
+
 // Setup creates each of the checkup objects inside the cluster.
 // In case of failure, an attempt to clean up the objects that already been created is made,
 // by deleting the Namespace and eventually all the objects inside it
@@ -278,6 +291,10 @@ func (c *Checkup) Setup() error {
 	return nil
 }
 
+func (c *Checkup) SetJobWatcher(watcher cache.ListerWatcher) {
+	c.jobWatcher = watcher
+}
+
 func (c *Checkup) Run() error {
 	var err error
 
@@ -285,7 +302,7 @@ func (c *Checkup) Run() error {
 		return err
 	}
 
-	if c.job, err = job.WaitForJobToFinish(c.client.BatchV1(), c.job, c.jobTimeout); err != nil {
+	if c.job, err = job.WaitForJobToFinish(c.jobWatcher, c.jobTimeout); err != nil {
 		return err
 	}
 
