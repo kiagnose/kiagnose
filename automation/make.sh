@@ -33,9 +33,10 @@ CORE_BINARY_NAME="kiagnose"
 ECHO_CHECKUP_PATH="checkups/echo"
 ECHO_IMAGE_NAME="echo-checkup"
 ECHO_IMAGE_TAG=${ECHO_IMAGE_TAG:-devel}
+ECHO_IMAGE="${IMAGE_REGISTRY}/${IMAGE_ORG}/${ECHO_IMAGE_NAME}:${ECHO_IMAGE_TAG}"
 
 options=$(getopt --options "" \
-    --long lint,unit-test,build-core,build-core-image,push-core-image,echo-unit-test,echo-build-image,help\
+    --long lint,unit-test,build-core,build-core-image,push-core-image,echo-unit-test,echo-build-image,echo-push-image,help\
     -- "${@}")
 eval set -- "$options"
 while true; do
@@ -61,9 +62,12 @@ while true; do
     --echo-build-image)
         OPT_ECHO_BUILD_IMAGE=1
         ;;
+    --echo-push-image)
+        OPT_ECHO_PUSH_IMAGE=1
+        ;;
     --help)
         set +x
-        echo "$0 [--lint] [--unit-test] [--build-core] [--build-core-image] [--push-core-image] [--echo-unit-test] [--echo-build-image]"
+        echo "$0 [--lint] [--unit-test] [--build-core] [--build-core-image] [--push-core-image] [--echo-unit-test] [--echo-build-image] [--echo-push-image]"
         exit
         ;;
     --)
@@ -118,7 +122,11 @@ if [ -n "${OPT_ECHO_UNIT_TEST}" ]; then
 fi
 
 if [ -n "${OPT_ECHO_BUILD_IMAGE}" ]; then
-    full_image_name="${ECHO_IMAGE_NAME}:${ECHO_IMAGE_TAG}"
-    echo "Trying to build image \"${full_image_name}\"..."
-    ${CRI} build ${ECHO_CHECKUP_PATH} --file ${ECHO_CHECKUP_PATH}/Dockerfile --tag "${full_image_name}"
+    echo "Trying to build image \"${ECHO_IMAGE}\"..."
+    ${CRI} build ${ECHO_CHECKUP_PATH} --file ${ECHO_CHECKUP_PATH}/Dockerfile --tag "${ECHO_IMAGE}"
+fi
+
+if [ -n "${OPT_ECHO_PUSH_IMAGE}" ]; then
+   echo "Pushing \"${ECHO_IMAGE}\"..."
+   ${CRI} push ${ECHO_IMAGE} 
 fi
