@@ -22,6 +22,7 @@ jobs:
     needs: go-versions
     env:
       CORE_IMAGE_TAG: main
+      ECHO_IMAGE_TAG: main
       CRI: podman
     steps:
       - name: Check out code
@@ -33,5 +34,12 @@ jobs:
       - name: Logging to quay.io
         run: 
           ${CRI} login -u ${{ secrets.QUAY_USER }} -p ${{ secrets.QUAY_TOKEN }} quay.io
-      - name: Build and push core image
-        run: ./automation/make.sh --build-core --build-core-image --push-core-image
+      - name: Build and push images
+        run: |
+          ./automation/make.sh \
+            --build-core \
+            --build-core-image \
+            --push-core-image \
+            --echo-build \
+            --echo-build-image \
+            --echo-push-image
