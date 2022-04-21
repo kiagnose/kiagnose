@@ -39,14 +39,7 @@ import (
 const (
 	configMapNamespace = "kiagnose"
 	configMapName      = "cm1"
-)
 
-var goodEnv = map[string]string{
-	config.ConfigMapNamespaceEnvVarName: configMapNamespace,
-	config.ConfigMapNameEnvVarName:      configMapName,
-}
-
-const (
 	imageName    = "registry:5000/echo-checkup:latest"
 	timeoutValue = "1m"
 	param1Key    = "message1"
@@ -59,42 +52,6 @@ var (
 	clusterRoleNamesList = []string{"cluster_role1", "cluster_role2"}
 	roleNamesList        = []string{"default/role1", "default/role2"}
 )
-
-func TestLoaderLoadEnvVarShouldFail(t *testing.T) {
-	type loaderLoadEnvVarsTestCase struct {
-		description           string
-		envVars               map[string]string
-		expectedErrorContains string
-	}
-
-	const expectedErrorPrefix = "missing required environment variable"
-
-	failureTestCases := []loaderLoadEnvVarsTestCase{
-		{
-			description:           "when ConfigMap's name environment variable is missing",
-			envVars:               map[string]string{config.ConfigMapNamespaceEnvVarName: configMapNamespace},
-			expectedErrorContains: expectedErrorPrefix,
-		},
-		{
-			description:           "when ConfigMap's namespace environment variable is missing",
-			envVars:               map[string]string{config.ConfigMapNameEnvVarName: configMapName},
-			expectedErrorContains: expectedErrorPrefix,
-		},
-		{
-			description:           "when both ConfigMap's environment variables are missing",
-			envVars:               map[string]string{},
-			expectedErrorContains: expectedErrorPrefix,
-		},
-	}
-
-	for _, testCase := range failureTestCases {
-		t.Run(testCase.description, func(t *testing.T) {
-			loader := config.NewLoader(nil, testCase.envVars)
-			_, err := loader.Load()
-			assert.ErrorContains(t, err, testCase.expectedErrorContains)
-		})
-	}
-}
 
 func TestLoaderLoadShouldSucceed(t *testing.T) {
 	type loadTestCase struct {
@@ -140,8 +97,8 @@ func TestLoaderLoadShouldSucceed(t *testing.T) {
 		t.Run(testCase.description, func(t *testing.T) {
 			fakeClient := newFakeClientWithObjects(configMapNamespace, configMapName, testCase.configMapData, testCase.clusterRoles, testCase.roles)
 
-			loader := config.NewLoader(fakeClient, goodEnv)
-			actualConfig, err := loader.Load()
+			loader := config.NewLoader(fakeClient)
+			actualConfig, err := loader.Load(configMapNamespace, configMapName)
 			assert.NoError(t, err)
 
 			sort.Slice(actualConfig.EnvVars, func(i, j int) bool {
@@ -156,8 +113,8 @@ func TestLoaderLoadShouldSucceed(t *testing.T) {
 func TestLoaderLoadShouldFail(t *testing.T) {
 	t.Run("when ConfigMap doesn't exist", func(t *testing.T) {
 		fakeClient := fake.NewSimpleClientset()
-		loader := config.NewLoader(fakeClient, goodEnv)
-		_, err := loader.Load()
+		loader := config.NewLoader(fakeClient)
+		_, err := loader.Load(configMapNamespace, configMapName)
 		assert.ErrorContains(t, err, "not found")
 	})
 
@@ -209,8 +166,8 @@ func TestLoaderLoadShouldFail(t *testing.T) {
 		t.Run(testCase.description, func(t *testing.T) {
 			fakeClient := fake.NewSimpleClientset(newConfigMap(configMapNamespace, configMapName, testCase.configMapData))
 
-			loader := config.NewLoader(fakeClient, goodEnv)
-			_, err := loader.Load()
+			loader := config.NewLoader(fakeClient)
+			_, err := loader.Load(configMapNamespace, configMapName)
 			assert.ErrorContains(t, err, testCase.expectedError)
 		})
 	}

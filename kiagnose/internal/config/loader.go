@@ -20,7 +20,6 @@
 package config
 
 import (
-	"fmt"
 	"strings"
 
 	corev1 "k8s.io/api/core/v1"
@@ -30,33 +29,15 @@ import (
 	"github.com/kiagnose/kiagnose/kiagnose/internal/rbac"
 )
 
-const (
-	ConfigMapNamespaceEnvVarName = "CONFIGMAP_NAMESPACE"
-	ConfigMapNameEnvVarName      = "CONFIGMAP_NAME"
-)
-
 type Loader struct {
 	client kubernetes.Interface
-	env    map[string]string
 }
 
-func NewLoader(client kubernetes.Interface, env map[string]string) *Loader {
-	return &Loader{client: client, env: env}
+func NewLoader(client kubernetes.Interface) *Loader {
+	return &Loader{client: client}
 }
 
-func (l *Loader) Load() (*Config, error) {
-	const envVarErr = "missing required environment variable"
-
-	configMapNamespace, exists := l.env[ConfigMapNamespaceEnvVarName]
-	if !exists {
-		return nil, fmt.Errorf("%s: %q", envVarErr, ConfigMapNamespaceEnvVarName)
-	}
-
-	configMapName, exists := l.env[ConfigMapNameEnvVarName]
-	if !exists {
-		return nil, fmt.Errorf("%s: %q", envVarErr, ConfigMapNameEnvVarName)
-	}
-
+func (l *Loader) Load(configMapNamespace, configMapName string) (*Config, error) {
 	rawData, err := configmap.GetData(l.client, configMapNamespace, configMapName)
 	if err != nil {
 		return nil, err
