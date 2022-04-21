@@ -1,4 +1,4 @@
-name: checkup-kubevirt-vm-latency-checks
+name: checkup-kubevirt-vm-latency.checks
 
 on:
   push:

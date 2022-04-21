@@ -21,12 +21,16 @@ set -e
 
 CRI=${CRI:-podman}
 
+IMAGE_REGISTRY=${IMAGE_REGISTRY:-quay.io}
+IMAGE_ORG=${IMAGE_ORG:-kiagnose}
+
 CHECKUP_BINARY_NAME="kubevirt-vm-latency"
 CHECKUP_IMAGE_NAME="kubevirt-vm-latency"
 CHECKUP_IMAGE_TAG=${CORE_IMAGE_TAG:-devel}
+CHECKUP_IMAGE=${IMAGE_REGISTRY}/${IMAGE_ORG}/${CHECKUP_IMAGE_NAME}:${CHECKUP_IMAGE_TAG}
 
 options=$(getopt --options "" \
-    --long lint,unit-test,build-checkup,build-checkup-image,help\
+    --long lint,unit-test,build-checkup,build-checkup-image,push-checkup-image,help\
     -- "${@}")
 eval set -- "$options"
 while true; do
@@ -37,15 +41,18 @@ while true; do
     --unit-test)
         OPT_UNIT_TEST=1
         ;;
-    --build-core)
+    --build-checkup)
         OPT_BUILD_CHECKUP=1
         ;;
-    --build-core-image)
+    --build-checkup-image)
         OPT_BUILD_CHECKUP_IMAGE=1
+        ;;
+    --push-checkup-image)
+        OPT_PUSH_CHECKUP_IMAGE=1
         ;;
     --help)
         set +x
-        echo "$0 [--lint] [--unit-test] [--build-checkup] [--build-checkup-image]"
+        echo "$0 [--lint] [--unit-test] [--build-checkup] [--build-checkup-image] [--push-checkup-image]"
         exit
         ;;
     --)
@@ -56,7 +63,7 @@ while true; do
     shift
 done
 
-if  [ -z "${OPT_LINT}" ] && [ -z "${OPT_UNIT_TEST}" ] && [ -z "${OPT_BUILD_CHECKUP}" ] && [ -z "${OPT_BUILD_CHECKUP_IMAGE}" ]; then
+if  [ -z "${OPT_LINT}" ] && [ -z "${OPT_UNIT_TEST}" ] && [ -z "${OPT_BUILD_CHECKUP}" ] && [ -z "${OPT_BUILD_CHECKUP_IMAGE}" ] && [ -z "${OPT_PUSH_CHECKUP_IMAGE}" ]; then
     OPT_LINT=1
     OPT_UNIT_TEST=1
     OPT_BUILD_CHECKUP=1
@@ -81,7 +88,11 @@ if [ -n "${OPT_BUILD_CHECKUP}" ]; then
 fi
 
 if [ -n "${OPT_BUILD_CHECKUP_IMAGE}" ]; then
-    full_image_name="${CHECKUP_IMAGE_NAME}:${CHECKUP_IMAGE_TAG}"
-    echo "Trying to build image \"${full_image_name}\"..."
-    ${CRI} build . --file Dockerfile --tag "${full_image_name}"
+    echo "Trying to build image \"${CHECKUP_IMAGE}\"..."
+    ${CRI} build . --file Dockerfile --tag "${CHECKUP_IMAGE}"
+fi
+
+if [ -n "${OPT_PUSH_CHECKUP_IMAGE}" ]; then
+    echo "Pushing \"${CHECKUP_IMAGE}\"..."
+    ${CRI} push ${CHECKUP_IMAGE}
 fi
