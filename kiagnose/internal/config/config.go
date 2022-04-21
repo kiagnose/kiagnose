@@ -20,10 +20,16 @@
 package config
 
 import (
+	"strings"
 	"time"
 
 	corev1 "k8s.io/api/core/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
+
+	"k8s.io/client-go/kubernetes"
+
+	"github.com/kiagnose/kiagnose/kiagnose/internal/configmap"
+	"github.com/kiagnose/kiagnose/kiagnose/internal/rbac"
 )
 
 type Config struct {
@@ -32,4 +38,48 @@ type Config struct {
 	EnvVars      []corev1.EnvVar
 	ClusterRoles []*rbacv1.ClusterRole
 	Roles        []*rbacv1.Role
+}
+
+func ReadFromConfigMap(client kubernetes.Interface, configMapNamespace, configMapName string) (*Config, error) {
+	rawData, err := configmap.GetData(client, configMapNamespace, configMapName)
+	if err != nil {
+		return nil, err
+	}
+
+	parser := newConfigMapParser(rawData)
+	err = parser.Parse()
+	if err != nil {
+		return nil, err
+	}
+
+	clusterRoles, err := rbac.GetClusterRoles(client, parser.ClusterRoleNames())
+	if err != nil {
+		return nil, err
+	}
+
+	roles, err := rbac.GetRoles(client, parser.RoleNames())
+	if err != nil {
+		return nil, err
+	}
+
+	return &Config{
+		Image:        parser.Image(),
+		Timeout:      parser.Timeout(),
+		EnvVars:      paramsToEnvVars(parser.Params()),
+		ClusterRoles: clusterRoles,
+		Roles:        roles,
+	}, nil
+}
+
+func paramsToEnvVars(params map[string]string) []corev1.EnvVar {
+	var envVars []corev1.EnvVar
+
+	for k, v := range params {
+		envVars = append(envVars, corev1.EnvVar{
+			Name:  strings.ToUpper(k),
+			Value: v,
+		})
+	}
+
+	return envVars
 }

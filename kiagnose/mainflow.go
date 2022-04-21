@@ -38,8 +38,7 @@ func Run(env map[string]string) error {
 		return err
 	}
 
-	configLoader := config.NewLoader(c)
-	checkupConfig, err := configLoader.Load(configMapNamespace, configMapName)
+	checkupConfig, err := config.ReadFromConfigMap(c, configMapNamespace, configMapName)
 	if err != nil {
 		return err
 	}
