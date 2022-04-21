@@ -53,7 +53,7 @@ var (
 	roleNamesList        = []string{"default/role1", "default/role2"}
 )
 
-func TestLoaderLoadShouldSucceed(t *testing.T) {
+func TestReadFromConfigMapShouldSucceed(t *testing.T) {
 	type loadTestCase struct {
 		description    string
 		clusterRoles   []*rbacv1.ClusterRole
@@ -97,8 +97,7 @@ func TestLoaderLoadShouldSucceed(t *testing.T) {
 		t.Run(testCase.description, func(t *testing.T) {
 			fakeClient := newFakeClientWithObjects(configMapNamespace, configMapName, testCase.configMapData, testCase.clusterRoles, testCase.roles)
 
-			loader := config.NewLoader(fakeClient)
-			actualConfig, err := loader.Load(configMapNamespace, configMapName)
+			actualConfig, err := config.ReadFromConfigMap(fakeClient, configMapNamespace, configMapName)
 			assert.NoError(t, err)
 
 			sort.Slice(actualConfig.EnvVars, func(i, j int) bool {
@@ -110,11 +109,10 @@ func TestLoaderLoadShouldSucceed(t *testing.T) {
 	}
 }
 
-func TestLoaderLoadShouldFail(t *testing.T) {
+func TestReadFromConfigMapShouldFail(t *testing.T) {
 	t.Run("when ConfigMap doesn't exist", func(t *testing.T) {
 		fakeClient := fake.NewSimpleClientset()
-		loader := config.NewLoader(fakeClient)
-		_, err := loader.Load(configMapNamespace, configMapName)
+		_, err := config.ReadFromConfigMap(fakeClient, configMapNamespace, configMapName)
 		assert.ErrorContains(t, err, "not found")
 	})
 
@@ -166,8 +164,7 @@ func TestLoaderLoadShouldFail(t *testing.T) {
 		t.Run(testCase.description, func(t *testing.T) {
 			fakeClient := fake.NewSimpleClientset(newConfigMap(configMapNamespace, configMapName, testCase.configMapData))
 
-			loader := config.NewLoader(fakeClient)
-			_, err := loader.Load(configMapNamespace, configMapName)
+			_, err := config.ReadFromConfigMap(fakeClient, configMapNamespace, configMapName)
 			assert.ErrorContains(t, err, testCase.expectedError)
 		})
 	}
