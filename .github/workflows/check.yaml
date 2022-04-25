@@ -75,17 +75,21 @@ jobs:
   e2e-test:
     name: E2E Test
     runs-on: ubuntu-latest
+    env:
+      KIND_VERSION: v0.12.0
+      KUBERNETES_CLIENT_VERSION: v1.23.0
+      KUBEVIRT_VERSION: v0.52.0
     steps:
       - name: Check out code
         uses: actions/checkout@v2
       - name: Install kind
         run: |
-          curl -Lo ./kind https://kind.sigs.k8s.io/dl/v0.12.0/kind-linux-amd64
+          curl -Lo ./kind https://kind.sigs.k8s.io/dl/${KIND_VERSION}/kind-linux-amd64
           chmod +x ./kind
           sudo mv ./kind /usr/local/bin/kind
       - name: Install kubectl
         run: |
-          curl -LO https://dl.k8s.io/release/v1.23.0/bin/linux/amd64/kubectl
+          curl -LO https://dl.k8s.io/release/${KUBERNETES_CLIENT_VERSION}/bin/linux/amd64/kubectl
           chmod +x ./kubectl
           sudo mv ./kubectl /usr/local/bin/kubectl
       - name: Create cluster
@@ -93,8 +97,30 @@ jobs:
       - name: Get cluster status
         run: |
           # wait network is ready
-          sudo kubectl wait --for=condition=ready pods --namespace=kube-system -l k8s-app=kube-dns
+          sudo kubectl wait --for=condition=ready pods --namespace=kube-system -l k8s-app=kube-dns --timeout=2m
           sudo kubectl get nodes -o wide
           sudo kubectl get pods -A
+      - name: Deploy Kubevirt
+        run: |
+          sudo kubectl create -f https://github.com/kubevirt/kubevirt/releases/download/${KUBEVIRT_VERSION}/kubevirt-operator.yaml
+          sudo kubectl create -f https://github.com/kubevirt/kubevirt/releases/download/${KUBEVIRT_VERSION}/kubevirt-cr.yaml
+          sudo kubectl -n kubevirt patch kubevirt kubevirt --type=merge --patch '{"spec":{"configuration":{"developerConfiguration":{"useEmulation":true}}}}'
+          sudo kubectl wait --for=condition=Available kv kubevirt --namespace=kubevirt --timeout=2m
+          sudo kubectl get pods -n kubevirt
+      - name: Install virtctl
+        run: |
+          wget -O virtctl https://github.com/kubevirt/kubevirt/releases/download/${KUBEVIRT_VERSION}/virtctl-${KUBEVIRT_VERSION}-linux-amd64
+          chmod +x ./virtctl
+          sudo mv ./virtctl /usr/local/bin/virtctl
+      - name: Create and start VM
+        run: |
+          sudo kubectl apply -f https://kubevirt.io/labs/manifests/vm.yaml
+          sudo virtctl start testvm
+          sudo kubectl wait --for=condition=Ready vmi testvm --timeout=1m
+          sudo kubectl get vmis
+      - name: Stop and delete VM
+        run: |
+          sudo virtctl stop testvm
+          sudo kubectl delete vms testvm
       - name: Delete cluster
         run: sudo kind delete cluster
