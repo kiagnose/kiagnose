@@ -45,3 +45,7 @@ func Get(client corev1client.CoreV1Interface, namespace, name string) (*corev1.C
 
 	return configMap, nil
 }
+
+func Update(client corev1client.CoreV1Interface, configMap *corev1.ConfigMap) (*corev1.ConfigMap, error) {
+	return client.ConfigMaps(configMap.Namespace).Update(context.Background(), configMap, metav1.UpdateOptions{})
+}

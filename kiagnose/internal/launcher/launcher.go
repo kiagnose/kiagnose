@@ -56,8 +56,11 @@ func (l Launcher) Run() (runErr error) {
 		}
 	}()
 
-	if err := l.checkup.Setup(); err != nil {
-		return err
+	setupErr := l.checkup.Setup()
+	_ = l.reporter.Report()
+
+	if setupErr != nil {
+		return setupErr
 	}
 
 	defer func() {

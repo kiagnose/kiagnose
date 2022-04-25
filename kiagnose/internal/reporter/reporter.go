@@ -19,13 +19,69 @@
 
 package reporter
 
+import (
+	"errors"
+	"time"
+
+	"k8s.io/client-go/kubernetes"
+
+	"github.com/kiagnose/kiagnose/kiagnose/internal/configmap"
+)
+
+const (
+	SucceededKey           = "status.succeeded"
+	FailureReasonKey       = "status.failureReason"
+	StartTimestampKey      = "status.startTimestamp"
+	CompletionTimestampKey = "status.completionTimestamp"
+)
+
+var ErrConfigMapDataIsNil = errors.New("configMap's Data field is nil")
+
 type Reporter struct {
+	client             kubernetes.Interface
+	configMapNamespace string
+	configMapName      string
+	reportee           reportee
 }
 
-func New() Reporter {
-	return Reporter{}
+func New(client kubernetes.Interface, configMapNamespace, configMapName string, reportee reportee) *Reporter {
+	return &Reporter{
+		client:             client,
+		configMapNamespace: configMapNamespace,
+		configMapName:      configMapName,
+		reportee:           reportee,
+	}
 }
 
-func (r Reporter) Report() error {
+func (r *Reporter) Report() error {
+	configMap, err := configmap.Get(r.client.CoreV1(), r.configMapNamespace, r.configMapName)
+	if err != nil {
+		return err
+	}
+
+	if configMap.Data == nil {
+		return ErrConfigMapDataIsNil
+	}
+
+	if succeeded := r.reportee.Succeeded(); succeeded != "" {
+		configMap.Data[SucceededKey] = succeeded
+	}
+
+	configMap.Data[FailureReasonKey] = r.reportee.FailureReason()
+
+	startTimestamp := r.reportee.StartTimestamp()
+	if !startTimestamp.IsZero() {
+		configMap.Data[StartTimestampKey] = startTimestamp.Format(time.RFC3339)
+	}
+
+	completionTimestamp := r.reportee.CompletionTimestamp()
+	if !completionTimestamp.IsZero() {
+		configMap.Data[CompletionTimestampKey] = completionTimestamp.Format(time.RFC3339)
+	}
+
+	if _, err := configmap.Update(r.client.CoreV1(), configMap); err != nil {
+		return err
+	}
+
 	return nil
 }

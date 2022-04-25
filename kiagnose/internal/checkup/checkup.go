@@ -314,6 +314,22 @@ func (c *Checkup) Teardown() error {
 	return nil
 }
 
+func (c *Checkup) Succeeded() string {
+	return ""
+}
+
+func (c *Checkup) FailureReason() string {
+	return ""
+}
+
+func (c *Checkup) StartTimestamp() time.Time {
+	return time.Time{}
+}
+
+func (c *Checkup) CompletionTimestamp() time.Time {
+	return time.Time{}
+}
+
 func concentrateErrors(errs []error) error {
 	sb := strings.Builder{}
 	for _, err := range errs {

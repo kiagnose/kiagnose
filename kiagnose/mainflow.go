@@ -43,6 +43,7 @@ func Run(env map[string]string) error {
 		return err
 	}
 
-	l := launcher.New(checkup.New(c, checkupConfig), reporter.New())
+	checkupToRun := checkup.New(c, checkupConfig)
+	l := launcher.New(checkupToRun, reporter.New(c, configMapNamespace, configMapName, checkupToRun))
 	return l.Run()
 }
