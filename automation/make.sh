@@ -30,12 +30,8 @@ CORE_IMAGE="${IMAGE_REGISTRY}/${IMAGE_ORG}/${CORE_IMAGE_NAME}:${CORE_IMAGE_TAG}"
 
 CORE_BINARY_NAME="kiagnose"
 
-ECHO_IMAGE_NAME="echo-checkup"
-ECHO_IMAGE_TAG=${ECHO_IMAGE_TAG:-devel}
-ECHO_IMAGE="${IMAGE_REGISTRY}/${IMAGE_ORG}/${ECHO_IMAGE_NAME}:${ECHO_IMAGE_TAG}"
-
 options=$(getopt --options "" \
-    --long lint,unit-test,build-core,build-core-image,push-core-image,echo-unit-test,echo-build-image,echo-push-image,help\
+    --long lint,unit-test,build-core,build-core-image,push-core-image,help\
     -- "${@}")
 eval set -- "$options"
 while true; do
@@ -55,18 +51,9 @@ while true; do
     --push-core-image)
         OPT_PUSH_CORE_IMAGE=1
         ;;
-    --echo-unit-test)
-        OPT_ECHO_UNIT_TEST=1
-        ;;
-    --echo-build-image)
-        OPT_ECHO_BUILD_IMAGE=1
-        ;;
-    --echo-push-image)
-        OPT_ECHO_PUSH_IMAGE=1
-        ;;
     --help)
         set +x
-        echo "$0 [--lint] [--unit-test] [--build-core] [--build-core-image] [--push-core-image] [--echo-unit-test] [--echo-build-image] [--echo-push-image]"
+        echo "$0 [--lint] [--unit-test] [--build-core] [--build-core-image] [--push-core-image]"
         exit
         ;;
     --)
@@ -79,8 +66,7 @@ done
 
 
 if  [ -z "${OPT_LINT}" ] && [ -z "${OPT_UNIT_TEST}" ] && [ -z "${OPT_BUILD_CORE}" ] &&\
-    [ -z "${OPT_BUILD_CORE_IMAGE}" ] && [ -z "${OPT_PUSH_CORE_IMAGE}" ] &&\
-    [ -z "${OPT_ECHO_UNIT_TEST}" ] && [ -z "${OPT_ECHO_BUILD_IMAGE}" ]; then
+    [ -z "${OPT_BUILD_CORE_IMAGE}" ] && [ -z "${OPT_PUSH_CORE_IMAGE}" ]; then
     OPT_LINT=1
     OPT_UNIT_TEST=1
     OPT_BUILD_CORE=1
@@ -112,22 +98,4 @@ fi
 if [ -n "${OPT_PUSH_CORE_IMAGE}" ]; then
     echo "Pushing \"${CORE_IMAGE}\"..."
     ${CRI} push ${CORE_IMAGE}
-fi
-
-if [ -n "${OPT_ECHO_UNIT_TEST}" ]; then
-    cd ./checkups/echo/
-    ./automation/make.sh --unit-test
-    cd -
-fi
-
-if [ -n "${OPT_ECHO_BUILD_IMAGE}" ]; then
-    cd ./checkups/echo/
-    ./automation/make.sh --build-checkup-image
-    cd -
-fi
-
-if [ -n "${OPT_ECHO_PUSH_IMAGE}" ]; then
-    cd ./checkups/echo/
-    ./automation/make.sh --push-checkup-image
-    cd -
 fi
