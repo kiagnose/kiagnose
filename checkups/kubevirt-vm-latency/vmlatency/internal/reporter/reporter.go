@@ -17,17 +17,27 @@
  *
  */
 
-package main
+package reporter
 
 import (
-	"log"
-
-	"github.com/kiagnose/kiagnose/checkups/kubevirt-vm-latency/vmlatency"
+	"github.com/kiagnose/kiagnose/checkups/kubevirt-vm-latency/vmlatency/internal/client"
+	"github.com/kiagnose/kiagnose/checkups/kubevirt-vm-latency/vmlatency/internal/status"
 )
 
-func main() {
-	env := map[string]string{}
-	if err := vmlatency.Run(env); err != nil {
-		log.Fatalf("Kubevirt VM latency checkup failed: %v\n", err)
+type reporter struct {
+	client             *client.Client
+	configMapName      string
+	configMapNamespace string
+}
+
+func New(c *client.Client, configMapNamespace, configMapName string) *reporter {
+	return &reporter{
+		client:             c,
+		configMapNamespace: configMapNamespace,
+		configMapName:      configMapName,
 	}
+}
+
+func (r *reporter) Report(_ status.Status) error {
+	return nil
 }

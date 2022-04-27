@@ -17,17 +17,10 @@
  *
  */
 
-package main
+package client
 
-import (
-	"log"
+type Client struct{}
 
-	"github.com/kiagnose/kiagnose/checkups/kubevirt-vm-latency/vmlatency"
-)
-
-func main() {
-	env := map[string]string{}
-	if err := vmlatency.Run(env); err != nil {
-		log.Fatalf("Kubevirt VM latency checkup failed: %v\n", err)
-	}
+func New() (*Client, error) {
+	return &Client{}, nil
 }

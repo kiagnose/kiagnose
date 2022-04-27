@@ -17,17 +17,16 @@
  *
  */
 
-package main
+package config
 
-import (
-	"log"
+type CheckupParameters struct{}
 
-	"github.com/kiagnose/kiagnose/checkups/kubevirt-vm-latency/vmlatency"
-)
+type Config struct {
+	ResultsConfigMapName      string
+	ResultsConfigMapNamespace string
+	CheckupParameters
+}
 
-func main() {
-	env := map[string]string{}
-	if err := vmlatency.Run(env); err != nil {
-		log.Fatalf("Kubevirt VM latency checkup failed: %v\n", err)
-	}
+func New(_ map[string]string) (Config, error) {
+	return Config{}, nil
 }

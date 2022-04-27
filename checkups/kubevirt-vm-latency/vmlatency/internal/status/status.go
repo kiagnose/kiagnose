@@ -17,17 +17,18 @@
  *
  */
 
-package main
+package status
 
-import (
-	"log"
+import "time"
 
-	"github.com/kiagnose/kiagnose/checkups/kubevirt-vm-latency/vmlatency"
-)
+type Results struct {
+	MinLatency          time.Duration
+	AvgLatency          time.Duration
+	MaxLatency          time.Duration
+	MeasurementDuration time.Duration
+}
 
-func main() {
-	env := map[string]string{}
-	if err := vmlatency.Run(env); err != nil {
-		log.Fatalf("Kubevirt VM latency checkup failed: %v\n", err)
-	}
+type Status struct {
+	FailureReason []string
+	Results
 }
