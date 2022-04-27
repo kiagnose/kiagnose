@@ -1,0 +1,32 @@
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: echo-checkup-config
+  namespace: kiagnose
+data:
+  spec.image: quay.io/kiagnose/echo-checkup:main
+  spec.timeout: 1m
+  spec.param.message: "Hi!"
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: echo-checkup1
+  namespace: kiagnose
+spec:
+  backoffLimit: 0
+  template:
+    spec:
+      serviceAccount: kiagnose
+      restartPolicy: Never
+      containers:
+        - name: framework
+          image: quay.io/kiagnose/kiagnose:main
+          imagePullPolicy: Always
+          env:
+            - name: CONFIGMAP_NAMESPACE
+              value: kiagnose
+            - name: CONFIGMAP_NAME
+              value: echo-checkup-config
+...
