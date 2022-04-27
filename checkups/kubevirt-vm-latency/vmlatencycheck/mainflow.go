@@ -17,16 +17,15 @@
  *
  */
 
-package main
+package vmlatencycheck
 
 import (
-	"log"
-
-	"github.com/kiagnose/kiagnose/checkups/kubevirt-vm-latency/vmlatencycheck"
+	"github.com/kiagnose/kiagnose/checkups/kubevirt-vm-latency/vmlatencycheck/internal/checkup"
+	"github.com/kiagnose/kiagnose/checkups/kubevirt-vm-latency/vmlatencycheck/internal/reporter"
+	"github.com/kiagnose/kiagnose/checkups/kubevirt-vm-latency/vmlatencycheck/internal/runner"
 )
 
-func main() {
-	if err := vmlatencycheck.Run(); err != nil {
-		log.Fatalf("Kubevirt VM latency check failed: %v\n", err)
-	}
+func Run() error {
+	r := runner.New(checkup.New(nil, nil), reporter.New(nil, "", ""))
+	return r.Run()
 }

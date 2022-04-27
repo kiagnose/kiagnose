@@ -17,16 +17,33 @@
  *
  */
 
-package main
+package checkup
 
-import (
-	"log"
+type checkup struct {
+	client interface{}
+	config interface{}
+}
 
-	"github.com/kiagnose/kiagnose/checkups/kubevirt-vm-latency/vmlatencycheck"
-)
+func New(client, cfg interface{}) *checkup {
+	return &checkup{client: client, config: cfg}
+}
 
-func main() {
-	if err := vmlatencycheck.Run(); err != nil {
-		log.Fatalf("Kubevirt VM latency check failed: %v\n", err)
-	}
+func (c *checkup) Preflights() error {
+	return nil
+}
+
+func (c *checkup) Setup() error {
+	return nil
+}
+
+func (c *checkup) Run() error {
+	return nil
+}
+
+func (c *checkup) Teardown() error {
+	return nil
+}
+
+func (c *checkup) Results() map[string]string {
+	return nil
 }
