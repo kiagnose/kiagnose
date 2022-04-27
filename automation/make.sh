@@ -30,7 +30,6 @@ CORE_IMAGE="${IMAGE_REGISTRY}/${IMAGE_ORG}/${CORE_IMAGE_NAME}:${CORE_IMAGE_TAG}"
 
 CORE_BINARY_NAME="kiagnose"
 
-ECHO_CHECKUP_PATH="checkups/echo"
 ECHO_IMAGE_NAME="echo-checkup"
 ECHO_IMAGE_TAG=${ECHO_IMAGE_TAG:-devel}
 ECHO_IMAGE="${IMAGE_REGISTRY}/${IMAGE_ORG}/${ECHO_IMAGE_NAME}:${ECHO_IMAGE_TAG}"
@@ -100,9 +99,9 @@ if [ -n "${OPT_UNIT_TEST}" ]; then
 fi
 
 if [ -n "${OPT_BUILD_CORE}" ]; then
-  echo "Trying to build \"${CORE_BINARY_NAME}\"..."
-  go build -v -o ./bin/${CORE_BINARY_NAME} ./cmd/
-  echo "Successfully built \"${CORE_BINARY_NAME}\""
+    echo "Trying to build \"${CORE_BINARY_NAME}\"..."
+    go build -v -o ./bin/${CORE_BINARY_NAME} ./cmd/
+    echo "Successfully built \"${CORE_BINARY_NAME}\""
 fi
 
 if [ -n "${OPT_BUILD_CORE_IMAGE}" ]; then
@@ -111,22 +110,24 @@ if [ -n "${OPT_BUILD_CORE_IMAGE}" ]; then
 fi
 
 if [ -n "${OPT_PUSH_CORE_IMAGE}" ]; then
-   echo "Pushing \"${CORE_IMAGE}\"..."
-   ${CRI} push ${CORE_IMAGE} 
+    echo "Pushing \"${CORE_IMAGE}\"..."
+    ${CRI} push ${CORE_IMAGE}
 fi
 
 if [ -n "${OPT_ECHO_UNIT_TEST}" ]; then
-  cd ./checkups/echo/
-  ./entrypoint_test
-  cd -
+    cd ./checkups/echo/
+    ./automation/make.sh --unit-test
+    cd -
 fi
 
 if [ -n "${OPT_ECHO_BUILD_IMAGE}" ]; then
-    echo "Trying to build image \"${ECHO_IMAGE}\"..."
-    ${CRI} build ${ECHO_CHECKUP_PATH} --file ${ECHO_CHECKUP_PATH}/Dockerfile --tag "${ECHO_IMAGE}"
+    cd ./checkups/echo/
+    ./automation/make.sh --build-checkup-image
+    cd -
 fi
 
 if [ -n "${OPT_ECHO_PUSH_IMAGE}" ]; then
-   echo "Pushing \"${ECHO_IMAGE}\"..."
-   ${CRI} push ${ECHO_IMAGE} 
+    cd ./checkups/echo/
+    ./automation/make.sh --push-checkup-image
+    cd -
 fi
