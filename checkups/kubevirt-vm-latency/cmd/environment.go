@@ -19,16 +19,21 @@
 
 package main
 
-import (
-	"log"
-	"os"
+import "strings"
 
-	"github.com/kiagnose/kiagnose/checkups/kubevirt-vm-latency/vmlatency"
-)
+func envToMap(rawEnv []string) map[string]string {
+	const requiredElementsCount = 2
 
-func main() {
-	env := envToMap(os.Environ())
-	if err := vmlatency.Run(env); err != nil {
-		log.Fatalf("Kubevirt VM latency checkup failed: %v\n", err)
+	env := map[string]string{}
+
+	for _, entry := range rawEnv {
+		splitKeyValue := strings.Split(entry, "=")
+		if len(splitKeyValue) != requiredElementsCount {
+			continue
+		}
+
+		env[splitKeyValue[0]] = splitKeyValue[1]
 	}
+
+	return env
 }
