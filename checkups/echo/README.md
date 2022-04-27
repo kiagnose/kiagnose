@@ -26,9 +26,9 @@ status.failureReason: "MESSAGE environment variable is missing"
 - You have [podman](https://podman.io/) or other container engine capable of building images.
 ### Steps
 ```bash
-$ ./automation/make.sh --echo-build-image
+$ ./automation/make.sh --build-checkup-image
 # Using Docker to build the image:
-$ CRI=docker ./automation/make.sh --echo-build-image
+$ CRI=docker ./automation/make.sh --build-checkup-image
 ```
 
 ## Manual Execution Instructions
