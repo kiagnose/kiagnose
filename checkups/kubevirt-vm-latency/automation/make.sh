@@ -19,6 +19,8 @@
 
 set -e
 
+ARGCOUNT=$#
+
 CRI=${CRI:-podman}
 
 IMAGE_REGISTRY=${IMAGE_REGISTRY:-quay.io}
@@ -63,7 +65,7 @@ while true; do
     shift
 done
 
-if  [ -z "${OPT_LINT}" ] && [ -z "${OPT_UNIT_TEST}" ] && [ -z "${OPT_BUILD_CHECKUP}" ] && [ -z "${OPT_BUILD_CHECKUP_IMAGE}" ] && [ -z "${OPT_PUSH_CHECKUP_IMAGE}" ]; then
+if [ "${ARGCOUNT}" -eq "0" ] ; then
     OPT_LINT=1
     OPT_UNIT_TEST=1
     OPT_BUILD_CHECKUP=1
