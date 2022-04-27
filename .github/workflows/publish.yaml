@@ -39,7 +39,4 @@ jobs:
           ./automation/make.sh \
             --build-core \
             --build-core-image \
-            --push-core-image \
-            --echo-build \
-            --echo-build-image \
-            --echo-push-image
+            --push-core-image
