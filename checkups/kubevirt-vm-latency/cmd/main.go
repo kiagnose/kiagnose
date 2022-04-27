@@ -21,12 +21,14 @@ package main
 
 import (
 	"log"
+	"os"
 
 	"github.com/kiagnose/kiagnose/checkups/kubevirt-vm-latency/vmlatencycheck"
 )
 
 func main() {
-	if err := vmlatencycheck.Run(); err != nil {
-		log.Fatalf("Kubevirt VM latency check failed: %v\n", err)
+	env := envToMap(os.Environ())
+	if err := vmlatencycheck.Run(env); err != nil {
+		log.Fatalf("kubevirt vm latency check failed: %v\n", err)
 	}
 }

@@ -17,21 +17,23 @@
  *
  */
 
-package vmlatencycheck
+package main
 
-import (
-	"github.com/kiagnose/kiagnose/checkups/kubevirt-vm-latency/vmlatencycheck/internal/checkup"
-	"github.com/kiagnose/kiagnose/checkups/kubevirt-vm-latency/vmlatencycheck/internal/config"
-	"github.com/kiagnose/kiagnose/checkups/kubevirt-vm-latency/vmlatencycheck/internal/reporter"
-	"github.com/kiagnose/kiagnose/checkups/kubevirt-vm-latency/vmlatencycheck/internal/runner"
-)
+import "strings"
 
-func Run(env map[string]string) error {
-	cfg, err := config.NewFromEnv(env)
-	if err != nil {
-		return err
+func envToMap(rawEnv []string) map[string]string {
+	const requiredElementsCount = 2
+
+	env := map[string]string{}
+
+	for _, entry := range rawEnv {
+		splitKeyValue := strings.Split(entry, "=")
+		if len(splitKeyValue) != requiredElementsCount {
+			continue
+		}
+
+		env[splitKeyValue[0]] = splitKeyValue[1]
 	}
 
-	r := runner.New(checkup.New(nil, cfg), reporter.New(nil, cfg.ResultsConfigMapNamespace, cfg.ResultsConfigMapName))
-	return r.Run()
+	return env
 }
