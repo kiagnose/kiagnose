@@ -23,6 +23,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strconv"
 	"testing"
 	"time"
 
@@ -90,6 +91,11 @@ func TestCheckupWith(t *testing.T) {
 			assertConfigMapWriterRoleCreated(t, c)
 			assertConfigMapWriterRoleBindingCreated(t, c)
 			assertClusterRoleBindingsCreated(t, testsClient{c}, testCase.clusterRole)
+
+			assert.Empty(t, testCheckup.Succeeded())
+			assert.Empty(t, testCheckup.FailureReason())
+			assert.False(t, testCheckup.StartTimestamp().IsZero())
+			assert.True(t, testCheckup.CompletionTimestamp().IsZero())
 		})
 	}
 }
@@ -117,7 +123,13 @@ func TestCheckupSetupShouldFailWhen(t *testing.T) {
 				Roles:        testCase.roles,
 			})
 
-			assert.ErrorContains(t, testCheckup.Setup(), expectedErr)
+			setupErr := testCheckup.Setup()
+			assert.ErrorContains(t, setupErr, expectedErr)
+
+			assert.Equal(t, strconv.FormatBool(false), testCheckup.Succeeded())
+			assert.Equal(t, setupErr.Error(), testCheckup.FailureReason())
+			assert.False(t, testCheckup.StartTimestamp().IsZero())
+			assert.True(t, testCheckup.CompletionTimestamp().IsZero())
 
 			assertNoObjectExists(t, testClient)
 		})
@@ -145,6 +157,8 @@ func TestCheckupTeardownShould(t *testing.T) {
 
 		assert.NoError(t, testCheckup.Setup())
 		assert.NoError(t, testCheckup.Teardown())
+
+		assertReportAfterTeardown(t, testCheckup, "", nil)
 	})
 
 	t.Run("fail when failed to delete ClusterRoleBinding", func(t *testing.T) {
@@ -156,8 +170,11 @@ func TestCheckupTeardownShould(t *testing.T) {
 		const expectedErr = "failed to delete ClusterRoleBinding"
 		testClient.injectDeleteErrorForResource(clusterRoleBindingResource, expectedErr)
 
-		assert.ErrorContains(t, testCheckup.Teardown(), expectedErr)
+		teardownErr := testCheckup.Teardown()
+		assert.ErrorContains(t, teardownErr, expectedErr)
 		assertNoNamespaceExists(t, testClient)
+
+		assertReportAfterTeardown(t, testCheckup, strconv.FormatBool(false), teardownErr)
 	})
 
 	t.Run("fail when failed to delete Namespace", func(t *testing.T) {
@@ -169,8 +186,11 @@ func TestCheckupTeardownShould(t *testing.T) {
 		const expectedErr = "failed to delete ClusterRoleBinding"
 		testClient.injectDeleteErrorForResource(namespaceResource, expectedErr)
 
-		assert.ErrorContains(t, testCheckup.Teardown(), expectedErr)
+		teardownErr := testCheckup.Teardown()
+		assert.ErrorContains(t, teardownErr, expectedErr)
 		assertNoClusterRoleBindingExists(t, testClient)
+
+		assertReportAfterTeardown(t, testCheckup, strconv.FormatBool(false), teardownErr)
 	})
 
 	t.Run("fail when Namespace wont dispose on time", func(t *testing.T) {
@@ -186,17 +206,17 @@ func TestCheckupTeardownShould(t *testing.T) {
 			expectedErrMatch  = "timed out"
 		)
 		testClient.injectGetErrorForResource(namespaceResource, getNamespaceError)
-
-		assert.ErrorContains(t, testCheckup.Teardown(), expectedErrMatch)
+		teardownErr := testCheckup.Teardown()
+		assert.ErrorContains(t, teardownErr, expectedErrMatch)
 		assertNoClusterRoleBindingExists(t, testClient)
+
+		assertReportAfterTeardown(t, testCheckup, strconv.FormatBool(false), teardownErr)
 	})
 
 	t.Run("fail when ClusterRoleBinding wont dispose on time", func(t *testing.T) {
 		testClient := newNormalizedFakeClientset()
 		testCheckup := checkup.New(testClient, &config.Config{Image: testImage, Timeout: testTimeout, ClusterRoles: newTestClusterRoles()})
-
 		testCheckup.SetTeardownTimeout(time.Nanosecond)
-
 		assert.NoError(t, testCheckup.Setup())
 
 		const (
@@ -204,17 +224,16 @@ func TestCheckupTeardownShould(t *testing.T) {
 			expectedErrMatch            = "timed out"
 		)
 		testClient.injectGetErrorForResource(clusterRoleBindingResource, getClusterRoleBindingsError)
-
-		assert.ErrorContains(t, testCheckup.Teardown(), expectedErrMatch)
+		teardownErr := testCheckup.Teardown()
+		assert.ErrorContains(t, teardownErr, expectedErrMatch)
 		assertNoNamespaceExists(t, testClient)
+		assertReportAfterTeardown(t, testCheckup, strconv.FormatBool(false), teardownErr)
 	})
 
 	t.Run("fail when failed to delete both Namespace and ClusterRoleBindings", func(t *testing.T) {
 		testClient := newNormalizedFakeClientset()
 		testCheckup := checkup.New(testClient, &config.Config{Image: testImage, Timeout: testTimeout, ClusterRoles: newTestClusterRoles()})
-
 		assert.NoError(t, testCheckup.Setup())
-
 		const (
 			deleteNamespaceError          = "failed to delete Namespace"
 			deleteClusterRoleBindingError = "failed to delete ClusterRoleBindings"
@@ -222,9 +241,10 @@ func TestCheckupTeardownShould(t *testing.T) {
 		testClient.injectDeleteErrorForResource(namespaceResource, deleteNamespaceError)
 		testClient.injectDeleteErrorForResource(clusterRoleBindingResource, deleteClusterRoleBindingError)
 
-		err := testCheckup.Teardown()
-		assert.ErrorContains(t, err, deleteNamespaceError)
-		assert.ErrorContains(t, err, deleteClusterRoleBindingError)
+		teardownErr := testCheckup.Teardown()
+		assert.ErrorContains(t, teardownErr, deleteNamespaceError)
+		assert.ErrorContains(t, teardownErr, deleteClusterRoleBindingError)
+		assertReportAfterTeardown(t, testCheckup, strconv.FormatBool(false), teardownErr)
 	})
 }
 
@@ -282,6 +302,8 @@ func TestCheckupRunShouldSucceed(t *testing.T) {
 			assert.NoError(t, testCheckup.Run())
 			assert.NoError(t, testCheckup.Teardown())
 			assertNoObjectExists(t, testClient)
+
+			assertReportAfterTeardown(t, testCheckup, strconv.FormatBool(true), nil)
 		})
 	}
 }
@@ -294,8 +316,12 @@ func TestCheckupRunShouldFailWhen(t *testing.T) {
 		testCheckup := checkup.New(testClient, &config.Config{Image: testImage, Timeout: testTimeout})
 
 		assert.NoError(t, testCheckup.Setup())
-		assert.ErrorContains(t, testCheckup.Run(), expectedErr)
+
+		runErr := testCheckup.Run()
+		assert.ErrorContains(t, runErr, expectedErr)
 		assert.NoError(t, testCheckup.Teardown())
+
+		assertReportAfterTeardown(t, testCheckup, strconv.FormatBool(false), runErr)
 		assertNoObjectExists(t, testClient)
 	})
 
@@ -306,8 +332,11 @@ func TestCheckupRunShouldFailWhen(t *testing.T) {
 		testCheckup := checkup.New(testClient, &config.Config{Image: testImage, Timeout: testTimeout})
 
 		assert.NoError(t, testCheckup.Setup())
-		assert.ErrorContains(t, testCheckup.Run(), expectedErr)
+		runErr := testCheckup.Run()
+		assert.ErrorContains(t, runErr, expectedErr)
 		assert.NoError(t, testCheckup.Teardown())
+
+		assertReportAfterTeardown(t, testCheckup, strconv.FormatBool(false), runErr)
 		assertNoObjectExists(t, testClient)
 	})
 
@@ -316,8 +345,11 @@ func TestCheckupRunShouldFailWhen(t *testing.T) {
 		testCheckup := checkup.New(testClient, &config.Config{Image: testImage, Timeout: time.Nanosecond})
 
 		assert.NoError(t, testCheckup.Setup())
-		assert.ErrorContains(t, testCheckup.Run(), context.DeadlineExceeded.Error())
+		runErr := testCheckup.Run()
+		assert.ErrorContains(t, runErr, context.DeadlineExceeded.Error())
 		assert.NoError(t, testCheckup.Teardown())
+
+		assertReportAfterTeardown(t, testCheckup, strconv.FormatBool(false), runErr)
 		assertNoObjectExists(t, testClient)
 	})
 
@@ -328,8 +360,11 @@ func TestCheckupRunShouldFailWhen(t *testing.T) {
 		testClient.injectJobWatchEvent(newJobWithCondition(checkup.NamespaceName, checkup.JobName, completeFalseJobCondition))
 
 		assert.NoError(t, testCheckup.Setup())
-		assert.ErrorContains(t, testCheckup.Run(), context.DeadlineExceeded.Error())
+		runErr := testCheckup.Run()
+		assert.ErrorContains(t, runErr, context.DeadlineExceeded.Error())
 		assert.NoError(t, testCheckup.Teardown())
+
+		assertReportAfterTeardown(t, testCheckup, strconv.FormatBool(false), runErr)
 		assertNoObjectExists(t, testClient)
 	})
 }
@@ -546,4 +581,15 @@ func assertNoClusterRoleBindingExists(t *testing.T, testClient *testsClient) {
 	clusterRoleBindings, err := testClient.listClusterRoleBindings()
 	assert.NoError(t, err)
 	assert.Empty(t, clusterRoleBindings)
+}
+
+func assertReportAfterTeardown(t *testing.T, testCheckup *checkup.Checkup, expectedSucceeded string, expectedErr error) {
+	assert.Equal(t, expectedSucceeded, testCheckup.Succeeded())
+
+	if expectedErr != nil {
+		assert.Equal(t, expectedErr.Error(), testCheckup.FailureReason())
+	}
+
+	assert.False(t, testCheckup.StartTimestamp().IsZero())
+	assert.False(t, testCheckup.CompletionTimestamp().IsZero())
 }

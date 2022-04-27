@@ -22,6 +22,7 @@ package checkup
 import (
 	"errors"
 	"fmt"
+	"strconv"
 	"strings"
 	"time"
 
@@ -57,6 +58,10 @@ type Checkup struct {
 	clusterRoleBindings []*rbacv1.ClusterRoleBinding
 	jobTimeout          time.Duration
 	job                 *batchv1.Job
+	succeeded           string
+	failureReason       string
+	startTimestamp      time.Time
+	completionTimestamp time.Time
 }
 
 const (
@@ -242,7 +247,15 @@ func NewCheckupJob(name, namespaceName, serviceAccountName, image string, active
 // In case of failure, an attempt to clean up the objects that already been created is made,
 // by deleting the Namespace and eventually all the objects inside it
 // https://kubernetes.io/docs/concepts/architecture/garbage-collection/#background-deletion
-func (c *Checkup) Setup() error {
+func (c *Checkup) Setup() (setupErr error) {
+	defer func() {
+		if setupErr != nil {
+			c.setFailure(setupErr)
+		}
+	}()
+
+	c.setStartTimestamp()
+
 	const errMessage = "checkup setup failed"
 	var err error
 
@@ -278,7 +291,13 @@ func (c *Checkup) Setup() error {
 	return nil
 }
 
-func (c *Checkup) Run() error {
+func (c *Checkup) Run() (runErr error) {
+	defer func() {
+		if runErr != nil {
+			c.setFailure(runErr)
+		}
+	}()
+
 	var err error
 
 	if c.job, err = job.Create(c.client.BatchV1(), c.job); err != nil {
@@ -289,6 +308,8 @@ func (c *Checkup) Run() error {
 		return err
 	}
 
+	c.succeeded = strconv.FormatBool(true)
+
 	return nil
 }
 
@@ -296,7 +317,15 @@ func (c *Checkup) SetTeardownTimeout(duration time.Duration) {
 	c.teardownTimeout = duration
 }
 
-func (c *Checkup) Teardown() error {
+func (c *Checkup) Teardown() (teardownErr error) {
+	defer c.setCompletionTimestamp()
+
+	defer func() {
+		if teardownErr != nil {
+			c.setFailure(teardownErr)
+		}
+	}()
+
 	var errs []error
 
 	if err := rbac.DeleteClusterRoleBindings(c.client.RbacV1(), c.clusterRoleBindings, c.teardownTimeout); err != nil {
@@ -315,19 +344,32 @@ func (c *Checkup) Teardown() error {
 }
 
 func (c *Checkup) Succeeded() string {
-	return ""
+	return c.succeeded
 }
 
 func (c *Checkup) FailureReason() string {
-	return ""
+	return c.failureReason
 }
 
 func (c *Checkup) StartTimestamp() time.Time {
-	return time.Time{}
+	return c.startTimestamp
+}
+
+func (c *Checkup) setStartTimestamp() {
+	c.startTimestamp = time.Now()
 }
 
 func (c *Checkup) CompletionTimestamp() time.Time {
-	return time.Time{}
+	return c.completionTimestamp
+}
+
+func (c *Checkup) setCompletionTimestamp() {
+	c.completionTimestamp = time.Now()
+}
+
+func (c *Checkup) setFailure(err error) {
+	c.succeeded = strconv.FormatBool(false)
+	c.failureReason = err.Error()
 }
 
 func concentrateErrors(errs []error) error {
