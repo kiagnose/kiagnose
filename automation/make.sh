@@ -88,7 +88,7 @@ if  [ -z "${OPT_LINT}" ] && [ -z "${OPT_UNIT_TEST}" ] && [ -z "${OPT_BUILD_CORE}
 fi
 
 if [ -n "${OPT_LINT}" ]; then
-    golangci_lint_version=v1.44.2
+    golangci_lint_version=v1.45.2
     if [ ! -f $(go env GOPATH)/bin/golangci-lint ]; then
         curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b $(go env GOPATH)/bin $golangci_lint_version
     fi
