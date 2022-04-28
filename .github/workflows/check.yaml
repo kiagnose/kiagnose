@@ -35,7 +35,7 @@ jobs:
         uses: golangci/golangci-lint-action@v3
         with:
           version: v1.45.2
-          args: kiagnose/... cmd/...
+          args: --timeout 3m --verbose kiagnose/... cmd/...
   unit-test:
     name: Unit Test
     runs-on: ubuntu-latest
