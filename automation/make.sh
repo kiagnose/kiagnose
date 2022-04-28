@@ -92,7 +92,7 @@ if [ -n "${OPT_LINT}" ]; then
     if [ ! -f $(go env GOPATH)/bin/golangci-lint ]; then
         curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b $(go env GOPATH)/bin $golangci_lint_version
     fi
-    golangci-lint run
+    golangci-lint run kiagnose/... cmd/...
 fi
 
 if [ -n "${OPT_UNIT_TEST}" ]; then
