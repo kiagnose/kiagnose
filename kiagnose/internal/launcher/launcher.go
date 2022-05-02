@@ -56,6 +56,7 @@ func (l Launcher) Run() (runErr error) {
 	}
 
 	defer func() {
+		statusData.Succeeded = false
 		statusData.CompletionTimestamp = time.Now()
 
 		if reportErr := l.reporter.Report(statusData); reportErr != nil {

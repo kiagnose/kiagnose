@@ -21,6 +21,7 @@ package reporter_test
 
 import (
 	"context"
+	"strconv"
 	"testing"
 	"time"
 
@@ -43,6 +44,11 @@ const (
 )
 
 func TestReportShouldSucceed(t *testing.T) {
+	type successTestCase struct {
+		description string
+		succeeded   bool
+	}
+
 	var (
 		fakeClient        *fake.Clientset
 		reporterUnderTest *reporter.Reporter
@@ -71,25 +77,40 @@ func TestReportShouldSucceed(t *testing.T) {
 		)
 	})
 
-	t.Run("on final report", func(t *testing.T) {
-		setup()
+	testCases := []successTestCase{
+		{
+			description: "on checkup successful completion",
+			succeeded:   true,
+		},
+		{
+			description: "on checkup failed completion",
+			succeeded:   false,
+		},
+	}
 
-		assert.NoError(t, reporterUnderTest.Report(checkupStatus))
+	for _, testCase := range testCases {
+		t.Run(testCase.description, func(t *testing.T) {
+			setup()
 
-		checkupStatus.CompletionTimestamp = checkupStatus.StartTimestamp.Add(time.Minute)
+			assert.NoError(t, reporterUnderTest.Report(checkupStatus))
 
-		assert.NoError(t, reporterUnderTest.Report(checkupStatus))
+			checkupStatus.Succeeded = testCase.succeeded
+			checkupStatus.CompletionTimestamp = checkupStatus.StartTimestamp.Add(time.Minute)
 
-		expectedReportData := map[string]string{
-			reporter.StartTimestampKey:      timestamp(checkupStatus.StartTimestamp),
-			reporter.CompletionTimestampKey: timestamp(checkupStatus.CompletionTimestamp),
-		}
+			assert.NoError(t, reporterUnderTest.Report(checkupStatus))
 
-		assert.Equal(t,
-			mergeMaps(checkupSpecData(), expectedReportData),
-			getCheckupData(t, fakeClient, configMapNamespace, configMapName),
-		)
-	})
+			expectedReportData := map[string]string{
+				reporter.StartTimestampKey:      timestamp(checkupStatus.StartTimestamp),
+				reporter.SucceededKey:           strconv.FormatBool(checkupStatus.Succeeded),
+				reporter.CompletionTimestampKey: timestamp(checkupStatus.CompletionTimestamp),
+			}
+
+			assert.Equal(t,
+				mergeMaps(checkupSpecData(), expectedReportData),
+				getCheckupData(t, fakeClient, configMapNamespace, configMapName),
+			)
+		})
+	}
 }
 
 func TestReportShouldFail(t *testing.T) {
