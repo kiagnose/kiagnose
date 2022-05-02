@@ -22,6 +22,7 @@ package status
 import "time"
 
 type Status struct {
+	Succeeded           bool
 	StartTimestamp      time.Time
 	CompletionTimestamp time.Time
 }
