@@ -40,3 +40,7 @@ func Create(client corev1client.CoreV1Interface, cm *corev1.ConfigMap) (*corev1.
 func Get(client corev1client.CoreV1Interface, namespace, name string) (*corev1.ConfigMap, error) {
 	return client.ConfigMaps(namespace).Get(context.Background(), name, metav1.GetOptions{})
 }
+
+func Update(client corev1client.CoreV1Interface, configMap *corev1.ConfigMap) (*corev1.ConfigMap, error) {
+	return client.ConfigMaps(configMap.Namespace).Update(context.Background(), configMap, metav1.UpdateOptions{})
+}

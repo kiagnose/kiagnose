@@ -26,81 +26,116 @@ import (
 	assert "github.com/stretchr/testify/require"
 
 	"github.com/kiagnose/kiagnose/kiagnose/internal/launcher"
+	"github.com/kiagnose/kiagnose/kiagnose/internal/status"
 )
 
 func TestLauncherShould(t *testing.T) {
 	t.Run("run successfully", func(t *testing.T) {
-		testLauncher := launcher.New(checkupStub{}, reporterStub{})
+		testLauncher := launcher.New(
+			checkupStub{},
+			&reporterStub{},
+		)
+
 		assert.NoError(t, testLauncher.Run())
 	})
 
-	t.Run("fail when report is failing", func(t *testing.T) {
-		testLauncher := launcher.New(checkupStub{}, reporterStub{failReport: errorReport})
-		assert.ErrorContains(t, testLauncher.Run(), errorReport.Error())
+	t.Run("fail when report on checkup start is failing", func(t *testing.T) {
+		testLauncher := launcher.New(
+			checkupStub{},
+			&reporterStub{reportErr: errorFailOnInitialReport},
+		)
+
+		assert.ErrorContains(t, testLauncher.Run(), errorFailOnInitialReport.Error())
+	})
+
+	t.Run("fail when report on checkup completion is failing", func(t *testing.T) {
+		testLauncher := launcher.New(
+			checkupStub{},
+			&reporterStub{reportErr: errorFailOnFinalReport},
+		)
+
+		assert.ErrorContains(t, testLauncher.Run(), errorFailOnFinalReport.Error())
 	})
 
 	t.Run("fail when setup is failing", func(t *testing.T) {
-		testLauncher := launcher.New(checkupStub{failSetup: errorSetup}, reporterStub{})
+		testLauncher := launcher.New(
+			checkupStub{failSetup: errorSetup},
+			&reporterStub{},
+		)
+
 		assert.ErrorContains(t, testLauncher.Run(), errorSetup.Error())
 	})
 
-	t.Run("fail when setup and report are failing", func(t *testing.T) {
+	t.Run("fail when setup and report on checkup completion are failing", func(t *testing.T) {
 		testLauncher := launcher.New(
 			checkupStub{failSetup: errorSetup},
-			reporterStub{failReport: errorReport},
+			&reporterStub{reportErr: errorFailOnFinalReport},
 		)
+
 		err := testLauncher.Run()
 		assert.ErrorContains(t, err, errorSetup.Error())
-		assert.ErrorContains(t, err, errorReport.Error())
+		assert.ErrorContains(t, err, errorFailOnFinalReport.Error())
 	})
 
 	t.Run("fail when run is failing", func(t *testing.T) {
-		testLauncher := launcher.New(checkupStub{failRun: errorRun}, reporterStub{})
+		testLauncher := launcher.New(
+			checkupStub{failRun: errorRun},
+			&reporterStub{},
+		)
+
 		assert.ErrorContains(t, testLauncher.Run(), errorRun.Error())
 	})
 
 	t.Run("fail when teardown is failing", func(t *testing.T) {
-		testLauncher := launcher.New(checkupStub{failTeardown: errorTeardown}, reporterStub{})
+		testLauncher := launcher.New(
+			checkupStub{failTeardown: errorTeardown},
+			&reporterStub{},
+		)
+
 		assert.ErrorContains(t, testLauncher.Run(), errorTeardown.Error())
 	})
 
-	t.Run("fail when run and report are failing", func(t *testing.T) {
+	t.Run("fail when run and report on checkup completion are failing", func(t *testing.T) {
 		testLauncher := launcher.New(
 			checkupStub{failRun: errorRun},
-			reporterStub{failReport: errorReport},
+			&reporterStub{reportErr: errorFailOnFinalReport},
 		)
+
 		err := testLauncher.Run()
 		assert.ErrorContains(t, err, errorRun.Error())
-		assert.ErrorContains(t, err, errorReport.Error())
+		assert.ErrorContains(t, err, errorFailOnFinalReport.Error())
 	})
 
-	t.Run("fail when teardown and report are failing", func(t *testing.T) {
+	t.Run("fail when teardown and report on checkup completion are failing", func(t *testing.T) {
 		testLauncher := launcher.New(
 			checkupStub{failTeardown: errorTeardown},
-			reporterStub{failReport: errorReport},
+			&reporterStub{reportErr: errorFailOnFinalReport},
 		)
+
 		err := testLauncher.Run()
 		assert.ErrorContains(t, err, errorTeardown.Error())
-		assert.ErrorContains(t, err, errorReport.Error())
+		assert.ErrorContains(t, err, errorFailOnFinalReport.Error())
 	})
 
-	t.Run("fail when run, teardown and report are failing", func(t *testing.T) {
+	t.Run("fail when run, teardown and report on checkup completion are failing", func(t *testing.T) {
 		testLauncher := launcher.New(
 			checkupStub{failRun: errorRun, failTeardown: errorTeardown},
-			reporterStub{failReport: errorReport},
+			&reporterStub{reportErr: errorFailOnFinalReport},
 		)
+
 		err := testLauncher.Run()
 		assert.ErrorContains(t, err, errorRun.Error())
 		assert.ErrorContains(t, err, errorTeardown.Error())
-		assert.ErrorContains(t, err, errorReport.Error())
+		assert.ErrorContains(t, err, errorFailOnFinalReport.Error())
 	})
 }
 
 var (
-	errorSetup    = errors.New("setup error")
-	errorRun      = errors.New("run error")
-	errorTeardown = errors.New("teardown error")
-	errorReport   = errors.New("report error")
+	errorSetup               = errors.New("setup error")
+	errorRun                 = errors.New("run error")
+	errorTeardown            = errors.New("teardown error")
+	errorFailOnInitialReport = errors.New("initial report error")
+	errorFailOnFinalReport   = errors.New("final report error")
 )
 
 type checkupStub struct {
@@ -122,9 +157,20 @@ func (s checkupStub) Teardown() error {
 }
 
 type reporterStub struct {
-	failReport error
+	reportErr   error
+	reportCount int
 }
 
-func (r reporterStub) Report() error {
-	return r.failReport
+func (r *reporterStub) Report(_ status.Status) error {
+	r.reportCount++
+	if r.reportCount > 2 {
+		panic("Report was called more than twice")
+	}
+
+	if r.reportCount == 1 && r.reportErr == errorFailOnInitialReport ||
+		r.reportCount == 2 && r.reportErr == errorFailOnFinalReport {
+		return r.reportErr
+	}
+
+	return nil
 }
