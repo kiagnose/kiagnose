@@ -34,6 +34,7 @@ import (
 
 const (
 	SucceededKey           = "status.succeeded"
+	FailureReasonKey       = "status.failureReason"
 	StartTimestampKey      = "status.startTimestamp"
 	CompletionTimestampKey = "status.completionTimestamp"
 )
@@ -78,6 +79,7 @@ func (r *Reporter) Report(statusData status.Status) error {
 	if !statusData.CompletionTimestamp.IsZero() {
 		r.configMap.Data[CompletionTimestampKey] = statusData.CompletionTimestamp.Format(time.RFC3339)
 		r.configMap.Data[SucceededKey] = strconv.FormatBool(statusData.Succeeded)
+		r.configMap.Data[FailureReasonKey] = statusData.FailureReason
 	}
 
 	updatedConfigMap, err := configmap.Update(r.client.CoreV1(), r.configMap)
