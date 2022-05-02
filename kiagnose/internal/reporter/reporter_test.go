@@ -75,10 +75,14 @@ func TestReportShouldSucceed(t *testing.T) {
 		setup()
 
 		assert.NoError(t, reporterUnderTest.Report(checkupStatus))
+
+		checkupStatus.CompletionTimestamp = checkupStatus.StartTimestamp.Add(time.Minute)
+
 		assert.NoError(t, reporterUnderTest.Report(checkupStatus))
 
 		expectedReportData := map[string]string{
-			reporter.StartTimestampKey: timestamp(checkupStatus.StartTimestamp),
+			reporter.StartTimestampKey:      timestamp(checkupStatus.StartTimestamp),
+			reporter.CompletionTimestampKey: timestamp(checkupStatus.CompletionTimestamp),
 		}
 
 		assert.Equal(t,
