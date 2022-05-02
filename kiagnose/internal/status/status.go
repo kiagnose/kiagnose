@@ -22,5 +22,6 @@ package status
 import "time"
 
 type Status struct {
-	StartTimestamp time.Time
+	StartTimestamp      time.Time
+	CompletionTimestamp time.Time
 }

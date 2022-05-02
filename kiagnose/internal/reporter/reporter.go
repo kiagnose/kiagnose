@@ -31,7 +31,10 @@ import (
 	"github.com/kiagnose/kiagnose/kiagnose/internal/status"
 )
 
-const StartTimestampKey = "status.startTimestamp"
+const (
+	StartTimestampKey      = "status.startTimestamp"
+	CompletionTimestampKey = "status.completionTimestamp"
+)
 
 var ErrConfigMapDataIsNil = errors.New("configMap Data is nil")
 
@@ -68,6 +71,10 @@ func (r *Reporter) Report(statusData status.Status) error {
 
 	if !statusData.StartTimestamp.IsZero() {
 		r.configMap.Data[StartTimestampKey] = statusData.StartTimestamp.Format(time.RFC3339)
+	}
+
+	if !statusData.CompletionTimestamp.IsZero() {
+		r.configMap.Data[CompletionTimestampKey] = statusData.CompletionTimestamp.Format(time.RFC3339)
 	}
 
 	updatedConfigMap, err := configmap.Update(r.client.CoreV1(), r.configMap)
