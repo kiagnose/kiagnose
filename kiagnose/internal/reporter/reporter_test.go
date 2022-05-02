@@ -45,8 +45,9 @@ const (
 
 func TestReportShouldSucceed(t *testing.T) {
 	type successTestCase struct {
-		description string
-		succeeded   bool
+		description   string
+		succeeded     bool
+		failureReason string
 	}
 
 	var (
@@ -79,12 +80,14 @@ func TestReportShouldSucceed(t *testing.T) {
 
 	testCases := []successTestCase{
 		{
-			description: "on checkup successful completion",
-			succeeded:   true,
+			description:   "on checkup successful completion",
+			succeeded:     true,
+			failureReason: "",
 		},
 		{
-			description: "on checkup failed completion",
-			succeeded:   false,
+			description:   "on checkup failed completion",
+			succeeded:     false,
+			failureReason: "some reason",
 		},
 	}
 
@@ -95,6 +98,7 @@ func TestReportShouldSucceed(t *testing.T) {
 			assert.NoError(t, reporterUnderTest.Report(checkupStatus))
 
 			checkupStatus.Succeeded = testCase.succeeded
+			checkupStatus.FailureReason = testCase.failureReason
 			checkupStatus.CompletionTimestamp = checkupStatus.StartTimestamp.Add(time.Minute)
 
 			assert.NoError(t, reporterUnderTest.Report(checkupStatus))
@@ -102,6 +106,7 @@ func TestReportShouldSucceed(t *testing.T) {
 			expectedReportData := map[string]string{
 				reporter.StartTimestampKey:      timestamp(checkupStatus.StartTimestamp),
 				reporter.SucceededKey:           strconv.FormatBool(checkupStatus.Succeeded),
+				reporter.FailureReasonKey:       checkupStatus.FailureReason,
 				reporter.CompletionTimestampKey: timestamp(checkupStatus.CompletionTimestamp),
 			}
 

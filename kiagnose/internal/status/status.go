@@ -23,6 +23,7 @@ import "time"
 
 type Status struct {
 	Succeeded           bool
+	FailureReason       string
 	StartTimestamp      time.Time
 	CompletionTimestamp time.Time
 }
