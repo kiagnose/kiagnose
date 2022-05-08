@@ -38,6 +38,7 @@ import (
 	"github.com/kiagnose/kiagnose/kiagnose/internal/config"
 	"github.com/kiagnose/kiagnose/kiagnose/internal/configmap"
 	"github.com/kiagnose/kiagnose/kiagnose/internal/rbac"
+	"github.com/kiagnose/kiagnose/kiagnose/internal/results"
 )
 
 type client interface {
@@ -291,6 +292,10 @@ func (c *Checkup) Run() error {
 	}
 
 	return nil
+}
+
+func (c *Checkup) Results() (results.Results, error) {
+	return results.ReadFromConfigMap(c.client.CoreV1(), c.resultConfigMap.Namespace, c.resultConfigMap.Name)
 }
 
 func (c *Checkup) SetTeardownTimeout(duration time.Duration) {
