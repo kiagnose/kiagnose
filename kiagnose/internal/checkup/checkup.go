@@ -243,11 +243,11 @@ func NewCheckupJob(name, namespaceName, serviceAccountName, image string, active
 // by deleting the Namespace and eventually all the objects inside it
 // https://kubernetes.io/docs/concepts/architecture/garbage-collection/#background-deletion
 func (c *Checkup) Setup() error {
-	const errMessage = "checkup setup failed"
+	const errPrefix = "setup"
 	var err error
 
 	if c.namespace, err = namespace.Create(c.client.CoreV1(), c.namespace); err != nil {
-		return fmt.Errorf("%s: %v", errMessage, err)
+		return fmt.Errorf("%s: %v", errPrefix, err)
 	}
 	defer func() {
 		if err != nil {
@@ -256,23 +256,23 @@ func (c *Checkup) Setup() error {
 	}()
 
 	if c.serviceAccount, err = rbac.CreateServiceAccount(c.client.CoreV1(), c.serviceAccount); err != nil {
-		return fmt.Errorf("%s: %v", errMessage, err)
+		return fmt.Errorf("%s: %v", errPrefix, err)
 	}
 
 	if c.resultConfigMap, err = configmap.Create(c.client.CoreV1(), c.resultConfigMap); err != nil {
-		return fmt.Errorf("%s: %v", errMessage, err)
+		return fmt.Errorf("%s: %v", errPrefix, err)
 	}
 
 	if c.roles, err = rbac.CreateRoles(c.client.RbacV1(), c.roles); err != nil {
-		return fmt.Errorf("%s: %v", errMessage, err)
+		return fmt.Errorf("%s: %v", errPrefix, err)
 	}
 
 	if c.roleBindings, err = rbac.CreateRoleBindings(c.client.RbacV1(), c.roleBindings); err != nil {
-		return fmt.Errorf("%s: %v", errMessage, err)
+		return fmt.Errorf("%s: %v", errPrefix, err)
 	}
 
 	if c.clusterRoleBindings, err = rbac.CreateClusterRoleBindings(c.client.RbacV1(), c.clusterRoleBindings, c.teardownTimeout); err != nil {
-		return fmt.Errorf("%s: %v", errMessage, err)
+		return fmt.Errorf("%s: %v", errPrefix, err)
 	}
 
 	return nil
