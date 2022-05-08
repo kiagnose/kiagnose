@@ -95,9 +95,10 @@ func TestReadFromConfigMapShouldSucceed(t *testing.T) {
 
 	for _, testCase := range testCases {
 		t.Run(testCase.description, func(t *testing.T) {
-			fakeClient := newFakeClientWithObjects(configMapNamespace, configMapName, testCase.configMapData, testCase.clusterRoles, testCase.roles)
+			userSuppliedConfigMap := newConfigMap(configMapNamespace, configMapName, testCase.configMapData)
+			fakeClient := newFakeClientWithObjects(userSuppliedConfigMap, testCase.clusterRoles, testCase.roles)
 
-			actualConfig, err := config.ReadFromConfigMap(fakeClient, configMapNamespace, configMapName)
+			actualConfig, err := config.ReadFromConfigMap(fakeClient, userSuppliedConfigMap)
 			assert.NoError(t, err)
 
 			sort.Slice(actualConfig.EnvVars, func(i, j int) bool {
@@ -110,12 +111,6 @@ func TestReadFromConfigMapShouldSucceed(t *testing.T) {
 }
 
 func TestReadFromConfigMapShouldFail(t *testing.T) {
-	t.Run("when ConfigMap doesn't exist", func(t *testing.T) {
-		fakeClient := fake.NewSimpleClientset()
-		_, err := config.ReadFromConfigMap(fakeClient, configMapNamespace, configMapName)
-		assert.ErrorContains(t, err, "not found")
-	})
-
 	type loadFailureTestCase struct {
 		description   string
 		configMapData map[string]string
@@ -162,17 +157,17 @@ func TestReadFromConfigMapShouldFail(t *testing.T) {
 
 	for _, testCase := range failureTestCases {
 		t.Run(testCase.description, func(t *testing.T) {
-			fakeClient := fake.NewSimpleClientset(newConfigMap(configMapNamespace, configMapName, testCase.configMapData))
+			userSuppliedConfigMap := newConfigMap(configMapNamespace, configMapName, testCase.configMapData)
+			fakeClient := fake.NewSimpleClientset(userSuppliedConfigMap)
 
-			_, err := config.ReadFromConfigMap(fakeClient, configMapNamespace, configMapName)
+			_, err := config.ReadFromConfigMap(fakeClient, userSuppliedConfigMap)
 			assert.ErrorContains(t, err, testCase.expectedError)
 		})
 	}
 }
 
-func newFakeClientWithObjects(namespace, name string,
-	configMapData map[string]string, clusterRoles []*rbacv1.ClusterRole, roles []*rbacv1.Role) *fake.Clientset {
-	client := fake.NewSimpleClientset(newConfigMap(namespace, name, configMapData))
+func newFakeClientWithObjects(configMap *corev1.ConfigMap, clusterRoles []*rbacv1.ClusterRole, roles []*rbacv1.Role) *fake.Clientset {
+	client := fake.NewSimpleClientset(configMap)
 
 	for _, clusterRole := range clusterRoles {
 		_, err := client.RbacV1().ClusterRoles().Create(context.Background(), clusterRole, metav1.CreateOptions{})

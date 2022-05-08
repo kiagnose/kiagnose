@@ -28,7 +28,6 @@ import (
 
 	"k8s.io/client-go/kubernetes"
 
-	"github.com/kiagnose/kiagnose/kiagnose/internal/configmap"
 	"github.com/kiagnose/kiagnose/kiagnose/internal/rbac"
 )
 
@@ -40,15 +39,10 @@ type Config struct {
 	Roles        []*rbacv1.Role
 }
 
-func ReadFromConfigMap(client kubernetes.Interface, configMapNamespace, configMapName string) (*Config, error) {
-	configMap, err := configmap.Get(client.CoreV1(), configMapNamespace, configMapName)
-	if err != nil {
-		return nil, err
-	}
-
+func ReadFromConfigMap(client kubernetes.Interface, configMap *corev1.ConfigMap) (*Config, error) {
 	parser := newConfigMapParser(configMap.Data)
-	err = parser.Parse()
-	if err != nil {
+
+	if err := parser.Parse(); err != nil {
 		return nil, err
 	}
 

@@ -23,6 +23,7 @@ import (
 	"github.com/kiagnose/kiagnose/kiagnose/internal/checkup"
 	"github.com/kiagnose/kiagnose/kiagnose/internal/client"
 	"github.com/kiagnose/kiagnose/kiagnose/internal/config"
+	"github.com/kiagnose/kiagnose/kiagnose/internal/configmap"
 	"github.com/kiagnose/kiagnose/kiagnose/internal/launcher"
 	"github.com/kiagnose/kiagnose/kiagnose/internal/reporter"
 )
@@ -38,7 +39,12 @@ func Run(env map[string]string) error {
 		return err
 	}
 
-	checkupConfig, err := config.ReadFromConfigMap(c, configMapNamespace, configMapName)
+	configMap, err := configmap.Get(c.CoreV1(), configMapNamespace, configMapName)
+	if err != nil {
+		return err
+	}
+
+	checkupConfig, err := config.ReadFromConfigMap(c, configMap)
 	if err != nil {
 		return err
 	}
