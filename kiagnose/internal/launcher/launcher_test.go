@@ -46,6 +46,11 @@ const (
 )
 
 func TestLauncherRunWithResultsWhen(t *testing.T) {
+	const (
+		resultsKey1   = "result1"
+		resultsValue1 = "result 1 value"
+	)
+
 	type resultsTestCase struct {
 		description  string
 		inputResults results.Results
@@ -53,12 +58,18 @@ func TestLauncherRunWithResultsWhen(t *testing.T) {
 
 	testCases := []resultsTestCase{
 		{
-			description:  "checkup runs successfully",
-			inputResults: results.Results{Succeeded: true},
+			description: "checkup runs successfully",
+			inputResults: results.Results{
+				Succeeded: true,
+				Results:   map[string]string{resultsKey1: resultsValue1},
+			},
 		},
 		{
-			description:  "checkup fails",
-			inputResults: results.Results{FailureReason: "some reason"},
+			description: "checkup fails",
+			inputResults: results.Results{
+				FailureReason: "some reason",
+				Results:       map[string]string{resultsKey1: resultsValue1},
+			},
 		},
 	}
 
@@ -79,6 +90,11 @@ func TestLauncherRunWithResultsWhen(t *testing.T) {
 			expectedData := checkupSpecData()
 			expectedData[reporter.SucceededKey] = strconv.FormatBool(testCase.inputResults.Succeeded)
 			expectedData[reporter.FailureReasonKey] = testCase.inputResults.FailureReason
+
+			for k, v := range testCase.inputResults.Results {
+				expectedData[reporter.ResultsPrefix+k] = v
+			}
+
 			zeroTimestamps(expectedData)
 
 			assert.Equal(t, expectedData, actualCheckupData)

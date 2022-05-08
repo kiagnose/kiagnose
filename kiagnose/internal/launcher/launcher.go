@@ -92,6 +92,7 @@ func (l Launcher) Run() (runErr error) {
 		} else {
 			statusData.Succeeded = checkupResults.Succeeded
 			statusData.FailureReason = checkupResults.FailureReason
+			statusData.Results = checkupResults.Results
 		}
 
 		if teardownErr := l.checkup.Teardown(); teardownErr != nil {
