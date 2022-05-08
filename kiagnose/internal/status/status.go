@@ -24,6 +24,7 @@ import "time"
 type Status struct {
 	Succeeded           bool
 	FailureReason       string
+	Results             map[string]string
 	StartTimestamp      time.Time
 	CompletionTimestamp time.Time
 }

@@ -22,6 +22,7 @@ package results
 import (
 	"errors"
 	"strconv"
+	"strings"
 
 	corev1client "k8s.io/client-go/kubernetes/typed/core/v1"
 
@@ -31,6 +32,7 @@ import (
 const (
 	SucceededKey     = "status.succeeded"
 	FailureReasonKey = "status.failureReason"
+	ResultsPrefix    = "status.result."
 )
 
 var (
@@ -43,6 +45,7 @@ var (
 type Results struct {
 	Succeeded     bool
 	FailureReason string
+	Results       map[string]string
 }
 
 func ReadFromConfigMap(client corev1client.CoreV1Interface, configMapNamespace, configMapName string) (Results, error) {
@@ -64,6 +67,8 @@ func ReadFromConfigMap(client corev1client.CoreV1Interface, configMapNamespace, 
 	if resultsData.FailureReason, err = parseFailureReasonField(configMap.Data); err != nil {
 		return resultsData, err
 	}
+
+	resultsData.Results = parseResultsField(configMap.Data)
 
 	return resultsData, nil
 }
@@ -89,4 +94,17 @@ func parseFailureReasonField(data map[string]string) (string, error) {
 	}
 
 	return failureReason, nil
+}
+
+func parseResultsField(data map[string]string) map[string]string {
+	results := map[string]string{}
+
+	for k, v := range data {
+		if strings.HasPrefix(k, ResultsPrefix) {
+			trimmedKey := strings.TrimPrefix(k, ResultsPrefix)
+			results[trimmedKey] = v
+		}
+	}
+
+	return results
 }

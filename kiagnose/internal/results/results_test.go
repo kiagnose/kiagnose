@@ -47,6 +47,12 @@ func TestReadResultsShouldSucceedWhen(t *testing.T) {
 	const (
 		emptyFailureReason = ""
 		testFailureReason  = "some reason"
+		resultsKey1        = "result1"
+		resultsValue1      = "result 1 value"
+		resultsKey2        = "result2"
+		resultsValue2      = "result 2 value"
+		resultsKey3        = "result3"
+		resultsValue3      = ""
 	)
 
 	testCases := []successTestCase{
@@ -59,6 +65,26 @@ func TestReadResultsShouldSucceedWhen(t *testing.T) {
 			expectedResults: results.Results{
 				Succeeded:     true,
 				FailureReason: emptyFailureReason,
+				Results:       map[string]string{},
+			},
+		},
+		{
+			description: "checkup succeeds with results",
+			input: map[string]string{
+				results.SucceededKey:                strconv.FormatBool(true),
+				results.FailureReasonKey:            emptyFailureReason,
+				results.ResultsPrefix + resultsKey1: resultsValue1,
+				results.ResultsPrefix + resultsKey2: resultsValue2,
+				results.ResultsPrefix + resultsKey3: resultsValue3,
+			},
+			expectedResults: results.Results{
+				Succeeded:     true,
+				FailureReason: emptyFailureReason,
+				Results: map[string]string{
+					resultsKey1: resultsValue1,
+					resultsKey2: resultsValue2,
+					resultsKey3: resultsValue3,
+				},
 			},
 		},
 		{
@@ -70,6 +96,26 @@ func TestReadResultsShouldSucceedWhen(t *testing.T) {
 			expectedResults: results.Results{
 				Succeeded:     false,
 				FailureReason: testFailureReason,
+				Results:       map[string]string{},
+			},
+		},
+		{
+			description: "checkup fails with results",
+			input: map[string]string{
+				results.SucceededKey:                strconv.FormatBool(false),
+				results.FailureReasonKey:            testFailureReason,
+				results.ResultsPrefix + resultsKey1: resultsValue1,
+				results.ResultsPrefix + resultsKey2: resultsValue2,
+				results.ResultsPrefix + resultsKey3: resultsValue3,
+			},
+			expectedResults: results.Results{
+				Succeeded:     false,
+				FailureReason: testFailureReason,
+				Results: map[string]string{
+					resultsKey1: resultsValue1,
+					resultsKey2: resultsValue2,
+					resultsKey3: resultsValue3,
+				},
 			},
 		},
 	}
