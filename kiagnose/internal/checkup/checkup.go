@@ -298,6 +298,7 @@ func (c *Checkup) SetTeardownTimeout(duration time.Duration) {
 }
 
 func (c *Checkup) Teardown() error {
+	const errPrefix = "teardown"
 	var errs []error
 
 	if err := rbac.DeleteClusterRoleBindings(c.client.RbacV1(), c.clusterRoleBindings, c.teardownTimeout); err != nil {
@@ -309,7 +310,7 @@ func (c *Checkup) Teardown() error {
 	}
 
 	if len(errs) > 0 {
-		return fmt.Errorf("failed to teardown checkup: %v", concentrateErrors(errs))
+		return fmt.Errorf("%s: %v", errPrefix, concentrateErrors(errs))
 	}
 
 	return nil
