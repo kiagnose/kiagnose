@@ -36,6 +36,7 @@ import (
 	"github.com/kiagnose/kiagnose/kiagnose/internal/configmap"
 	"github.com/kiagnose/kiagnose/kiagnose/internal/launcher"
 	"github.com/kiagnose/kiagnose/kiagnose/internal/reporter"
+	"github.com/kiagnose/kiagnose/kiagnose/internal/results"
 	"github.com/kiagnose/kiagnose/kiagnose/internal/status"
 )
 
@@ -47,8 +48,9 @@ const (
 func TestLauncherRunsSuccessfully(t *testing.T) {
 	fakeClient := fake.NewSimpleClientset(newConfigMap(checkupSpecData()))
 
+	inputResults := results.Results{Succeeded: true}
 	testLauncher := launcher.New(
-		checkupStub{},
+		&checkupStub{results: inputResults},
 		reporter.New(fakeClient, configMapNamespace, configMapName),
 	)
 
@@ -58,8 +60,8 @@ func TestLauncherRunsSuccessfully(t *testing.T) {
 	zeroTimestamps(actualCheckupData)
 
 	expectedData := checkupSpecData()
-	expectedData[reporter.SucceededKey] = strconv.FormatBool(true)
-	expectedData[reporter.FailureReasonKey] = ""
+	expectedData[reporter.SucceededKey] = strconv.FormatBool(inputResults.Succeeded)
+	expectedData[reporter.FailureReasonKey] = inputResults.FailureReason
 	zeroTimestamps(expectedData)
 
 	assert.Equal(t, expectedData, actualCheckupData)
@@ -84,6 +86,11 @@ func TestLauncherRunShouldFailWithReportWhen(t *testing.T) {
 			expectedError: errorRun,
 		},
 		{
+			description:   "results is failing",
+			inputCheckup:  checkupStub{failResults: errorResults},
+			expectedError: errorResults,
+		},
+		{
 			description:   "teardown is failing",
 			inputCheckup:  checkupStub{failTeardown: errorTeardown},
 			expectedError: errorTeardown,
@@ -95,7 +102,7 @@ func TestLauncherRunShouldFailWithReportWhen(t *testing.T) {
 			fakeClient := fake.NewSimpleClientset(newConfigMap(checkupSpecData()))
 
 			testLauncher := launcher.New(
-				testCase.inputCheckup,
+				&testCase.inputCheckup,
 				reporter.New(fakeClient, configMapNamespace, configMapName),
 			)
 
@@ -119,7 +126,7 @@ func TestLauncherRunShouldFailWithoutReportWhen(t *testing.T) {
 		fakeClient := fake.NewSimpleClientset()
 
 		testLauncher := launcher.New(
-			checkupStub{},
+			&checkupStub{},
 			reporter.New(fakeClient, configMapNamespace, configMapName),
 		)
 
@@ -128,7 +135,7 @@ func TestLauncherRunShouldFailWithoutReportWhen(t *testing.T) {
 
 	t.Run("report on checkup completion is failing", func(t *testing.T) {
 		testLauncher := launcher.New(
-			checkupStub{},
+			&checkupStub{},
 			&reporterStub{reportErr: errorFailOnFinalReport},
 		)
 
@@ -137,7 +144,7 @@ func TestLauncherRunShouldFailWithoutReportWhen(t *testing.T) {
 
 	t.Run("setup and report on checkup completion are failing", func(t *testing.T) {
 		testLauncher := launcher.New(
-			checkupStub{failSetup: errorSetup},
+			&checkupStub{failSetup: errorSetup},
 			&reporterStub{reportErr: errorFailOnFinalReport},
 		)
 
@@ -148,7 +155,7 @@ func TestLauncherRunShouldFailWithoutReportWhen(t *testing.T) {
 
 	t.Run("run and report on checkup completion are failing", func(t *testing.T) {
 		testLauncher := launcher.New(
-			checkupStub{failRun: errorRun},
+			&checkupStub{failRun: errorRun},
 			&reporterStub{reportErr: errorFailOnFinalReport},
 		)
 
@@ -159,7 +166,7 @@ func TestLauncherRunShouldFailWithoutReportWhen(t *testing.T) {
 
 	t.Run("teardown and report on checkup completion are failing", func(t *testing.T) {
 		testLauncher := launcher.New(
-			checkupStub{failTeardown: errorTeardown},
+			&checkupStub{failTeardown: errorTeardown},
 			&reporterStub{reportErr: errorFailOnFinalReport},
 		)
 
@@ -170,7 +177,7 @@ func TestLauncherRunShouldFailWithoutReportWhen(t *testing.T) {
 
 	t.Run("run, teardown and report on checkup completion are failing", func(t *testing.T) {
 		testLauncher := launcher.New(
-			checkupStub{failRun: errorRun, failTeardown: errorTeardown},
+			&checkupStub{failRun: errorRun, failTeardown: errorTeardown},
 			&reporterStub{reportErr: errorFailOnFinalReport},
 		)
 
@@ -184,6 +191,7 @@ func TestLauncherRunShouldFailWithoutReportWhen(t *testing.T) {
 var (
 	errorSetup               = errors.New("setup error")
 	errorRun                 = errors.New("run error")
+	errorResults             = errors.New("results error")
 	errorTeardown            = errors.New("teardown error")
 	errorFailOnInitialReport = errors.New("initial report error")
 	errorFailOnFinalReport   = errors.New("final report error")
@@ -192,18 +200,28 @@ var (
 type checkupStub struct {
 	failSetup    error
 	failRun      error
+	failResults  error
 	failTeardown error
+	results      results.Results
 }
 
-func (s checkupStub) Setup() error {
+func (s *checkupStub) Setup() error {
 	return s.failSetup
 }
 
-func (s checkupStub) Run() error {
+func (s *checkupStub) Run() error {
 	return s.failRun
 }
 
-func (s checkupStub) Teardown() error {
+func (s *checkupStub) Results() (results.Results, error) {
+	if s.failResults != nil {
+		return s.results, s.failResults
+	}
+
+	return s.results, nil
+}
+
+func (s *checkupStub) Teardown() error {
 	return s.failTeardown
 }
 

@@ -23,12 +23,14 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/kiagnose/kiagnose/kiagnose/internal/results"
 	"github.com/kiagnose/kiagnose/kiagnose/internal/status"
 )
 
 type workload interface {
 	Setup() error
 	Run() error
+	Results() (results.Results, error)
 	Teardown() error
 }
 
@@ -56,10 +58,13 @@ func (l Launcher) Run() (runErr error) {
 	}
 
 	defer func() {
-		if runErr == nil {
-			statusData.Succeeded = true
-		} else {
-			statusData.FailureReason = runErr.Error()
+		if runErr != nil {
+			statusData.Succeeded = false
+			if statusData.FailureReason != "" {
+				statusData.FailureReason = fmt.Sprintf("%s, %v", statusData.FailureReason, runErr)
+			} else {
+				statusData.FailureReason = runErr.Error()
+			}
 		}
 
 		statusData.CompletionTimestamp = time.Now()
@@ -78,6 +83,17 @@ func (l Launcher) Run() (runErr error) {
 	}
 
 	defer func() {
+		if checkupResults, resultsErr := l.checkup.Results(); resultsErr != nil {
+			if runErr != nil {
+				runErr = fmt.Errorf("%v, %v", runErr, resultsErr)
+			} else {
+				runErr = resultsErr
+			}
+		} else {
+			statusData.Succeeded = checkupResults.Succeeded
+			statusData.FailureReason = checkupResults.FailureReason
+		}
+
 		if teardownErr := l.checkup.Teardown(); teardownErr != nil {
 			if runErr != nil {
 				runErr = fmt.Errorf("%v, %v", runErr, teardownErr)
