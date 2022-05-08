@@ -279,14 +279,15 @@ func (c *Checkup) Setup() error {
 }
 
 func (c *Checkup) Run() error {
+	const errPrefix = "run"
 	var err error
 
 	if c.job, err = job.Create(c.client.BatchV1(), c.job); err != nil {
-		return err
+		return fmt.Errorf("%s: %v", errPrefix, err)
 	}
 
 	if c.job, err = job.WaitForJobToFinish(c.client.BatchV1(), c.job, c.jobTimeout); err != nil {
-		return err
+		return fmt.Errorf("%s: %v", errPrefix, err)
 	}
 
 	return nil
