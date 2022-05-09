@@ -29,16 +29,16 @@ import (
 	"github.com/kiagnose/kiagnose/kiagnose/internal/status"
 )
 
+func TestLauncherRunsSuccessfully(t *testing.T) {
+	testLauncher := launcher.New(
+		checkupStub{},
+		&reporterStub{},
+	)
+
+	assert.NoError(t, testLauncher.Run())
+}
+
 func TestLauncherShould(t *testing.T) {
-	t.Run("run successfully", func(t *testing.T) {
-		testLauncher := launcher.New(
-			checkupStub{},
-			&reporterStub{},
-		)
-
-		assert.NoError(t, testLauncher.Run())
-	})
-
 	t.Run("fail when report on checkup start is failing", func(t *testing.T) {
 		testLauncher := launcher.New(
 			checkupStub{},
