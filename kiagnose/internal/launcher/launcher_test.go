@@ -45,26 +45,45 @@ const (
 	configMapName      = "checkup1"
 )
 
-func TestLauncherRunsSuccessfully(t *testing.T) {
-	fakeClient := fake.NewSimpleClientset(newConfigMap(checkupSpecData()))
+func TestLauncherRunWithResultsWhen(t *testing.T) {
+	type resultsTestCase struct {
+		description  string
+		inputResults results.Results
+	}
 
-	inputResults := results.Results{Succeeded: true}
-	testLauncher := launcher.New(
-		&checkupStub{results: inputResults},
-		reporter.New(fakeClient, configMapNamespace, configMapName),
-	)
+	testCases := []resultsTestCase{
+		{
+			description:  "checkup runs successfully",
+			inputResults: results.Results{Succeeded: true},
+		},
+		{
+			description:  "checkup fails",
+			inputResults: results.Results{FailureReason: "some reason"},
+		},
+	}
 
-	assert.NoError(t, testLauncher.Run())
+	for _, testCase := range testCases {
+		t.Run(testCase.description, func(t *testing.T) {
+			fakeClient := fake.NewSimpleClientset(newConfigMap(checkupSpecData()))
 
-	actualCheckupData := getCheckupData(t, fakeClient, configMapNamespace, configMapName)
-	zeroTimestamps(actualCheckupData)
+			testLauncher := launcher.New(
+				&checkupStub{results: testCase.inputResults},
+				reporter.New(fakeClient, configMapNamespace, configMapName),
+			)
 
-	expectedData := checkupSpecData()
-	expectedData[reporter.SucceededKey] = strconv.FormatBool(inputResults.Succeeded)
-	expectedData[reporter.FailureReasonKey] = inputResults.FailureReason
-	zeroTimestamps(expectedData)
+			assert.NoError(t, testLauncher.Run())
 
-	assert.Equal(t, expectedData, actualCheckupData)
+			actualCheckupData := getCheckupData(t, fakeClient, configMapNamespace, configMapName)
+			zeroTimestamps(actualCheckupData)
+
+			expectedData := checkupSpecData()
+			expectedData[reporter.SucceededKey] = strconv.FormatBool(testCase.inputResults.Succeeded)
+			expectedData[reporter.FailureReasonKey] = testCase.inputResults.FailureReason
+			zeroTimestamps(expectedData)
+
+			assert.Equal(t, expectedData, actualCheckupData)
+		})
+	}
 }
 
 func TestLauncherRunShouldFailWithReportWhen(t *testing.T) {
