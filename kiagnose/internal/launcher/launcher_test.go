@@ -21,21 +21,48 @@ package launcher_test
 
 import (
 	"errors"
+	"strconv"
 	"testing"
+	"time"
 
 	assert "github.com/stretchr/testify/require"
 
+	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/client-go/kubernetes"
+	"k8s.io/client-go/kubernetes/fake"
+
+	"github.com/kiagnose/kiagnose/kiagnose/internal/config"
+	"github.com/kiagnose/kiagnose/kiagnose/internal/configmap"
 	"github.com/kiagnose/kiagnose/kiagnose/internal/launcher"
+	"github.com/kiagnose/kiagnose/kiagnose/internal/reporter"
 	"github.com/kiagnose/kiagnose/kiagnose/internal/status"
 )
 
+const (
+	configMapNamespace = "kiagnose"
+	configMapName      = "checkup1"
+)
+
 func TestLauncherRunsSuccessfully(t *testing.T) {
+	fakeClient := fake.NewSimpleClientset(newConfigMap(checkupSpecData()))
+
 	testLauncher := launcher.New(
 		checkupStub{},
-		&reporterStub{},
+		reporter.New(fakeClient, configMapNamespace, configMapName),
 	)
 
 	assert.NoError(t, testLauncher.Run())
+
+	actualCheckupData := getCheckupData(t, fakeClient, configMapNamespace, configMapName)
+	zeroTimestamps(actualCheckupData)
+
+	expectedData := checkupSpecData()
+	expectedData[reporter.SucceededKey] = strconv.FormatBool(true)
+	expectedData[reporter.FailureReasonKey] = ""
+	zeroTimestamps(expectedData)
+
+	assert.Equal(t, expectedData, actualCheckupData)
 }
 
 func TestLauncherRunShouldFailWithReportWhen(t *testing.T) {
@@ -175,4 +202,35 @@ func (r *reporterStub) Report(_ status.Status) error {
 	}
 
 	return nil
+}
+
+func checkupSpecData() map[string]string {
+	const (
+		testImageValue   = "mycheckup:v0.1.0"
+		testTimeoutValue = "1m"
+	)
+
+	return map[string]string{config.ImageKey: testImageValue, config.TimeoutKey: testTimeoutValue}
+}
+
+func newConfigMap(data map[string]string) *corev1.ConfigMap {
+	return &corev1.ConfigMap{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      configMapName,
+			Namespace: configMapNamespace,
+		},
+		Data: data,
+	}
+}
+
+func getCheckupData(t *testing.T, client kubernetes.Interface, configMapNamespace, configMapName string) map[string]string {
+	configMap, err := configmap.Get(client.CoreV1(), configMapNamespace, configMapName)
+	assert.NoError(t, err)
+
+	return configMap.Data
+}
+
+func zeroTimestamps(data map[string]string) {
+	data[reporter.StartTimestampKey] = time.Time{}.Format(time.RFC3339)
+	data[reporter.CompletionTimestampKey] = time.Time{}.Format(time.RFC3339)
 }

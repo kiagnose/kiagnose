@@ -56,8 +56,12 @@ func (l Launcher) Run() (runErr error) {
 	}
 
 	defer func() {
-		statusData.Succeeded = false
-		statusData.FailureReason = "Failure: implement me"
+		if runErr == nil {
+			statusData.Succeeded = true
+		} else {
+			statusData.FailureReason = runErr.Error()
+		}
+
 		statusData.CompletionTimestamp = time.Now()
 
 		if reportErr := l.reporter.Report(statusData); reportErr != nil {
