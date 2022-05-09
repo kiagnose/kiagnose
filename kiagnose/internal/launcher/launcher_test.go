@@ -116,12 +116,14 @@ func TestLauncherRunShouldFailWithReportWhen(t *testing.T) {
 
 func TestLauncherRunShouldFailWithoutReportWhen(t *testing.T) {
 	t.Run("report on checkup start is failing", func(t *testing.T) {
+		fakeClient := fake.NewSimpleClientset()
+
 		testLauncher := launcher.New(
 			checkupStub{},
-			&reporterStub{reportErr: errorFailOnInitialReport},
+			reporter.New(fakeClient, configMapNamespace, configMapName),
 		)
 
-		assert.ErrorContains(t, testLauncher.Run(), errorFailOnInitialReport.Error())
+		assert.ErrorContains(t, testLauncher.Run(), "not found")
 	})
 
 	t.Run("report on checkup completion is failing", func(t *testing.T) {
