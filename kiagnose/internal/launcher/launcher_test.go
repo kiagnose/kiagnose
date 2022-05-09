@@ -66,32 +66,52 @@ func TestLauncherRunsSuccessfully(t *testing.T) {
 }
 
 func TestLauncherRunShouldFailWithReportWhen(t *testing.T) {
-	t.Run("setup is failing", func(t *testing.T) {
-		testLauncher := launcher.New(
-			checkupStub{failSetup: errorSetup},
-			&reporterStub{},
-		)
+	type failureTestCase struct {
+		description   string
+		inputCheckup  checkupStub
+		expectedError error
+	}
 
-		assert.ErrorContains(t, testLauncher.Run(), errorSetup.Error())
-	})
+	testCases := []failureTestCase{
+		{
+			description:   "setup is failing",
+			inputCheckup:  checkupStub{failSetup: errorSetup},
+			expectedError: errorSetup,
+		},
+		{
+			description:   "run is failing",
+			inputCheckup:  checkupStub{failRun: errorRun},
+			expectedError: errorRun,
+		},
+		{
+			description:   "teardown is failing",
+			inputCheckup:  checkupStub{failTeardown: errorTeardown},
+			expectedError: errorTeardown,
+		},
+	}
 
-	t.Run("run is failing", func(t *testing.T) {
-		testLauncher := launcher.New(
-			checkupStub{failRun: errorRun},
-			&reporterStub{},
-		)
+	for _, testCase := range testCases {
+		t.Run(testCase.description, func(t *testing.T) {
+			fakeClient := fake.NewSimpleClientset(newConfigMap(checkupSpecData()))
 
-		assert.ErrorContains(t, testLauncher.Run(), errorRun.Error())
-	})
+			testLauncher := launcher.New(
+				testCase.inputCheckup,
+				reporter.New(fakeClient, configMapNamespace, configMapName),
+			)
 
-	t.Run("teardown is failing", func(t *testing.T) {
-		testLauncher := launcher.New(
-			checkupStub{failTeardown: errorTeardown},
-			&reporterStub{},
-		)
+			assert.ErrorContains(t, testLauncher.Run(), testCase.expectedError.Error())
 
-		assert.ErrorContains(t, testLauncher.Run(), errorTeardown.Error())
-	})
+			actualCheckupData := getCheckupData(t, fakeClient, configMapNamespace, configMapName)
+			zeroTimestamps(actualCheckupData)
+
+			expectedData := checkupSpecData()
+			expectedData[reporter.SucceededKey] = strconv.FormatBool(false)
+			expectedData[reporter.FailureReasonKey] = testCase.expectedError.Error()
+			zeroTimestamps(expectedData)
+
+			assert.Equal(t, expectedData, actualCheckupData)
+		})
+	}
 }
 
 func TestLauncherRunShouldFailWithoutReportWhen(t *testing.T) {
