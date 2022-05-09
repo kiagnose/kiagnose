@@ -38,26 +38,8 @@ func TestLauncherRunsSuccessfully(t *testing.T) {
 	assert.NoError(t, testLauncher.Run())
 }
 
-func TestLauncherShould(t *testing.T) {
-	t.Run("fail when report on checkup start is failing", func(t *testing.T) {
-		testLauncher := launcher.New(
-			checkupStub{},
-			&reporterStub{reportErr: errorFailOnInitialReport},
-		)
-
-		assert.ErrorContains(t, testLauncher.Run(), errorFailOnInitialReport.Error())
-	})
-
-	t.Run("fail when report on checkup completion is failing", func(t *testing.T) {
-		testLauncher := launcher.New(
-			checkupStub{},
-			&reporterStub{reportErr: errorFailOnFinalReport},
-		)
-
-		assert.ErrorContains(t, testLauncher.Run(), errorFailOnFinalReport.Error())
-	})
-
-	t.Run("fail when setup is failing", func(t *testing.T) {
+func TestLauncherRunShouldFailWithReportWhen(t *testing.T) {
+	t.Run("setup is failing", func(t *testing.T) {
 		testLauncher := launcher.New(
 			checkupStub{failSetup: errorSetup},
 			&reporterStub{},
@@ -66,7 +48,45 @@ func TestLauncherShould(t *testing.T) {
 		assert.ErrorContains(t, testLauncher.Run(), errorSetup.Error())
 	})
 
-	t.Run("fail when setup and report on checkup completion are failing", func(t *testing.T) {
+	t.Run("run is failing", func(t *testing.T) {
+		testLauncher := launcher.New(
+			checkupStub{failRun: errorRun},
+			&reporterStub{},
+		)
+
+		assert.ErrorContains(t, testLauncher.Run(), errorRun.Error())
+	})
+
+	t.Run("teardown is failing", func(t *testing.T) {
+		testLauncher := launcher.New(
+			checkupStub{failTeardown: errorTeardown},
+			&reporterStub{},
+		)
+
+		assert.ErrorContains(t, testLauncher.Run(), errorTeardown.Error())
+	})
+}
+
+func TestLauncherRunShouldFailWithoutReportWhen(t *testing.T) {
+	t.Run("report on checkup start is failing", func(t *testing.T) {
+		testLauncher := launcher.New(
+			checkupStub{},
+			&reporterStub{reportErr: errorFailOnInitialReport},
+		)
+
+		assert.ErrorContains(t, testLauncher.Run(), errorFailOnInitialReport.Error())
+	})
+
+	t.Run("report on checkup completion is failing", func(t *testing.T) {
+		testLauncher := launcher.New(
+			checkupStub{},
+			&reporterStub{reportErr: errorFailOnFinalReport},
+		)
+
+		assert.ErrorContains(t, testLauncher.Run(), errorFailOnFinalReport.Error())
+	})
+
+	t.Run("setup and report on checkup completion are failing", func(t *testing.T) {
 		testLauncher := launcher.New(
 			checkupStub{failSetup: errorSetup},
 			&reporterStub{reportErr: errorFailOnFinalReport},
@@ -77,25 +97,7 @@ func TestLauncherShould(t *testing.T) {
 		assert.ErrorContains(t, err, errorFailOnFinalReport.Error())
 	})
 
-	t.Run("fail when run is failing", func(t *testing.T) {
-		testLauncher := launcher.New(
-			checkupStub{failRun: errorRun},
-			&reporterStub{},
-		)
-
-		assert.ErrorContains(t, testLauncher.Run(), errorRun.Error())
-	})
-
-	t.Run("fail when teardown is failing", func(t *testing.T) {
-		testLauncher := launcher.New(
-			checkupStub{failTeardown: errorTeardown},
-			&reporterStub{},
-		)
-
-		assert.ErrorContains(t, testLauncher.Run(), errorTeardown.Error())
-	})
-
-	t.Run("fail when run and report on checkup completion are failing", func(t *testing.T) {
+	t.Run("run and report on checkup completion are failing", func(t *testing.T) {
 		testLauncher := launcher.New(
 			checkupStub{failRun: errorRun},
 			&reporterStub{reportErr: errorFailOnFinalReport},
@@ -106,7 +108,7 @@ func TestLauncherShould(t *testing.T) {
 		assert.ErrorContains(t, err, errorFailOnFinalReport.Error())
 	})
 
-	t.Run("fail when teardown and report on checkup completion are failing", func(t *testing.T) {
+	t.Run("teardown and report on checkup completion are failing", func(t *testing.T) {
 		testLauncher := launcher.New(
 			checkupStub{failTeardown: errorTeardown},
 			&reporterStub{reportErr: errorFailOnFinalReport},
@@ -117,7 +119,7 @@ func TestLauncherShould(t *testing.T) {
 		assert.ErrorContains(t, err, errorFailOnFinalReport.Error())
 	})
 
-	t.Run("fail when run, teardown and report on checkup completion are failing", func(t *testing.T) {
+	t.Run("run, teardown and report on checkup completion are failing", func(t *testing.T) {
 		testLauncher := launcher.New(
 			checkupStub{failRun: errorRun, failTeardown: errorTeardown},
 			&reporterStub{reportErr: errorFailOnFinalReport},
