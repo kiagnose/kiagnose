@@ -58,7 +58,7 @@ func New(client kubernetes.Interface, configMapNamespace, configMapName string) 
 	}
 }
 
-func (r *Reporter) Report(statusData status.Status) error {
+func (r *Reporter) Report(statusData *status.Status) error {
 	if r.configMap.Data == nil {
 		configMap, err := configmap.Get(r.client.CoreV1(), r.configMap.Namespace, r.configMap.Name)
 		if err != nil {
