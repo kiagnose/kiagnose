@@ -5,20 +5,20 @@ This is an example checkup, used as a reference for creating more realistic chec
 The checkup expects the following environment variables to be supplied:
 1. "RESULT_CONFIGMAP_NAMESPACE" - namespace of the results ConfigMap object.
 2. "RESULT_CONFIGMAP_NAME" - name of the results ConfigMap object.
-3. "MESSAGE" - a message to write to the results ConfigMap object.
+3. "CHECKUP_DATA" - a message to write to the results ConfigMap object.
 
 ## Outputs
 The checkup writes its results to the `data` field of the results ConfigMap object:
 ```yaml
 status.succeeded: "true"
 status.failureReason: ""
-status.result.echo: "$MESSAGE"
+status.result.echo: "$CHECKUP_DATA"
 ```
 
-In case the "MESSAGE" environment variable is missing:
+In case the "CHECKUP_DATA" environment variable is missing:
 ```yaml
 status.succeeded: "false"
-status.failureReason: "MESSAGE environment variable is missing"
+status.failureReason: "CHECKUP_DATA environment variable is missing"
 ```
 
 ## Build Instructions

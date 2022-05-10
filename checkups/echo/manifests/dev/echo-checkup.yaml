@@ -60,7 +60,7 @@ spec:
               value: echo-checkup-ns
             - name: RESULT_CONFIGMAP_NAME
               value: echo-checkup-results
-            - name: MESSAGE
+            - name: CHECKUP_DATA
               value: Hi!
       restartPolicy: Never
 ...

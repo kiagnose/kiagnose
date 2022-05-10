@@ -19,26 +19,30 @@
 
 package config
 
-import "fmt"
+import (
+	"fmt"
 
-const (
-	ConfigMapNamespaceEnvVarName = "CONFIGMAP_NAMESPACE"
-	ConfigMapNameEnvVarName      = "CONFIGMAP_NAME"
+	"k8s.io/apimachinery/pkg/types"
 )
 
-func ConfigMapFullName(env map[string]string) (namespace, name string, err error) {
+const (
+	CheckupNamespaceEnvVarName = "CHECKUP_NAMESPACE"
+	CheckupNameEnvVarName      = "CHECKUP_NAME"
+)
+
+func CheckupKeyFromEnv(env map[string]string) (key types.NamespacedName, err error) {
 	const envVarErr = "missing required environment variable"
 
 	var exists bool
-	namespace, exists = env[ConfigMapNamespaceEnvVarName]
+	key.Namespace, exists = env[CheckupNamespaceEnvVarName]
 	if !exists {
-		return "", "", fmt.Errorf("%s: %q", envVarErr, ConfigMapNamespaceEnvVarName)
+		return types.NamespacedName{}, fmt.Errorf("%s: %q", envVarErr, CheckupNamespaceEnvVarName)
 	}
 
-	name, exists = env[ConfigMapNameEnvVarName]
+	key.Name, exists = env[CheckupNameEnvVarName]
 	if !exists {
-		return "", "", fmt.Errorf("%s: %q", envVarErr, ConfigMapNameEnvVarName)
+		return types.NamespacedName{}, fmt.Errorf("%s: %q", envVarErr, CheckupNameEnvVarName)
 	}
 
-	return namespace, name, nil
+	return key, nil
 }

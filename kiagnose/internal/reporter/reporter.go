@@ -20,15 +20,15 @@
 package reporter
 
 import (
+	"context"
 	"errors"
-	"strconv"
-	"time"
 
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/client-go/kubernetes"
+	"k8s.io/apimachinery/pkg/types"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 
-	"github.com/kiagnose/kiagnose/kiagnose/internal/configmap"
+	kiagnosev1alpha1 "github.com/kiagnose/kiagnose/api/v1alpha1"
 	"github.com/kiagnose/kiagnose/kiagnose/internal/status"
 )
 
@@ -42,52 +42,42 @@ const (
 var ErrConfigMapDataIsNil = errors.New("configMap Data is nil")
 
 type Reporter struct {
-	client    kubernetes.Interface
-	configMap *corev1.ConfigMap
+	client     client.Client
+	checkupKey types.NamespacedName
 }
 
-func New(client kubernetes.Interface, configMapNamespace, configMapName string) *Reporter {
+func New(client client.Client, checkupKey types.NamespacedName) *Reporter {
 	return &Reporter{
-		client: client,
-		configMap: &corev1.ConfigMap{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      configMapName,
-				Namespace: configMapNamespace,
-			},
-		},
+		checkupKey: checkupKey,
+		client:     client,
 	}
 }
 
 func (r *Reporter) Report(statusData status.Status) error {
-	if r.configMap.Data == nil {
-		configMap, err := configmap.Get(r.client.CoreV1(), r.configMap.Namespace, r.configMap.Name)
-		if err != nil {
-			return err
-		}
-
-		r.configMap = configMap
-	}
-
-	if r.configMap.Data == nil {
-		return ErrConfigMapDataIsNil
-	}
-
-	if !statusData.StartTimestamp.IsZero() {
-		r.configMap.Data[StartTimestampKey] = statusData.StartTimestamp.Format(time.RFC3339)
-	}
-
-	if !statusData.CompletionTimestamp.IsZero() {
-		r.configMap.Data[CompletionTimestampKey] = statusData.CompletionTimestamp.Format(time.RFC3339)
-		r.configMap.Data[SucceededKey] = strconv.FormatBool(statusData.Succeeded)
-		r.configMap.Data[FailureReasonKey] = statusData.FailureReason
-	}
-
-	updatedConfigMap, err := configmap.Update(r.client.CoreV1(), r.configMap)
+	cr := kiagnosev1alpha1.Checkup{}
+	err := r.client.Get(context.Background(), r.checkupKey, &cr)
 	if err != nil {
 		return err
 	}
 
-	r.configMap = updatedConfigMap
+	if !statusData.StartTimestamp.IsZero() {
+		cr.Status.StartTime = metav1.Time{statusData.StartTimestamp}
+	}
 
+	if !statusData.CompletionTimestamp.IsZero() {
+		cr.Status.CompletionTime = metav1.Time{statusData.CompletionTimestamp}
+		if statusData.Succeeded {
+			cr.Status.Conditions.Set(kiagnosev1alpha1.CheckupConditionSuccess, corev1.ConditionTrue, kiagnosev1alpha1.CheckupConditionSuccessfullyRun, "")
+			cr.Status.Conditions.Set(kiagnosev1alpha1.CheckupConditionFailing, corev1.ConditionFalse, kiagnosev1alpha1.CheckupConditionSuccessfullyRun, "")
+		} else {
+			cr.Status.Conditions.Set(kiagnosev1alpha1.CheckupConditionFailing, corev1.ConditionTrue, kiagnosev1alpha1.CheckupConditionFailtedToRun, statusData.FailureReason)
+			cr.Status.Conditions.Set(kiagnosev1alpha1.CheckupConditionSuccess, corev1.ConditionFalse, kiagnosev1alpha1.CheckupConditionFailtedToRun, statusData.FailureReason)
+		}
+	}
+
+	err = r.client.Status().Update(context.Background(), &cr)
+	if err != nil {
+		return err
+	}
 	return nil
 }

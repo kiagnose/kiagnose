@@ -83,7 +83,13 @@ func New(c client, checkupConfig *config.Config) *Checkup {
 		{Name: ResultsConfigMapNameEnvVarName, Value: ResultsConfigMapName},
 		{Name: ResultsConfigMapNameEnvVarNamespace, Value: NamespaceName},
 	}
-	checkupEnvVars = append(checkupEnvVars, checkupConfig.EnvVars...)
+
+	for k, v := range checkupConfig.Data {
+		checkupEnvVars = append(checkupEnvVars, corev1.EnvVar{
+			Name:  strings.ToUpper(k),
+			Value: string(v),
+		})
+	}
 
 	const defaultTeardownTimeout = time.Minute * 5
 	return &Checkup{

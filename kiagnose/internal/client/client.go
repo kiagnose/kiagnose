@@ -20,15 +20,36 @@
 package client
 
 import (
+	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
+	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/client/config"
+
+	kiagnosev1alpha1 "github.com/kiagnose/kiagnose/api/v1alpha1"
 )
 
-func New() (*kubernetes.Clientset, error) {
-	config, err := rest.InClusterConfig()
+func New() (*kubernetes.Clientset, client.Client, error) {
+	cfg, err := rest.InClusterConfig()
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
-	return kubernetes.NewForConfig(config)
+	k8sClient, err := kubernetes.NewForConfig(cfg)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	scheme := runtime.NewScheme()
+	err = kiagnosev1alpha1.AddToScheme(scheme)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	crClient, err := client.New(config.GetConfigOrDie(), client.Options{Scheme: scheme})
+	if err != nil {
+		return nil, nil, err
+	}
+
+	return k8sClient, crClient, nil
 }

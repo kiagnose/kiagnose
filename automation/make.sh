@@ -33,7 +33,7 @@ CORE_IMAGE="${IMAGE_REGISTRY}/${IMAGE_ORG}/${CORE_IMAGE_NAME}:${CORE_IMAGE_TAG}"
 CORE_BINARY_NAME="kiagnose"
 
 options=$(getopt --options "" \
-    --long lint,unit-test,build-core,build-core-image,push-core-image,help\
+    --long lint,unit-test,build-core,build-core-image,push-core-image,gen-crds,gen-deepcopy,help\
     -- "${@}")
 eval set -- "$options"
 while true; do
@@ -53,9 +53,15 @@ while true; do
     --push-core-image)
         OPT_PUSH_CORE_IMAGE=1
         ;;
+    --gen-crds)
+        OPT_GEN_CRDS=1
+        ;;
+    --gen-deepcopy)
+        OPT_GEN_DEEPCOPY=1
+        ;;
     --help)
         set +x
-        echo "$0 [--lint] [--unit-test] [--build-core] [--build-core-image] [--push-core-image]"
+        echo "$0 [--lint] [--unit-test] [--build-core] [--build-core-image] [--push-core-image] [--gen-crds] [--gen-deepcopy]"
         exit
         ;;
     --)
@@ -70,6 +76,8 @@ if [ "${ARGCOUNT}" -eq "0" ] ; then
     OPT_LINT=1
     OPT_UNIT_TEST=1
     OPT_BUILD_CORE=1
+    OPT_GEN_CRDS=1
+    OPT_GEN_DEEPCOPY=1
 fi
 
 if [ -n "${OPT_LINT}" ]; then
@@ -82,6 +90,14 @@ fi
 
 if [ -n "${OPT_UNIT_TEST}" ]; then
     go test -v ./kiagnose/...
+fi
+
+if [ -n "${OPT_GEN_DEEPCOPY}" ]; then
+    echo "Trying to generate  DeepCopy, DeepCopyInto, and DeepCopyObject for the API..."
+    (
+        cd api
+        GOFLAGS=-mod=mod go run sigs.k8s.io/controller-tools/cmd/controller-gen@v0.8.0 object:headerFile=../automation/boilerplate.go.txt paths=./...
+    )
 fi
 
 if [ -n "${OPT_BUILD_CORE}" ]; then
@@ -98,4 +114,12 @@ fi
 if [ -n "${OPT_PUSH_CORE_IMAGE}" ]; then
     echo "Pushing \"${CORE_IMAGE}\"..."
     ${CRI} push ${CORE_IMAGE}
+fi
+
+if [ -n "${OPT_GEN_CRDS}" ]; then
+    echo "Genering CRDs..."
+    (
+        cd api
+        GOFLAGS=-mod=mod go run sigs.k8s.io/controller-tools/cmd/controller-gen@v0.8.0 crd paths=./... output:crd:artifacts:config=../deploy/crds
+    )
 fi
