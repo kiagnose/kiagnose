@@ -24,3 +24,7 @@ type Client struct{}
 func New() (*Client, error) {
 	return &Client{}, nil
 }
+
+func (c *Client) UpdateConfigMap(_, _ string, _ map[string]string) error {
+	return nil
+}
