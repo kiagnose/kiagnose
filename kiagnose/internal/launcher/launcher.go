@@ -20,7 +20,8 @@
 package launcher
 
 import (
-	"fmt"
+	"errors"
+	"strings"
 	"time"
 
 	"github.com/kiagnose/kiagnose/kiagnose/internal/results"
@@ -57,20 +58,24 @@ func (l Launcher) Run() (runErr error) {
 		return err
 	}
 
+	var errorPool []error
 	defer func() {
 		if runErr != nil {
-			statusData.Succeeded = false
-			statusData.FailureReason = append(statusData.FailureReason, runErr.Error())
+			errorPool = append(errorPool, runErr)
 		}
 
 		statusData.CompletionTimestamp = time.Now()
+		if len(errorPool) > 0 {
+			statusData.Succeeded = false
+			statusData.FailureReason = append(statusData.FailureReason, joinErrors(errorPool)...)
+		}
 
 		if reportErr := l.reporter.Report(statusData); reportErr != nil {
-			if runErr != nil {
-				runErr = fmt.Errorf("%v, %v", runErr, reportErr)
-			} else {
-				runErr = reportErr
-			}
+			errorPool = append(errorPool, reportErr)
+		}
+
+		if len(errorPool) > 0 {
+			runErr = errors.New(strings.Join(joinErrors(errorPool), ", "))
 		}
 	}()
 
@@ -79,13 +84,10 @@ func (l Launcher) Run() (runErr error) {
 	}
 
 	defer func() {
-		if teardownErr := l.checkup.Teardown(); teardownErr != nil {
-			if runErr != nil {
-				runErr = fmt.Errorf("%v, %v", runErr, teardownErr)
-			} else {
-				runErr = teardownErr
-			}
+		if runErr != nil {
+			errorPool = append(errorPool, runErr)
 		}
+		runErr = l.checkup.Teardown()
 	}()
 
 	if err := l.checkup.Run(); err != nil {
@@ -104,4 +106,12 @@ func (l Launcher) Run() (runErr error) {
 	}
 
 	return nil
+}
+
+func joinErrors(errs []error) []string {
+	var errorTextPool []string
+	for _, e := range errs {
+		errorTextPool = append(errorTextPool, e.Error())
+	}
+	return errorTextPool
 }
