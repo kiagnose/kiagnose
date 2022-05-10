@@ -46,7 +46,7 @@ check_required_env_vars_from_framework() {
 }
 
 check_required_env_vars_by_echo_checkup() {
-    if [ -z "$MESSAGE" ]; then
+    if [ -z "$message" ]; then
       echo "Warning: MESSAGE is empty" >&2
       return 1
     fi

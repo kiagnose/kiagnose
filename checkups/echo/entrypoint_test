@@ -27,7 +27,7 @@ entrypoint_should_succeed_with_all_env_vars() {
 
   RESULT_CONFIGMAP_NAMESPACE=ns1 \
   RESULT_CONFIGMAP_NAME=cm1 \
-  MESSAGE="message 1" \
+  CHECKUP_DATA="message 1" \
   KUBECTL="./fake_kubectl" \
   ./entrypoint &> /dev/null
   if [ "$?" -ne 0 ]; then
@@ -68,7 +68,7 @@ entrypoint_should_fail_without_env_vars() {
 entrypoint_should_fail_without_ns_env_var() {
   echo "entrypoint should exit(1) when RESULT_CONFIGMAP_NAMESPACE env variable is missing"
   RESULT_CONFIGMAP_NAME=cm1 \
-  MESSAGE="message 1" \
+  CHECKUP_DATA="message 1" \
   ./entrypoint &> /dev/null
   if [ "$?" -ne 1 ]; then
     return 1
@@ -78,7 +78,7 @@ entrypoint_should_fail_without_ns_env_var() {
 entrypoint_should_fail_without_name_env_var() {
   echo "entrypoint should exit(1) when RESULT_CONFIGMAP_NAME env variable is missing"
   RESULT_CONFIGMAP_NAMESPACE=ns1 \
-  MESSAGE="message 1" \
+  CHECKUP_DATA="message 1" \
   ./entrypoint &> /dev/null
   if [ "$?" -ne 1 ]; then
     return 1
@@ -86,7 +86,7 @@ entrypoint_should_fail_without_name_env_var() {
 }
 
 entrypoint_should_fail_without_message_env_var() {
-  echo "entrypoint should exit(2) when MESSAGE env variable is missing"
+  echo "entrypoint should exit(2) when CHECKUP_DATA env variable is missing"
   RESULT_CONFIGMAP_NAMESPACE=ns1 \
   RESULT_CONFIGMAP_NAME=cm1 \
   ./entrypoint &> /dev/null
@@ -104,7 +104,7 @@ metadata:
   namespace: ns1
 data:
   status.succeeded: "false"
-  status.failureReason: "MESSAGE environment variable is missing"
+  status.failureReason: "CHECKUP_DATA environment variable is missing"
 ...
 EOF
 

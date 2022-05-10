@@ -20,73 +20,102 @@
 package config_test
 
 import (
-	"context"
-	"sort"
-	"strings"
+	"encoding/json"
 	"testing"
 	"time"
 
 	assert "github.com/stretchr/testify/require"
 
-	corev1 "k8s.io/api/core/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/client-go/kubernetes/fake"
+	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/types"
+	k8sfake "k8s.io/client-go/kubernetes/fake"
+	"sigs.k8s.io/controller-runtime/pkg/client"
+	crfake "sigs.k8s.io/controller-runtime/pkg/client/fake"
 
+	kiagnosev1alpha1 "github.com/kiagnose/kiagnose/api/v1alpha1"
 	"github.com/kiagnose/kiagnose/kiagnose/internal/config"
 )
 
 const (
-	configMapNamespace = "kiagnose"
-	configMapName      = "cm1"
-
-	imageName    = "registry:5000/echo-checkup:latest"
-	timeoutValue = "1m"
-	param1Key    = "message1"
-	param1Value  = "message1 value"
-	param2Key    = "message2"
-	param2Value  = "message2 value"
+	imageName = "registry:5000/echo-checkup:latest"
 )
 
 var (
+	timeoutValue = metav1.Duration{Duration: time.Minute}
+	checkupKey   = types.NamespacedName{
+		Namespace: "kiagnose",
+		Name:      "cm1",
+	}
+	marshaledData        = json.RawMessage(`{"message1": "value1", "message2": "value2"}`)
+	unmarshaledData      = map[string]json.RawMessage{"message1": json.RawMessage(`"value1"`), "message2": json.RawMessage(`"value2"`)}
 	clusterRoleNamesList = []string{"cluster_role1", "cluster_role2"}
 	roleNamesList        = []string{"default/role1", "default/role2"}
 )
 
-func TestReadFromConfigMapShouldSucceed(t *testing.T) {
+func TestReadFromCRShouldSucceed(t *testing.T) {
 	type loadTestCase struct {
 		description    string
 		clusterRoles   []*rbacv1.ClusterRole
 		roles          []*rbacv1.Role
-		configMapData  map[string]string
+		cr             kiagnosev1alpha1.Checkup
 		expectedConfig *config.Config
 	}
 
 	testCases := []loadTestCase{
 		{
-			description:   "when supplied with required parameters only",
-			configMapData: map[string]string{config.ImageKey: imageName, config.TimeoutKey: timeoutValue},
+			description: "when supplied with required parameters only",
+			cr: kiagnosev1alpha1.Checkup{
+				Spec: kiagnosev1alpha1.CheckupSpec{
+					Image:   imageName,
+					Timeout: timeoutValue,
+				},
+			},
 			expectedConfig: &config.Config{
 				Image:   imageName,
-				Timeout: stringToDurationMustParse(timeoutValue),
+				Timeout: timeoutValue.Duration,
+				Data:    map[string]json.RawMessage{},
 			},
 		},
 		{
-			description:  "when supplied with all parameters",
+			description:  "when supplied with all parameters and data as YAML",
 			clusterRoles: expectedClusterRoles(),
 			roles:        expectedRoles(),
-			configMapData: map[string]string{
-				config.ImageKey:                       imageName,
-				config.TimeoutKey:                     timeoutValue,
-				config.ParamNameKeyPrefix + param1Key: param1Value,
-				config.ParamNameKeyPrefix + param2Key: param2Value,
-				config.ClusterRolesKey:                strings.Join(clusterRoleNamesList, "\n"),
-				config.RolesKey:                       strings.Join(roleNamesList, "\n"),
+			cr: kiagnosev1alpha1.Checkup{
+				Spec: kiagnosev1alpha1.CheckupSpec{
+					Image:            imageName,
+					Timeout:          timeoutValue,
+					Data:             marshaledData,
+					ClusterRoleNames: clusterRoleNamesList,
+					RoleNames:        roleNamesList,
+				},
 			},
 			expectedConfig: &config.Config{
 				Image:        imageName,
-				Timeout:      stringToDurationMustParse(timeoutValue),
-				EnvVars:      expectedEnvVars(param1Key, param1Value, param2Key, param2Value),
+				Timeout:      timeoutValue.Duration,
+				Data:         unmarshaledData,
+				ClusterRoles: expectedClusterRoles(),
+				Roles:        expectedRoles(),
+			},
+		},
+		{
+			description:  "when supplied with all parameters and data as JSON",
+			clusterRoles: expectedClusterRoles(),
+			roles:        expectedRoles(),
+			cr: kiagnosev1alpha1.Checkup{
+				Spec: kiagnosev1alpha1.CheckupSpec{
+					Image:            imageName,
+					Timeout:          timeoutValue,
+					Data:             marshaledData,
+					ClusterRoleNames: clusterRoleNamesList,
+					RoleNames:        roleNamesList,
+				},
+			},
+			expectedConfig: &config.Config{
+				Image:        imageName,
+				Timeout:      timeoutValue.Duration,
+				Data:         unmarshaledData,
 				ClusterRoles: expectedClusterRoles(),
 				Roles:        expectedRoles(),
 			},
@@ -95,117 +124,80 @@ func TestReadFromConfigMapShouldSucceed(t *testing.T) {
 
 	for _, testCase := range testCases {
 		t.Run(testCase.description, func(t *testing.T) {
-			fakeClient := newFakeClientWithObjects(configMapNamespace, configMapName, testCase.configMapData, testCase.clusterRoles, testCase.roles)
-
-			actualConfig, err := config.ReadFromConfigMap(fakeClient, configMapNamespace, configMapName)
+			k8sClient, crClient := newFakeClientsWithObjects(t, checkupKey, &testCase.cr, testCase.clusterRoles, testCase.roles)
+			actualConfig, err := config.ReadFromCR(k8sClient, crClient, checkupKey)
 			assert.NoError(t, err)
-
-			sort.Slice(actualConfig.EnvVars, func(i, j int) bool {
-				return actualConfig.EnvVars[i].Name < actualConfig.EnvVars[j].Name
-			})
-
 			assert.Equal(t, testCase.expectedConfig, actualConfig)
 		})
 	}
 }
 
-func TestReadFromConfigMapShouldFail(t *testing.T) {
+func TestReadFromCRShouldFail(t *testing.T) {
 	t.Run("when ConfigMap doesn't exist", func(t *testing.T) {
-		fakeClient := fake.NewSimpleClientset()
-		_, err := config.ReadFromConfigMap(fakeClient, configMapNamespace, configMapName)
+		k8sClient, crClient := newFakeClientsWithObjects(t,
+			types.NamespacedName{Namespace: "foo", Name: "bar"}, &kiagnosev1alpha1.Checkup{}, nil, nil)
+		_, err := config.ReadFromCR(k8sClient, crClient, checkupKey)
 		assert.ErrorContains(t, err, "not found")
 	})
 
 	type loadFailureTestCase struct {
 		description   string
-		configMapData map[string]string
+		cr            kiagnosev1alpha1.Checkup
 		expectedError string
 	}
 
 	failureTestCases := []loadFailureTestCase{
 		{
-			description:   "when image field is missing",
-			configMapData: map[string]string{config.TimeoutKey: timeoutValue},
-			expectedError: config.ErrImageFieldIsMissing.Error(),
-		},
-		{
-			description:   "when timout field is missing",
-			configMapData: map[string]string{config.ImageKey: imageName},
-			expectedError: config.ErrTimeoutFieldIsMissing.Error(),
-		},
-		{
-			description:   "when timout field is illegal",
-			configMapData: map[string]string{config.ImageKey: imageName, config.TimeoutKey: "illegalValue"},
-			expectedError: config.ErrTimeoutFieldIsIllegal.Error(),
-		},
-		{
-			description:   "when ConfigMap Data is nil",
-			configMapData: nil,
-			expectedError: config.ErrConfigMapDataIsNil.Error(),
-		},
-		{
-			description:   "when ClusterRole doesn't exist",
-			configMapData: map[string]string{config.ImageKey: imageName, config.TimeoutKey: timeoutValue, config.ClusterRolesKey: "NA\n"},
+			description: "when ClusterRole doesn't exist",
+			cr: kiagnosev1alpha1.Checkup{Spec: kiagnosev1alpha1.CheckupSpec{
+				Image: imageName, Timeout: timeoutValue, ClusterRoleNames: []string{"NA"},
+			}},
 			expectedError: "clusterroles.rbac.authorization.k8s.io",
 		},
 		{
-			description:   "when Role doesn't exist",
-			configMapData: map[string]string{config.ImageKey: imageName, config.TimeoutKey: timeoutValue, config.RolesKey: "default/role999\n"},
+			description: "when Role doesn't exist",
+			cr: kiagnosev1alpha1.Checkup{Spec: kiagnosev1alpha1.CheckupSpec{
+				Image: imageName, Timeout: timeoutValue, RoleNames: []string{"default/role999"},
+			}},
 			expectedError: "roles.rbac.authorization.k8s.io",
 		},
 		{
-			description:   "when Role name is illegal",
-			configMapData: map[string]string{config.ImageKey: imageName, config.TimeoutKey: timeoutValue, config.RolesKey: "illegal name\n"},
+			description: "when Role name is illegal",
+			cr: kiagnosev1alpha1.Checkup{Spec: kiagnosev1alpha1.CheckupSpec{
+				Image: imageName, Timeout: timeoutValue, RoleNames: []string{"illegal name"},
+			}},
 			expectedError: "role name",
 		},
 	}
 
 	for _, testCase := range failureTestCases {
 		t.Run(testCase.description, func(t *testing.T) {
-			fakeClient := fake.NewSimpleClientset(newConfigMap(configMapNamespace, configMapName, testCase.configMapData))
+			k8sClient, crClient := newFakeClientsWithObjects(t, checkupKey, &testCase.cr, nil, nil)
 
-			_, err := config.ReadFromConfigMap(fakeClient, configMapNamespace, configMapName)
+			_, err := config.ReadFromCR(k8sClient, crClient, checkupKey)
 			assert.ErrorContains(t, err, testCase.expectedError)
 		})
 	}
 }
 
-func newFakeClientWithObjects(namespace, name string,
-	configMapData map[string]string, clusterRoles []*rbacv1.ClusterRole, roles []*rbacv1.Role) *fake.Clientset {
-	client := fake.NewSimpleClientset(newConfigMap(namespace, name, configMapData))
-
-	for _, clusterRole := range clusterRoles {
-		_, err := client.RbacV1().ClusterRoles().Create(context.Background(), clusterRole, metav1.CreateOptions{})
-		if err != nil {
-			panic("failed to create ClusterRole")
-		}
-	}
-
+func newFakeClientsWithObjects(t *testing.T, key types.NamespacedName,
+	checkup *kiagnosev1alpha1.Checkup, clusterRoles []*rbacv1.ClusterRole, roles []*rbacv1.Role) (*k8sfake.Clientset, client.Client) {
+	k8sObjects := []runtime.Object{}
 	for _, role := range roles {
-		_, err := client.RbacV1().Roles(role.Namespace).Create(context.Background(), role, metav1.CreateOptions{})
-		if err != nil {
-			panic("failed to create Role")
-		}
+		k8sObjects = append(k8sObjects, role)
 	}
-
-	return client
-}
-
-func newConfigMap(namespace, name string, data map[string]string) *corev1.ConfigMap {
-	return &corev1.ConfigMap{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      name,
-			Namespace: namespace,
-		},
-		Data: data,
+	for _, clusterRole := range clusterRoles {
+		k8sObjects = append(k8sObjects, clusterRole)
 	}
-}
+	k8sClient := k8sfake.NewSimpleClientset(k8sObjects...)
 
-func expectedEnvVars(param1Key, param1Value, param2Key, param2Value string) []corev1.EnvVar {
-	return []corev1.EnvVar{
-		{Name: strings.ToUpper(param1Key), Value: param1Value},
-		{Name: strings.ToUpper(param2Key), Value: param2Value},
-	}
+	scheme := runtime.NewScheme()
+	err := kiagnosev1alpha1.AddToScheme(scheme)
+	assert.NoError(t, err)
+	checkup.Namespace = key.Namespace
+	checkup.Name = key.Name
+	crClient := crfake.NewClientBuilder().WithScheme(scheme).WithRuntimeObjects(checkup).Build()
+	return k8sClient, crClient
 }
 
 func expectedClusterRoles() []*rbacv1.ClusterRole {
@@ -232,13 +224,4 @@ func expectedRoles() []*rbacv1.Role {
 			ObjectMeta: metav1.ObjectMeta{Name: "role2", Namespace: "default"},
 		},
 	}
-}
-
-func stringToDurationMustParse(rawDuration string) time.Duration {
-	duration, err := time.ParseDuration(rawDuration)
-	if err != nil {
-		panic("Bad duration")
-	}
-
-	return duration
 }

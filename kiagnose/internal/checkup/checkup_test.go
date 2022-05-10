@@ -21,6 +21,7 @@ package checkup_test
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"testing"
@@ -61,7 +62,7 @@ type checkupSetupTestCase struct {
 	description string
 	clusterRole []*rbacv1.ClusterRole
 	roles       []*rbacv1.Role
-	envVars     []corev1.EnvVar
+	data        map[string]json.RawMessage
 	resource    string
 }
 
@@ -70,15 +71,16 @@ func TestCheckupWith(t *testing.T) {
 		{description: "no arguments"},
 		{description: "ClusterRoles", clusterRole: newTestClusterRoles()},
 		{description: "Roles", roles: newTestRoles()},
-		{description: "env vars", envVars: newTestEnvVars()},
+		{description: "Data", data: newTestData()},
 	}
 	for _, testCase := range checkupCreateTestCases {
 		t.Run(testCase.description, func(t *testing.T) {
 			c := fake.NewSimpleClientset()
+
 			testCheckup := checkup.New(c, &config.Config{
 				Image:        testImage,
 				Timeout:      testTimeout,
-				EnvVars:      testCase.envVars,
+				Data:         testCase.data,
 				ClusterRoles: testCase.clusterRole,
 				Roles:        testCase.roles,
 			})
@@ -109,10 +111,11 @@ func TestCheckupSetupShouldFailWhen(t *testing.T) {
 			testClient := newNormalizedFakeClientset()
 			expectedErr := fmt.Sprintf("failed to create resource %q object", testCase.resource)
 			testClient.injectCreateErrorForResource(testCase.resource, expectedErr)
+
 			testCheckup := checkup.New(testClient, &config.Config{
 				Image:        testImage,
 				Timeout:      testTimeout,
-				EnvVars:      testCase.envVars,
+				Data:         testCase.data,
 				ClusterRoles: testCase.clusterRole,
 				Roles:        testCase.roles,
 			})
@@ -230,21 +233,22 @@ func TestCheckupTeardownShould(t *testing.T) {
 
 type checkupRunTestCase struct {
 	description  string
-	envVars      []corev1.EnvVar
+	data         map[string]json.RawMessage
 	jobCondition *batchv1.JobCondition
 }
 
 func TestCheckupRunShouldCreateAJob(t *testing.T) {
 	checkupRunTestCases := []checkupRunTestCase{
 		{description: "with no checkup parameters"},
-		{description: "with additional checkup parameters", envVars: newTestEnvVars()},
+		{description: "with additional checkup parameters", data: newTestData()},
 	}
 	for _, testCase := range checkupRunTestCases {
 		t.Run(testCase.description, func(t *testing.T) {
 			testClient := newNormalizedFakeClientset()
 			completeTrueJobCondition := &batchv1.JobCondition{Type: batchv1.JobComplete, Status: corev1.ConditionTrue}
 			testClient.injectJobWatchEvent(newJobWithCondition(checkup.NamespaceName, checkup.JobName, completeTrueJobCondition))
-			testCheckup := checkup.New(testClient, &config.Config{Image: testImage, Timeout: testTimeout, EnvVars: testCase.envVars})
+
+			testCheckup := checkup.New(testClient, &config.Config{Image: testImage, Timeout: testTimeout, Data: testCase.data})
 
 			assert.NoError(t, testCheckup.Setup())
 			assert.NoError(t, testCheckup.Run())
@@ -253,13 +257,18 @@ func TestCheckupRunShouldCreateAJob(t *testing.T) {
 				{Name: checkup.ResultsConfigMapNameEnvVarName, Value: checkup.ResultsConfigMapName},
 				{Name: checkup.ResultsConfigMapNameEnvVarNamespace, Value: checkup.NamespaceName},
 			}
-			expectedEnvVars = append(expectedEnvVars, testCase.envVars...)
+			if len(testCase.data) > 0 {
+				expectedEnvVars = append(expectedEnvVars, []corev1.EnvVar{
+					{Name: "VAR-1", Value: `"var-1-value"`},
+					{Name: "VAR-2", Value: `"var-2-value"`},
+				}...)
+			}
 			expectedJob := checkup.NewCheckupJob(
 				checkup.JobName, checkup.NamespaceName, checkup.ServiceAccountName, testImage, int64(testTimeout.Seconds()), expectedEnvVars)
 			actualJob, err := testClient.BatchV1().Jobs(checkup.NamespaceName).Get(context.Background(), checkup.JobName, metav1.GetOptions{})
 			assert.NoError(t, err)
 
-			assert.Equal(t, actualJob, expectedJob)
+			assert.Equal(t, expectedJob, actualJob)
 
 			assert.NoError(t, testCheckup.Teardown())
 			assertNoObjectExists(t, testClient)
@@ -346,10 +355,8 @@ func newTestRoles() []*rbacv1.Role {
 		{TypeMeta: metav1.TypeMeta{Kind: "Role"}, ObjectMeta: metav1.ObjectMeta{Name: "role2", Namespace: checkup.NamespaceName}}}
 }
 
-func newTestEnvVars() []corev1.EnvVar {
-	return []corev1.EnvVar{
-		{Name: "env-var-1", Value: "env-var-1-value"},
-		{Name: "env-var-1", Value: "env-var-1-value"}}
+func newTestData() map[string]json.RawMessage {
+	return map[string]json.RawMessage{"var-1": []byte(`"var-1-value"`), "var-2": []byte(`"var-2-value"`)}
 }
 
 func newJobWithCondition(namespace, name string, condition *batchv1.JobCondition) *batchv1.Job {

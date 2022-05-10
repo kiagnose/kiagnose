@@ -20,66 +20,56 @@
 package config
 
 import (
-	"strings"
+	"context"
+	"encoding/json"
 	"time"
 
-	corev1 "k8s.io/api/core/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
+	"k8s.io/apimachinery/pkg/types"
 
 	"k8s.io/client-go/kubernetes"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 
-	"github.com/kiagnose/kiagnose/kiagnose/internal/configmap"
+	kiagnosev1alpha1 "github.com/kiagnose/kiagnose/api/v1alpha1"
 	"github.com/kiagnose/kiagnose/kiagnose/internal/rbac"
 )
 
 type Config struct {
 	Image        string
 	Timeout      time.Duration
-	EnvVars      []corev1.EnvVar
+	Data         map[string]json.RawMessage
 	ClusterRoles []*rbacv1.ClusterRole
 	Roles        []*rbacv1.Role
 }
 
-func ReadFromConfigMap(client kubernetes.Interface, configMapNamespace, configMapName string) (*Config, error) {
-	configMap, err := configmap.Get(client.CoreV1(), configMapNamespace, configMapName)
+func ReadFromCR(k8sClient kubernetes.Interface, crClient client.Client, key types.NamespacedName) (*Config, error) {
+	checkup := &kiagnosev1alpha1.Checkup{}
+	if err := crClient.Get(context.Background(), key, checkup); err != nil {
+		return nil, err
+	}
+
+	clusterRoles, err := rbac.GetClusterRoles(k8sClient, checkup.Spec.ClusterRoleNames)
 	if err != nil {
 		return nil, err
 	}
 
-	parser := newConfigMapParser(configMap.Data)
-	err = parser.Parse()
+	roles, err := rbac.GetRoles(k8sClient, checkup.Spec.RoleNames)
 	if err != nil {
 		return nil, err
 	}
 
-	clusterRoles, err := rbac.GetClusterRoles(client, parser.ClusterRoleNames())
-	if err != nil {
-		return nil, err
+	data := map[string]json.RawMessage{}
+	if len(checkup.Spec.Data) > 0 {
+		err = json.Unmarshal(checkup.Spec.Data, &data)
+		if err != nil {
+			return nil, err
+		}
 	}
-
-	roles, err := rbac.GetRoles(client, parser.RoleNames())
-	if err != nil {
-		return nil, err
-	}
-
 	return &Config{
-		Image:        parser.Image(),
-		Timeout:      parser.Timeout(),
-		EnvVars:      paramsToEnvVars(parser.Params()),
+		Image:        checkup.Spec.Image,
+		Timeout:      checkup.Spec.Timeout.Duration,
+		Data:         data,
 		ClusterRoles: clusterRoles,
 		Roles:        roles,
 	}, nil
-}
-
-func paramsToEnvVars(params map[string]string) []corev1.EnvVar {
-	var envVars []corev1.EnvVar
-
-	for k, v := range params {
-		envVars = append(envVars, corev1.EnvVar{
-			Name:  strings.ToUpper(k),
-			Value: v,
-		})
-	}
-
-	return envVars
 }

@@ -28,21 +28,21 @@ import (
 )
 
 func Run(env map[string]string) error {
-	c, err := client.New()
+	k8sClient, crClient, err := client.New()
 	if err != nil {
 		return err
 	}
 
-	configMapNamespace, configMapName, err := config.ConfigMapFullName(env)
+	checkupKey, err := config.CheckupKeyFromEnv(env)
 	if err != nil {
 		return err
 	}
 
-	checkupConfig, err := config.ReadFromConfigMap(c, configMapNamespace, configMapName)
+	checkupConfig, err := config.ReadFromCR(k8sClient, crClient, checkupKey)
 	if err != nil {
 		return err
 	}
 
-	l := launcher.New(checkup.New(c, checkupConfig), reporter.New(c, configMapNamespace, configMapName))
+	l := launcher.New(checkup.New(k8sClient, checkupConfig), reporter.New(c, configMapNamespace, configMapName))
 	return l.Run()
 }

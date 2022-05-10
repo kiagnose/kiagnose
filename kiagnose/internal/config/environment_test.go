@@ -27,19 +27,18 @@ import (
 	"github.com/kiagnose/kiagnose/kiagnose/internal/config"
 )
 
-func TestConfigMapFullNameShouldSucceed(t *testing.T) {
+func TestCheckupKeyFromEnvShouldSucceed(t *testing.T) {
 	goodEnv := map[string]string{
-		config.ConfigMapNamespaceEnvVarName: configMapNamespace,
-		config.ConfigMapNameEnvVarName:      configMapName,
+		config.CheckupNamespaceEnvVarName: checkupKey.Namespace,
+		config.CheckupNameEnvVarName:      checkupKey.Name,
 	}
 
-	namespace, name, err := config.ConfigMapFullName(goodEnv)
+	obtainedKey, err := config.CheckupKeyFromEnv(goodEnv)
 	assert.NoError(t, err)
-	assert.Equal(t, configMapNamespace, namespace)
-	assert.Equal(t, configMapName, name)
+	assert.Equal(t, obtainedKey, checkupKey)
 }
 
-func TestConfigMapFullNameShouldFail(t *testing.T) {
+func TestCheckupKeyFromEnvShouldFail(t *testing.T) {
 	type envVarsLoadingFailureTestCase struct {
 		description           string
 		envVars               map[string]string
@@ -50,17 +49,17 @@ func TestConfigMapFullNameShouldFail(t *testing.T) {
 
 	failureTestCases := []envVarsLoadingFailureTestCase{
 		{
-			description:           "when ConfigMap's name environment variable is missing",
-			envVars:               map[string]string{config.ConfigMapNamespaceEnvVarName: configMapNamespace},
+			description:           "when Checkup's name environment variable is missing",
+			envVars:               map[string]string{config.CheckupNamespaceEnvVarName: checkupKey.Namespace},
 			expectedErrorContains: expectedErrorPrefix,
 		},
 		{
-			description:           "when ConfigMap's namespace environment variable is missing",
-			envVars:               map[string]string{config.ConfigMapNameEnvVarName: configMapName},
+			description:           "when Checkup's namespace environment variable is missing",
+			envVars:               map[string]string{config.CheckupNameEnvVarName: checkupKey.Name},
 			expectedErrorContains: expectedErrorPrefix,
 		},
 		{
-			description:           "when both ConfigMap's environment variables are missing",
+			description:           "when both Checkup's environment variables are missing",
 			envVars:               map[string]string{},
 			expectedErrorContains: expectedErrorPrefix,
 		},
@@ -68,7 +67,7 @@ func TestConfigMapFullNameShouldFail(t *testing.T) {
 
 	for _, testCase := range failureTestCases {
 		t.Run(testCase.description, func(t *testing.T) {
-			_, _, err := config.ConfigMapFullName(testCase.envVars)
+			_, err := config.CheckupKeyFromEnv(testCase.envVars)
 			assert.ErrorContains(t, err, testCase.expectedErrorContains)
 		})
 	}
