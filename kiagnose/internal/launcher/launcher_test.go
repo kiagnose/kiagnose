@@ -78,7 +78,7 @@ func TestLauncherRunWithResultsWhen(t *testing.T) {
 			fakeClient := fake.NewSimpleClientset(newConfigMap(checkupSpecData()))
 
 			testLauncher := launcher.New(
-				&checkupStub{results: testCase.inputResults},
+				checkupStub{results: testCase.inputResults},
 				reporter.New(fakeClient, configMapNamespace, configMapName),
 			)
 
@@ -137,7 +137,7 @@ func TestLauncherRunShouldFailWithReportWhen(t *testing.T) {
 			fakeClient := fake.NewSimpleClientset(newConfigMap(checkupSpecData()))
 
 			testLauncher := launcher.New(
-				&testCase.inputCheckup,
+				testCase.inputCheckup,
 				reporter.New(fakeClient, configMapNamespace, configMapName),
 			)
 
@@ -161,7 +161,7 @@ func TestLauncherRunShouldFailWithoutReportWhen(t *testing.T) {
 		fakeClient := fake.NewSimpleClientset()
 
 		testLauncher := launcher.New(
-			&checkupStub{},
+			checkupStub{},
 			reporter.New(fakeClient, configMapNamespace, configMapName),
 		)
 
@@ -170,7 +170,7 @@ func TestLauncherRunShouldFailWithoutReportWhen(t *testing.T) {
 
 	t.Run("report on checkup completion is failing", func(t *testing.T) {
 		testLauncher := launcher.New(
-			&checkupStub{},
+			checkupStub{},
 			&reporterStub{reportErr: errorFailOnFinalReport},
 		)
 
@@ -179,7 +179,7 @@ func TestLauncherRunShouldFailWithoutReportWhen(t *testing.T) {
 
 	t.Run("setup and report on checkup completion are failing", func(t *testing.T) {
 		testLauncher := launcher.New(
-			&checkupStub{failSetup: errorSetup},
+			checkupStub{failSetup: errorSetup},
 			&reporterStub{reportErr: errorFailOnFinalReport},
 		)
 
@@ -190,7 +190,7 @@ func TestLauncherRunShouldFailWithoutReportWhen(t *testing.T) {
 
 	t.Run("run and report on checkup completion are failing", func(t *testing.T) {
 		testLauncher := launcher.New(
-			&checkupStub{failRun: errorRun},
+			checkupStub{failRun: errorRun},
 			&reporterStub{reportErr: errorFailOnFinalReport},
 		)
 
@@ -201,7 +201,7 @@ func TestLauncherRunShouldFailWithoutReportWhen(t *testing.T) {
 
 	t.Run("teardown and report on checkup completion are failing", func(t *testing.T) {
 		testLauncher := launcher.New(
-			&checkupStub{failTeardown: errorTeardown},
+			checkupStub{failTeardown: errorTeardown},
 			&reporterStub{reportErr: errorFailOnFinalReport},
 		)
 
@@ -212,7 +212,7 @@ func TestLauncherRunShouldFailWithoutReportWhen(t *testing.T) {
 
 	t.Run("run, teardown and report on checkup completion are failing", func(t *testing.T) {
 		testLauncher := launcher.New(
-			&checkupStub{failRun: errorRun, failTeardown: errorTeardown},
+			checkupStub{failRun: errorRun, failTeardown: errorTeardown},
 			&reporterStub{reportErr: errorFailOnFinalReport},
 		)
 
@@ -240,15 +240,15 @@ type checkupStub struct {
 	results      results.Results
 }
 
-func (s *checkupStub) Setup() error {
+func (s checkupStub) Setup() error {
 	return s.failSetup
 }
 
-func (s *checkupStub) Run() error {
+func (s checkupStub) Run() error {
 	return s.failRun
 }
 
-func (s *checkupStub) Results() (results.Results, error) {
+func (s checkupStub) Results() (results.Results, error) {
 	if s.failResults != nil {
 		return s.results, s.failResults
 	}
@@ -256,7 +256,7 @@ func (s *checkupStub) Results() (results.Results, error) {
 	return s.results, nil
 }
 
-func (s *checkupStub) Teardown() error {
+func (s checkupStub) Teardown() error {
 	return s.failTeardown
 }
 
