@@ -60,11 +60,7 @@ func (l Launcher) Run() (runErr error) {
 	defer func() {
 		if runErr != nil {
 			statusData.Succeeded = false
-			if statusData.FailureReason != "" {
-				statusData.FailureReason = fmt.Sprintf("%s, %v", statusData.FailureReason, runErr)
-			} else {
-				statusData.FailureReason = runErr.Error()
-			}
+			statusData.FailureReason = append(statusData.FailureReason, runErr.Error())
 		}
 
 		statusData.CompletionTimestamp = time.Now()
@@ -91,7 +87,9 @@ func (l Launcher) Run() (runErr error) {
 			}
 		} else {
 			statusData.Succeeded = checkupResults.Succeeded
-			statusData.FailureReason = checkupResults.FailureReason
+			if checkupResults.FailureReason != "" {
+				statusData.FailureReason = append(statusData.FailureReason, checkupResults.FailureReason)
+			}
 			statusData.Results = checkupResults.Results
 		}
 
