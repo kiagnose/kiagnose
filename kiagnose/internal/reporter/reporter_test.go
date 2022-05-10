@@ -66,7 +66,7 @@ func TestReportShouldSucceed(t *testing.T) {
 	t.Run("on initial report", func(t *testing.T) {
 		setup()
 
-		assert.NoError(t, reporterUnderTest.Report(&checkupStatus))
+		assert.NoError(t, reporterUnderTest.Report(checkupStatus))
 
 		expectedReportData := map[string]string{
 			reporter.StartTimestampKey: timestamp(checkupStatus.StartTimestamp),
@@ -95,13 +95,13 @@ func TestReportShouldSucceed(t *testing.T) {
 		t.Run(testCase.description, func(t *testing.T) {
 			setup()
 
-			assert.NoError(t, reporterUnderTest.Report(&checkupStatus))
+			assert.NoError(t, reporterUnderTest.Report(checkupStatus))
 
 			checkupStatus.Succeeded = testCase.succeeded
 			checkupStatus.FailureReason = testCase.failureReason
 			checkupStatus.CompletionTimestamp = checkupStatus.StartTimestamp.Add(time.Minute)
 
-			assert.NoError(t, reporterUnderTest.Report(&checkupStatus))
+			assert.NoError(t, reporterUnderTest.Report(checkupStatus))
 
 			expectedReportData := map[string]string{
 				reporter.StartTimestampKey:      timestamp(checkupStatus.StartTimestamp),
@@ -125,7 +125,7 @@ func TestReportShouldFail(t *testing.T) {
 
 		checkupStatus := status.Status{}
 
-		assert.ErrorIs(t, reporterUnderTest.Report(&checkupStatus), reporter.ErrConfigMapDataIsNil)
+		assert.ErrorIs(t, reporterUnderTest.Report(checkupStatus), reporter.ErrConfigMapDataIsNil)
 	})
 
 	t.Run("when checkup spec fails to be fetched for the first time", func(t *testing.T) {
@@ -134,7 +134,7 @@ func TestReportShouldFail(t *testing.T) {
 
 		checkupStatus := status.Status{}
 
-		assert.ErrorContains(t, reporterUnderTest.Report(&checkupStatus), "not found")
+		assert.ErrorContains(t, reporterUnderTest.Report(checkupStatus), "not found")
 	})
 
 	t.Run("when checkup status fails to be updated", func(t *testing.T) {
@@ -143,11 +143,11 @@ func TestReportShouldFail(t *testing.T) {
 
 		checkupStatus := status.Status{}
 
-		assert.NoError(t, reporterUnderTest.Report(&checkupStatus))
+		assert.NoError(t, reporterUnderTest.Report(checkupStatus))
 
 		injectFailureToAccessCheckupData(t, fakeClient, configMapNamespace, configMapName)
 
-		assert.ErrorContains(t, reporterUnderTest.Report(&checkupStatus), "not found")
+		assert.ErrorContains(t, reporterUnderTest.Report(checkupStatus), "not found")
 	})
 }
 

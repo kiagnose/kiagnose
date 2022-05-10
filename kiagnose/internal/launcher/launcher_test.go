@@ -265,7 +265,7 @@ type reporterStub struct {
 	reportCount int
 }
 
-func (r *reporterStub) Report(_ *status.Status) error {
+func (r *reporterStub) Report(_ status.Status) error {
 	r.reportCount++
 	if r.reportCount > 2 {
 		panic("Report was called more than twice")
