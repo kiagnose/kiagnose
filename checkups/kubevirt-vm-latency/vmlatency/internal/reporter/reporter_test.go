@@ -25,7 +25,6 @@ import (
 
 	assert "github.com/stretchr/testify/require"
 
-	"github.com/kiagnose/kiagnose/checkups/kubevirt-vm-latency/vmlatency/internal/client"
 	"github.com/kiagnose/kiagnose/checkups/kubevirt-vm-latency/vmlatency/internal/reporter"
 	"github.com/kiagnose/kiagnose/checkups/kubevirt-vm-latency/vmlatency/internal/status"
 )
@@ -37,7 +36,7 @@ const (
 
 func TestReportShouldRunSuccessfullyWhen(t *testing.T) {
 	t.Run("status is initialized", func(t *testing.T) {
-		testReporter := reporter.New(&client.Client{}, testNamespace, testConfigMapName)
+		testReporter := reporter.New(&configMapClientStub{}, testNamespace, testConfigMapName)
 
 		assert.NoError(t, testReporter.Report(status.Status{}))
 	})
