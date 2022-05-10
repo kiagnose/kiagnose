@@ -20,17 +20,25 @@
 package reporter
 
 import (
-	"github.com/kiagnose/kiagnose/checkups/kubevirt-vm-latency/vmlatency/internal/client"
+	"encoding/json"
+	"log"
+	"strconv"
+	"strings"
+
 	"github.com/kiagnose/kiagnose/checkups/kubevirt-vm-latency/vmlatency/internal/status"
 )
 
+type configMapUpdater interface {
+	UpdateConfigMap(string, string, map[string]string) error
+}
+
 type reporter struct {
-	client             *client.Client
+	client             configMapUpdater
 	configMapName      string
 	configMapNamespace string
 }
 
-func New(c *client.Client, configMapNamespace, configMapName string) *reporter {
+func New(c configMapUpdater, configMapNamespace, configMapName string) *reporter {
 	return &reporter{
 		client:             c,
 		configMapNamespace: configMapNamespace,
@@ -38,6 +46,38 @@ func New(c *client.Client, configMapNamespace, configMapName string) *reporter {
 	}
 }
 
-func (r *reporter) Report(_ status.Status) error {
-	return nil
+func (r *reporter) Report(s status.Status) error {
+	data := formatStatus(s)
+
+	if raw, err := json.MarshalIndent(data, "", " "); err == nil {
+		log.Printf("reporting status:\n%s\n", string(raw))
+	}
+
+	return r.client.UpdateConfigMap(r.configMapNamespace, r.configMapName, data)
+}
+
+func formatStatus(s status.Status) map[string]string {
+	const (
+		succeededKey                 = "status.succeeded"
+		failureReasonKey             = "status.failureReason"
+		resultMinLatencyKey          = "status.result.minLatencyNanoSec"
+		resultAvgLatencyKey          = "status.result.avgLatencyNanoSec"
+		resultMaxLatencyKey          = "status.result.maxLatencyNanoSec"
+		resultMeasurementDurationKey = "status.result.measurementDurationSec"
+	)
+	data := map[string]string{}
+
+	data[succeededKey] = strconv.FormatBool(len(s.FailureReason) == 0)
+	data[failureReasonKey] = strings.Join(s.FailureReason, ", ")
+
+	var emptyResults status.Results
+	if s.Results != emptyResults {
+		const base = 10
+		data[resultMinLatencyKey] = strconv.FormatInt(s.Results.MinLatency.Nanoseconds(), base)
+		data[resultAvgLatencyKey] = strconv.FormatInt(s.Results.AvgLatency.Nanoseconds(), base)
+		data[resultMaxLatencyKey] = strconv.FormatInt(s.Results.MaxLatency.Nanoseconds(), base)
+		data[resultMeasurementDurationKey] = strconv.FormatInt(int64(s.Results.MeasurementDuration.Seconds()), base)
+	}
+
+	return data
 }
