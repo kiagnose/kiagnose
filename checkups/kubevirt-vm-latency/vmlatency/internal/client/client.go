@@ -19,7 +19,12 @@
 
 package client
 
-import "kubevirt.io/client-go/kubecli"
+import (
+	"context"
+
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"kubevirt.io/client-go/kubecli"
+)
 
 type Client struct{ kubecli.KubevirtClient }
 
@@ -32,6 +37,16 @@ func New() (*Client, error) {
 	return &Client{c}, nil
 }
 
-func (c *Client) UpdateConfigMap(_, _ string, _ map[string]string) error {
+func (c *Client) UpdateConfigMap(namespace, name string, date map[string]string) error {
+	cm, err := c.KubevirtClient.CoreV1().ConfigMaps(namespace).Get(context.Background(), name, metav1.GetOptions{})
+	if err != nil {
+		return err
+	}
+	cm.Data = date
+
+	if _, err := c.KubevirtClient.CoreV1().ConfigMaps(namespace).Update(context.Background(), cm, metav1.UpdateOptions{}); err != nil {
+		return err
+	}
+
 	return nil
 }
