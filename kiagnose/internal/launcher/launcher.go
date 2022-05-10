@@ -79,20 +79,6 @@ func (l Launcher) Run() (runErr error) {
 	}
 
 	defer func() {
-		if checkupResults, resultsErr := l.checkup.Results(); resultsErr != nil {
-			if runErr != nil {
-				runErr = fmt.Errorf("%v, %v", runErr, resultsErr)
-			} else {
-				runErr = resultsErr
-			}
-		} else {
-			statusData.Succeeded = checkupResults.Succeeded
-			if checkupResults.FailureReason != "" {
-				statusData.FailureReason = append(statusData.FailureReason, checkupResults.FailureReason)
-			}
-			statusData.Results = checkupResults.Results
-		}
-
 		if teardownErr := l.checkup.Teardown(); teardownErr != nil {
 			if runErr != nil {
 				runErr = fmt.Errorf("%v, %v", runErr, teardownErr)
@@ -104,6 +90,17 @@ func (l Launcher) Run() (runErr error) {
 
 	if err := l.checkup.Run(); err != nil {
 		return err
+	}
+
+	resultData, err := l.checkup.Results()
+	if err != nil {
+		return err
+	}
+
+	statusData.Succeeded = resultData.Succeeded
+	statusData.Results = resultData.Results
+	if resultData.FailureReason != "" {
+		statusData.FailureReason = append(statusData.FailureReason, resultData.FailureReason)
 	}
 
 	return nil
