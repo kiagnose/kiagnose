@@ -60,18 +60,14 @@ func (l Launcher) Run() (runErr error) {
 
 	var errorPool []error
 	defer func() {
-		if runErr != nil {
-			errorPool = append(errorPool, runErr)
-		}
-
 		statusData.CompletionTimestamp = time.Now()
 		if len(errorPool) > 0 {
 			statusData.Succeeded = false
 			statusData.FailureReason = append(statusData.FailureReason, joinErrors(errorPool)...)
 		}
 
-		if reportErr := l.reporter.Report(statusData); reportErr != nil {
-			errorPool = append(errorPool, reportErr)
+		if err := l.reporter.Report(statusData); err != nil {
+			errorPool = append(errorPool, err)
 		}
 
 		if len(errorPool) > 0 {
@@ -80,22 +76,24 @@ func (l Launcher) Run() (runErr error) {
 	}()
 
 	if err := l.checkup.Setup(); err != nil {
+		errorPool = append(errorPool, err)
 		return err
 	}
 
 	defer func() {
-		if runErr != nil {
-			errorPool = append(errorPool, runErr)
+		if err := l.checkup.Teardown(); err != nil {
+			errorPool = append(errorPool, err)
 		}
-		runErr = l.checkup.Teardown()
 	}()
 
 	if err := l.checkup.Run(); err != nil {
+		errorPool = append(errorPool, err)
 		return err
 	}
 
 	resultData, err := l.checkup.Results()
 	if err != nil {
+		errorPool = append(errorPool, err)
 		return err
 	}
 
