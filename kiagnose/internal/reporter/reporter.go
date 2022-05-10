@@ -22,6 +22,7 @@ package reporter
 import (
 	"errors"
 	"strconv"
+	"strings"
 	"time"
 
 	corev1 "k8s.io/api/core/v1"
@@ -80,7 +81,7 @@ func (r *Reporter) Report(statusData status.Status) error {
 	if !statusData.CompletionTimestamp.IsZero() {
 		r.configMap.Data[CompletionTimestampKey] = statusData.CompletionTimestamp.Format(time.RFC3339)
 		r.configMap.Data[SucceededKey] = strconv.FormatBool(statusData.Succeeded)
-		r.configMap.Data[FailureReasonKey] = statusData.FailureReason
+		r.configMap.Data[FailureReasonKey] = strings.Join(statusData.FailureReason, ",")
 	}
 
 	for k, v := range statusData.Results {

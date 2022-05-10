@@ -22,6 +22,7 @@ package reporter_test
 import (
 	"context"
 	"strconv"
+	"strings"
 	"testing"
 	"time"
 
@@ -47,7 +48,7 @@ func TestReportShouldSucceed(t *testing.T) {
 	type successTestCase struct {
 		description   string
 		succeeded     bool
-		failureReason string
+		failureReason []string
 	}
 
 	var (
@@ -82,12 +83,12 @@ func TestReportShouldSucceed(t *testing.T) {
 		{
 			description:   "on checkup successful completion",
 			succeeded:     true,
-			failureReason: "",
+			failureReason: nil,
 		},
 		{
 			description:   "on checkup failed completion",
 			succeeded:     false,
-			failureReason: "some reason",
+			failureReason: []string{"some reason"},
 		},
 	}
 
@@ -106,7 +107,7 @@ func TestReportShouldSucceed(t *testing.T) {
 			expectedReportData := map[string]string{
 				reporter.StartTimestampKey:      timestamp(checkupStatus.StartTimestamp),
 				reporter.SucceededKey:           strconv.FormatBool(checkupStatus.Succeeded),
-				reporter.FailureReasonKey:       checkupStatus.FailureReason,
+				reporter.FailureReasonKey:       strings.Join(checkupStatus.FailureReason, ","),
 				reporter.CompletionTimestampKey: timestamp(checkupStatus.CompletionTimestamp),
 			}
 
