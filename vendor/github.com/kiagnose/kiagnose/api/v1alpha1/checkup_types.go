@@ -42,8 +42,20 @@ type CheckupSpec struct {
 
 // CheckupStatus defines the observed state of Checkup
 type CheckupStatus struct {
-	Conditions ConditionList `json:"conditions,omitempty"`
+	Conditions     ConditionList `json:"conditions,omitempty"`
+	StartTime      metav1.Time   `json:"startTime, omitempty"`
+	CompletionTime metav1.Time   `json:"completionTime, omitempty"`
 }
+
+const (
+	CheckupConditionSuccess ConditionType = "Success"
+	CheckupConditionFailing ConditionType = "Failing"
+)
+
+const (
+	CheckupConditionFailtedToRun    ConditionReason = "FailedToRun"
+	CheckupConditionSuccessfullyRun ConditionReason = "SuccessfullyRun"
+)
 
 // +kubebuilder:object:root=true
 // +kubebuilder:resource:path=checkups,singular=checkup,shortName=ckup

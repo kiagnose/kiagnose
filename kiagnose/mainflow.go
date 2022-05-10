@@ -43,6 +43,6 @@ func Run(env map[string]string) error {
 		return err
 	}
 
-	l := launcher.New(checkup.New(k8sClient, checkupConfig), reporter.New(c, configMapNamespace, configMapName))
+	l := launcher.New(checkup.New(k8sClient, checkupConfig), reporter.New(k8sClient, checkupKey))
 	return l.Run()
 }

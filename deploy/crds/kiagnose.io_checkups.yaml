@@ -68,6 +68,9 @@ spec:
           status:
             description: CheckupStatus defines the observed state of Checkup
             properties:
+              completionTime:
+                format: date-time
+                type: string
               conditions:
                 items:
                   properties:
@@ -90,6 +93,12 @@ spec:
                   - type
                   type: object
                 type: array
+              startTime:
+                format: date-time
+                type: string
+            required:
+            - completionTime
+            - startTime
             type: object
         type: object
     served: true
