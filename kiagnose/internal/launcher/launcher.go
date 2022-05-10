@@ -35,7 +35,7 @@ type workload interface {
 }
 
 type reporter interface {
-	Report(*status.Status) error
+	Report(status.Status) error
 }
 
 type Launcher struct {
@@ -53,7 +53,7 @@ func New(checkup workload, reporter reporter) Launcher {
 func (l Launcher) Run() (runErr error) {
 	statusData := status.Status{StartTimestamp: time.Now()}
 
-	if err := l.reporter.Report(&statusData); err != nil {
+	if err := l.reporter.Report(statusData); err != nil {
 		return err
 	}
 
@@ -69,7 +69,7 @@ func (l Launcher) Run() (runErr error) {
 
 		statusData.CompletionTimestamp = time.Now()
 
-		if reportErr := l.reporter.Report(&statusData); reportErr != nil {
+		if reportErr := l.reporter.Report(statusData); reportErr != nil {
 			if runErr != nil {
 				runErr = fmt.Errorf("%v, %v", runErr, reportErr)
 			} else {
