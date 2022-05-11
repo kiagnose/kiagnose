@@ -225,7 +225,7 @@ func (c *Checkup) Setup() error {
 		return fmt.Errorf("%s: %v", errPrefix, err)
 	}
 
-	if c.roles, err = rbac.CreateRoles(c.client.RbacV1(), c.roles); err != nil {
+	if c.roles, err = rbac.CreateRoles(c.client, c.roles); err != nil {
 		return fmt.Errorf("%s: %v", errPrefix, err)
 	}
 
