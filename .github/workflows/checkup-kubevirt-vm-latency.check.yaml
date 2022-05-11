@@ -37,8 +37,9 @@ jobs:
       - name: golangci-lint
         uses: golangci/golangci-lint-action@v3
         with:
-          version: v1.44.2
+          version: v1.45.2
           working-directory: ./checkups/kubevirt-vm-latency
+          args: --timeout 3m --verbose vmlatency/... cmd/...
   unit-test:
     name: Unit Test
     runs-on: ubuntu-latest
