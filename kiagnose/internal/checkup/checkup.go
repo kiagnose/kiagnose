@@ -29,9 +29,8 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	batchv1client "k8s.io/client-go/kubernetes/typed/batch/v1"
-	corev1client "k8s.io/client-go/kubernetes/typed/core/v1"
-	rbacv1client "k8s.io/client-go/kubernetes/typed/rbac/v1"
+
+	"k8s.io/client-go/kubernetes"
 
 	"github.com/kiagnose/kiagnose/kiagnose/internal/checkup/job"
 	"github.com/kiagnose/kiagnose/kiagnose/internal/checkup/namespace"
@@ -41,14 +40,8 @@ import (
 	"github.com/kiagnose/kiagnose/kiagnose/internal/results"
 )
 
-type client interface {
-	CoreV1() corev1client.CoreV1Interface
-	RbacV1() rbacv1client.RbacV1Interface
-	BatchV1() batchv1client.BatchV1Interface
-}
-
 type Checkup struct {
-	client              client
+	client              kubernetes.Interface
 	teardownTimeout     time.Duration
 	namespace           *corev1.Namespace
 	serviceAccount      *corev1.ServiceAccount
@@ -71,7 +64,7 @@ const (
 	ResultsConfigMapNameEnvVarNamespace = "RESULT_CONFIGMAP_NAMESPACE"
 )
 
-func New(c client, checkupConfig *config.Config) *Checkup {
+func New(c kubernetes.Interface, checkupConfig *config.Config) *Checkup {
 	checkupRoles := []*rbacv1.Role{NewConfigMapWriterRole(ResultsConfigMapWriterRoleName, NamespaceName, ResultsConfigMapName)}
 
 	subject := newServiceAccountSubject(ServiceAccountName, NamespaceName)
