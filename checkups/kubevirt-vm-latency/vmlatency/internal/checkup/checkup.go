@@ -22,6 +22,7 @@ package checkup
 import (
 	"context"
 	"fmt"
+	"strings"
 	"time"
 
 	"k8s.io/apimachinery/pkg/types"
@@ -141,7 +142,37 @@ func (c *checkup) Run() error {
 	return fmt.Errorf("%s: not implemented", errMessagePrefix)
 }
 
-func (c *checkup) Teardown(_ context.Context) error {
+func (c *checkup) Teardown(waitCtx context.Context) error {
+	const (
+		errMessagePrefix = "teardown"
+
+		defaultTeardownTimeout = time.Minute * 3
+	)
+
+	var teardownErrors []string
+	if err := vmi.Delete(c.client, c.namespace, c.sourceVM.Name); err != nil {
+		teardownErrors = append(teardownErrors, fmt.Sprintf("'%s/%s': %v", c.namespace, c.sourceVM.Name, err))
+	}
+
+	if err := vmi.Delete(c.client, c.namespace, c.targetVM.Name); err != nil {
+		teardownErrors = append(teardownErrors, fmt.Sprintf("'%s/%s': %v", c.namespace, c.targetVM.Name, err))
+	}
+
+	waitCtx, cancel := context.WithTimeout(waitCtx, defaultTeardownTimeout)
+	defer cancel()
+
+	if err := vmi.WaitForVmiDispose(waitCtx, c.client, c.namespace, c.sourceVM.Name); err != nil {
+		teardownErrors = append(teardownErrors, fmt.Sprintf("'%s/%s': %v", c.namespace, c.sourceVM.Name, err))
+	}
+
+	if err := vmi.WaitForVmiDispose(waitCtx, c.client, c.namespace, c.targetVM.Name); err != nil {
+		teardownErrors = append(teardownErrors, fmt.Sprintf("'%s/%s': %v", c.namespace, c.targetVM.Name, err))
+	}
+
+	if len(teardownErrors) > 0 {
+		return fmt.Errorf("%s: %v", errMessagePrefix, strings.Join(teardownErrors, ", "))
+	}
+
 	return nil
 }
 

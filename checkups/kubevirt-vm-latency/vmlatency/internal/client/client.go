@@ -61,3 +61,7 @@ func (c *Client) CreateVirtualMachineInstance(
 	vmi *kvcorev1.VirtualMachineInstance) (*kvcorev1.VirtualMachineInstance, error) {
 	return c.KubevirtClient.VirtualMachineInstance(namespace).Create(vmi)
 }
+
+func (c *Client) DeleteVirtualMachineInstance(namespace, name string) error {
+	return c.KubevirtClient.VirtualMachineInstance(namespace).Delete(name, &metav1.DeleteOptions{})
+}

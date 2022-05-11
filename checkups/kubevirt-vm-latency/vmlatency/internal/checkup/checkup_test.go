@@ -27,6 +27,8 @@ import (
 
 	assert "github.com/stretchr/testify/require"
 
+	k8scorev1 "k8s.io/api/core/v1"
+
 	kvcorev1 "kubevirt.io/api/core/v1"
 
 	"github.com/kiagnose/kiagnose/checkups/kubevirt-vm-latency/vmlatency/internal/checkup"
@@ -67,6 +69,59 @@ func TestCheckupSetupShouldFailWhen(t *testing.T) {
 	})
 }
 
+func TestCheckupTeardownShouldFailWhen(t *testing.T) {
+	t.Run("failed to delete a VM", func(t *testing.T) {
+		testClient := &clientStub{}
+		testCheckup := checkup.New(
+			testClient,
+			testNamespace,
+			newTestsCheckupParameters())
+		testCtx, cancel := context.WithTimeout(context.Background(), testTimeout)
+		defer cancel()
+
+		assert.NoError(t, testCheckup.Preflight())
+
+		testClient.returnVmi = newTestReadyVmi()
+
+		assert.NoError(t, testCheckup.Setup(testCtx))
+
+		expectedErr := errors.New("delete vmi test error")
+		testClient.failDeleteVmi = expectedErr
+
+		assert.ErrorContains(t, testCheckup.Teardown(testCtx), expectedErr.Error())
+	})
+
+	t.Run("VMs were not disposed before timeout expiration", func(t *testing.T) {
+		testClient := &clientStub{}
+		testCheckup := checkup.New(
+			testClient,
+			testNamespace,
+			newTestsCheckupParameters())
+
+		assert.NoError(t, testCheckup.Preflight())
+
+		testClient.returnVmi = newTestReadyVmi()
+
+		assert.NoError(t, testCheckup.Setup(context.Background()))
+
+		testCtx, cancel := context.WithTimeout(context.Background(), testTimeout)
+		defer cancel()
+
+		assert.ErrorContains(t, testCheckup.Teardown(testCtx), "timed out")
+	})
+}
+
+func newTestReadyVmi() *kvcorev1.VirtualMachineInstance {
+	return &kvcorev1.VirtualMachineInstance{Status: kvcorev1.VirtualMachineInstanceStatus{
+		Conditions: []kvcorev1.VirtualMachineInstanceCondition{
+			{
+				Type:   kvcorev1.VirtualMachineInstanceAgentConnected,
+				Status: k8scorev1.ConditionTrue,
+			},
+		},
+	}}
+}
+
 func newTestsCheckupParameters() config.CheckupParameters {
 	return config.CheckupParameters{
 		NetworkAttachmentDefinitionName:      testNetAttachDefName,
@@ -79,14 +134,20 @@ func newTestsCheckupParameters() config.CheckupParameters {
 }
 
 type clientStub struct {
+	returnVmi     *kvcorev1.VirtualMachineInstance
 	failGetVmi    error
 	failCreateVmi error
+	failDeleteVmi error
 }
 
 func (c clientStub) GetVirtualMachineInstance(_, _ string) (*kvcorev1.VirtualMachineInstance, error) {
-	return nil, c.failGetVmi
+	return c.returnVmi, c.failGetVmi
 }
 
 func (c clientStub) CreateVirtualMachineInstance(_ string, _ *kvcorev1.VirtualMachineInstance) (*kvcorev1.VirtualMachineInstance, error) {
 	return nil, c.failCreateVmi
+}
+
+func (c clientStub) DeleteVirtualMachineInstance(_, _ string) error {
+	return c.failDeleteVmi
 }
