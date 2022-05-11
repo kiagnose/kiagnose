@@ -213,7 +213,7 @@ func (c *Checkup) Setup() error {
 	}
 	defer func() {
 		if err != nil {
-			_ = namespace.DeleteAndWait(c.client.CoreV1(), c.namespace.Name, c.teardownTimeout)
+			_ = namespace.DeleteAndWait(c.client, c.namespace.Name, c.teardownTimeout)
 		}
 	}()
 
@@ -271,7 +271,7 @@ func (c *Checkup) Teardown() error {
 		errs = append(errs, err)
 	}
 
-	if err := namespace.DeleteAndWait(c.client.CoreV1(), c.namespace.Name, c.teardownTimeout); err != nil {
+	if err := namespace.DeleteAndWait(c.client, c.namespace.Name, c.teardownTimeout); err != nil {
 		errs = append(errs, err)
 	}
 
