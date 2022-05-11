@@ -253,7 +253,7 @@ func (c *Checkup) Setup() error {
 		return fmt.Errorf("%s: %v", errPrefix, err)
 	}
 
-	if c.resultConfigMap, err = configmap.Create(c.client.CoreV1(), c.resultConfigMap); err != nil {
+	if c.resultConfigMap, err = configmap.Create(c.client, c.resultConfigMap); err != nil {
 		return fmt.Errorf("%s: %v", errPrefix, err)
 	}
 

@@ -26,10 +26,12 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	corev1client "k8s.io/client-go/kubernetes/typed/core/v1"
+
+	"k8s.io/client-go/kubernetes"
 )
 
-func Create(client corev1client.CoreV1Interface, cm *corev1.ConfigMap) (*corev1.ConfigMap, error) {
-	createdConfigMap, err := client.ConfigMaps(cm.Namespace).Create(context.Background(), cm, metav1.CreateOptions{})
+func Create(client kubernetes.Interface, cm *corev1.ConfigMap) (*corev1.ConfigMap, error) {
+	createdConfigMap, err := client.CoreV1().ConfigMaps(cm.Namespace).Create(context.Background(), cm, metav1.CreateOptions{})
 	if err != nil {
 		return nil, err
 	}
