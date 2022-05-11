@@ -190,7 +190,7 @@ func timestamp(t time.Time) string {
 }
 
 func getCheckupData(t *testing.T, client kubernetes.Interface, configMapNamespace, configMapName string) map[string]string {
-	configMap, err := configmap.Get(client.CoreV1(), configMapNamespace, configMapName)
+	configMap, err := configmap.Get(client, configMapNamespace, configMapName)
 	assert.NoError(t, err)
 
 	return configMap.Data

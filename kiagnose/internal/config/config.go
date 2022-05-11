@@ -48,7 +48,7 @@ type Config struct {
 }
 
 func ReadFromConfigMap(client kubernetes.Interface, configMapNamespace, configMapName string) (*Config, error) {
-	configMap, err := configmap.Get(client.CoreV1(), configMapNamespace, configMapName)
+	configMap, err := configmap.Get(client, configMapNamespace, configMapName)
 	if err != nil {
 		return nil, err
 	}

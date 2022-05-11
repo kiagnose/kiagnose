@@ -124,7 +124,7 @@ func TestReadResultsShouldSucceedWhen(t *testing.T) {
 		t.Run(testCase.description, func(t *testing.T) {
 			fakeClient := fake.NewSimpleClientset(newConfigMap(testCase.input))
 
-			actualResults, err := results.ReadFromConfigMap(fakeClient.CoreV1(), configMapNamespace, configMapName)
+			actualResults, err := results.ReadFromConfigMap(fakeClient, configMapNamespace, configMapName)
 			assert.NoError(t, err)
 
 			assert.Equal(t, testCase.expectedResults, actualResults)
@@ -136,7 +136,7 @@ func TestReadResultsShouldFailWhen(t *testing.T) {
 	t.Run("failing to fetch results", func(t *testing.T) {
 		fakeClient := fake.NewSimpleClientset()
 
-		_, err := results.ReadFromConfigMap(fakeClient.CoreV1(), configMapNamespace, configMapName)
+		_, err := results.ReadFromConfigMap(fakeClient, configMapNamespace, configMapName)
 
 		assert.ErrorContains(t, err, "not found")
 	})
@@ -178,7 +178,7 @@ func TestReadResultsShouldFailWhen(t *testing.T) {
 		t.Run(testCase.description, func(t *testing.T) {
 			fakeClient := fake.NewSimpleClientset(newConfigMap(testCase.input))
 
-			_, err := results.ReadFromConfigMap(fakeClient.CoreV1(), configMapNamespace, configMapName)
+			_, err := results.ReadFromConfigMap(fakeClient, configMapNamespace, configMapName)
 
 			assert.ErrorIs(t, err, testCase.expectedError)
 		})

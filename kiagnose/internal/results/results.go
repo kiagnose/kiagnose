@@ -24,7 +24,7 @@ import (
 	"strconv"
 	"strings"
 
-	corev1client "k8s.io/client-go/kubernetes/typed/core/v1"
+	"k8s.io/client-go/kubernetes"
 
 	"github.com/kiagnose/kiagnose/kiagnose/internal/configmap"
 )
@@ -48,7 +48,7 @@ type Results struct {
 	Results       map[string]string
 }
 
-func ReadFromConfigMap(client corev1client.CoreV1Interface, configMapNamespace, configMapName string) (Results, error) {
+func ReadFromConfigMap(client kubernetes.Interface, configMapNamespace, configMapName string) (Results, error) {
 	resultsData := Results{}
 
 	configMap, err := configmap.Get(client, configMapNamespace, configMapName)
