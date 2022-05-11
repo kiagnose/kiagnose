@@ -267,7 +267,7 @@ func (c *Checkup) Teardown() error {
 	const errPrefix = "teardown"
 	var errs []error
 
-	if err := rbac.DeleteClusterRoleBindings(c.client.RbacV1(), c.clusterRoleBindings, c.teardownTimeout); err != nil {
+	if err := rbac.DeleteClusterRoleBindings(c.client, c.clusterRoleBindings, c.teardownTimeout); err != nil {
 		errs = append(errs, err)
 	}
 
