@@ -208,7 +208,7 @@ func (c *Checkup) Setup() error {
 	const errPrefix = "setup"
 	var err error
 
-	if c.namespace, err = namespace.Create(c.client.CoreV1(), c.namespace); err != nil {
+	if c.namespace, err = namespace.Create(c.client, c.namespace); err != nil {
 		return fmt.Errorf("%s: %v", errPrefix, err)
 	}
 	defer func() {

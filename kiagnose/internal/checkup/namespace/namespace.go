@@ -28,11 +28,13 @@ import (
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/wait"
+
+	"k8s.io/client-go/kubernetes"
 	corev1client "k8s.io/client-go/kubernetes/typed/core/v1"
 )
 
-func Create(client corev1client.CoreV1Interface, namespace *corev1.Namespace) (*corev1.Namespace, error) {
-	namespace, err := client.Namespaces().Create(context.Background(), namespace, metav1.CreateOptions{})
+func Create(client kubernetes.Interface, namespace *corev1.Namespace) (*corev1.Namespace, error) {
+	namespace, err := client.CoreV1().Namespaces().Create(context.Background(), namespace, metav1.CreateOptions{})
 	if err != nil {
 		return nil, err
 	}
