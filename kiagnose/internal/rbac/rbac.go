@@ -37,7 +37,7 @@ import (
 
 // CreateClusterRoleBindings creates the given ClusterRoleBindings in the cluster.
 // In case of failure it will delete and waits for the ClusterRoleBindings to dispose.
-func CreateClusterRoleBindings(client rbacv1client.RbacV1Interface, clusterRoleBindings []*rbacv1.ClusterRoleBinding,
+func CreateClusterRoleBindings(client kubernetes.Interface, clusterRoleBindings []*rbacv1.ClusterRoleBinding,
 	timeout time.Duration) ([]*rbacv1.ClusterRoleBinding, error) {
 	var createdClusterRoleBindings []*rbacv1.ClusterRoleBinding
 	var createErr error
@@ -52,7 +52,7 @@ func CreateClusterRoleBindings(client rbacv1client.RbacV1Interface, clusterRoleB
 
 	if createErr != nil {
 		createErrMsg := fmt.Sprintf("failed for create ClusterRoleBindings: %v", createErr)
-		if deleteErr := DeleteClusterRoleBindings(client, createdClusterRoleBindings, timeout); deleteErr != nil {
+		if deleteErr := DeleteClusterRoleBindings(client.RbacV1(), createdClusterRoleBindings, timeout); deleteErr != nil {
 			return nil, fmt.Errorf("%s, clean up failed: %v", createErrMsg, deleteErr)
 		}
 		return nil, errors.New(createErrMsg)
@@ -61,8 +61,8 @@ func CreateClusterRoleBindings(client rbacv1client.RbacV1Interface, clusterRoleB
 	return createdClusterRoleBindings, nil
 }
 
-func createClusterRoleBinding(c rbacv1client.RbacV1Interface, bindings *rbacv1.ClusterRoleBinding) (*rbacv1.ClusterRoleBinding, error) {
-	createdClusterRoleBinding, err := c.ClusterRoleBindings().Create(context.Background(), bindings, metav1.CreateOptions{})
+func createClusterRoleBinding(c kubernetes.Interface, bindings *rbacv1.ClusterRoleBinding) (*rbacv1.ClusterRoleBinding, error) {
+	createdClusterRoleBinding, err := c.RbacV1().ClusterRoleBindings().Create(context.Background(), bindings, metav1.CreateOptions{})
 	if err != nil {
 		return nil, err
 	}
