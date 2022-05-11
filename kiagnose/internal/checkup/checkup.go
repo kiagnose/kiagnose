@@ -288,7 +288,7 @@ func (c *Checkup) Run() error {
 }
 
 func (c *Checkup) Results() (results.Results, error) {
-	return results.ReadFromConfigMap(c.client.CoreV1(), c.resultConfigMap.Namespace, c.resultConfigMap.Name)
+	return results.ReadFromConfigMap(c.client, c.resultConfigMap.Namespace, c.resultConfigMap.Name)
 }
 
 func (c *Checkup) SetTeardownTimeout(duration time.Duration) {
