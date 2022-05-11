@@ -33,7 +33,7 @@ import (
 )
 
 func TestLauncherShouldFail(t *testing.T) {
-	testLauncher := launcher.New(checkup.New(&client.Client{}, config.CheckupParameters{}), reporterStub{})
+	testLauncher := launcher.New(checkup.New(&client.Client{}, "", config.CheckupParameters{}), reporterStub{})
 
 	assert.Equal(t, testLauncher.Run(), errors.New("run: not implemented"))
 }

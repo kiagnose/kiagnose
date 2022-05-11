@@ -27,7 +27,7 @@ import (
 	"github.com/kiagnose/kiagnose/checkups/kubevirt-vm-latency/vmlatency/internal/reporter"
 )
 
-func Run(env map[string]string) error {
+func Run(env map[string]string, namespace string) error {
 	c, err := client.New()
 	if err != nil {
 		return err
@@ -38,6 +38,9 @@ func Run(env map[string]string) error {
 		return err
 	}
 
-	l := launcher.New(checkup.New(c, cfg.CheckupParameters), reporter.New(c, cfg.ResultsConfigMapNamespace, cfg.ResultsConfigMapName))
+	l := launcher.New(
+		checkup.New(c, namespace, cfg.CheckupParameters),
+		reporter.New(c, cfg.ResultsConfigMapNamespace, cfg.ResultsConfigMapName),
+	)
 	return l.Run()
 }
