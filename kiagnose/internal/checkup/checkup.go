@@ -248,7 +248,7 @@ func (c *Checkup) Run() error {
 		return fmt.Errorf("%s: %v", errPrefix, err)
 	}
 
-	if c.job, err = job.WaitForJobToFinish(c.client.BatchV1(), c.job, c.jobTimeout); err != nil {
+	if c.job, err = job.WaitForJobToFinish(c.client, c.job, c.jobTimeout); err != nil {
 		return fmt.Errorf("%s: %v", errPrefix, err)
 	}
 

@@ -31,7 +31,6 @@ import (
 	k8swatch "k8s.io/apimachinery/pkg/watch"
 
 	"k8s.io/client-go/kubernetes"
-	batchv1client "k8s.io/client-go/kubernetes/typed/batch/v1"
 )
 
 func Create(client kubernetes.Interface, job *batchv1.Job) (*batchv1.Job, error) {
@@ -43,13 +42,13 @@ func Create(client kubernetes.Interface, job *batchv1.Job) (*batchv1.Job, error)
 	return job, nil
 }
 
-func WaitForJobToFinish(client batchv1client.BatchV1Interface, job *batchv1.Job, timeout time.Duration) (*batchv1.Job, error) {
+func WaitForJobToFinish(client kubernetes.Interface, job *batchv1.Job, timeout time.Duration) (*batchv1.Job, error) {
 	const JobNameLabel = "job-name"
 
 	jobLabel := fmt.Sprintf("%s=%s", JobNameLabel, job.Name)
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 	defer cancel()
-	jobWatcher, err := client.Jobs(job.Namespace).Watch(ctx, metav1.ListOptions{LabelSelector: jobLabel})
+	jobWatcher, err := client.BatchV1().Jobs(job.Namespace).Watch(ctx, metav1.ListOptions{LabelSelector: jobLabel})
 	if err != nil {
 		return nil, err
 	}
