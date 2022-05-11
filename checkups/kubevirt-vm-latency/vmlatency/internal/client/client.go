@@ -23,6 +23,7 @@ import (
 	"context"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	kvcorev1 "kubevirt.io/api/core/v1"
 	"kubevirt.io/client-go/kubecli"
 )
 
@@ -49,4 +50,14 @@ func (c *Client) UpdateConfigMap(namespace, name string, date map[string]string)
 	}
 
 	return nil
+}
+
+func (c *Client) GetVirtualMachineInstance(namespace, name string) (*kvcorev1.VirtualMachineInstance, error) {
+	return c.KubevirtClient.VirtualMachineInstance(namespace).Get(name, &metav1.GetOptions{})
+}
+
+func (c *Client) CreateVirtualMachineInstance(
+	namespace string,
+	vmi *kvcorev1.VirtualMachineInstance) (*kvcorev1.VirtualMachineInstance, error) {
+	return c.KubevirtClient.VirtualMachineInstance(namespace).Create(vmi)
 }

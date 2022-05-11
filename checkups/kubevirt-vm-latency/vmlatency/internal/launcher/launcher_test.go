@@ -20,20 +20,38 @@
 package launcher_test
 
 import (
+	"context"
 	"errors"
 	"testing"
 
 	assert "github.com/stretchr/testify/require"
 
+	k8scorev1 "k8s.io/api/core/v1"
+
+	kvcorev1 "kubevirt.io/api/core/v1"
+
 	"github.com/kiagnose/kiagnose/checkups/kubevirt-vm-latency/vmlatency/internal/checkup"
-	"github.com/kiagnose/kiagnose/checkups/kubevirt-vm-latency/vmlatency/internal/client"
 	"github.com/kiagnose/kiagnose/checkups/kubevirt-vm-latency/vmlatency/internal/config"
 	"github.com/kiagnose/kiagnose/checkups/kubevirt-vm-latency/vmlatency/internal/launcher"
 	"github.com/kiagnose/kiagnose/checkups/kubevirt-vm-latency/vmlatency/internal/status"
 )
 
 func TestLauncherShouldFail(t *testing.T) {
-	testLauncher := launcher.New(checkup.New(&client.Client{}, "", config.CheckupParameters{}), reporterStub{})
+	vmiReadyCondition := kvcorev1.VirtualMachineInstanceCondition{
+		Type:   kvcorev1.VirtualMachineInstanceAgentConnected,
+		Status: k8scorev1.ConditionTrue,
+	}
+	testReadyVmi := &kvcorev1.VirtualMachineInstance{
+		Status: kvcorev1.VirtualMachineInstanceStatus{
+			Conditions: []kvcorev1.VirtualMachineInstanceCondition{vmiReadyCondition},
+		},
+	}
+	testCheckup := checkup.New(
+		clientStub{returnVmi: testReadyVmi},
+		k8scorev1.NamespaceDefault,
+		config.CheckupParameters{},
+	)
+	testLauncher := launcher.New(testCheckup, reporterStub{})
 
 	assert.Equal(t, testLauncher.Run(), errors.New("run: not implemented"))
 }
@@ -140,7 +158,7 @@ func (s checkupStub) Preflight() error {
 	return s.failPreflight
 }
 
-func (s checkupStub) Setup() error {
+func (s checkupStub) Setup(_ context.Context) error {
 	return s.failSetup
 }
 
@@ -148,7 +166,7 @@ func (s checkupStub) Run() error {
 	return s.failRun
 }
 
-func (s checkupStub) Teardown() error {
+func (s checkupStub) Teardown(_ context.Context) error {
 	return s.failTeardown
 }
 
@@ -162,4 +180,16 @@ type reporterStub struct {
 
 func (r reporterStub) Report(_ status.Status) error {
 	return r.failReport
+}
+
+type clientStub struct {
+	returnVmi *kvcorev1.VirtualMachineInstance
+}
+
+func (c clientStub) GetVirtualMachineInstance(_, _ string) (*kvcorev1.VirtualMachineInstance, error) {
+	return c.returnVmi, nil
+}
+
+func (c clientStub) CreateVirtualMachineInstance(_ string, _ *kvcorev1.VirtualMachineInstance) (*kvcorev1.VirtualMachineInstance, error) {
+	return nil, nil
 }

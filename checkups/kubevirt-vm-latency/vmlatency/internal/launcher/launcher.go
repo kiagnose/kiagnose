@@ -20,6 +20,7 @@
 package launcher
 
 import (
+	"context"
 	"errors"
 	"strings"
 
@@ -28,9 +29,9 @@ import (
 
 type checkup interface {
 	Preflight() error
-	Setup() error
+	Setup(ctx context.Context) error
 	Run() error
-	Teardown() error
+	Teardown(ctx context.Context) error
 	Results() status.Results
 }
 
@@ -66,13 +67,13 @@ func (l launcher) Run() (runErr error) {
 		return err
 	}
 
-	if err := l.checkup.Setup(); err != nil {
+	if err := l.checkup.Setup(context.Background()); err != nil {
 		runStatus.FailureReason = append(runStatus.FailureReason, err.Error())
 		return err
 	}
 
 	defer func() {
-		if err := l.checkup.Teardown(); err != nil {
+		if err := l.checkup.Teardown(context.Background()); err != nil {
 			runStatus.FailureReason = append(runStatus.FailureReason, err.Error())
 		}
 	}()
