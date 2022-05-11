@@ -229,7 +229,7 @@ func (c *Checkup) Setup() error {
 		return fmt.Errorf("%s: %v", errPrefix, err)
 	}
 
-	if c.roleBindings, err = rbac.CreateRoleBindings(c.client.RbacV1(), c.roleBindings); err != nil {
+	if c.roleBindings, err = rbac.CreateRoleBindings(c.client, c.roleBindings); err != nil {
 		return fmt.Errorf("%s: %v", errPrefix, err)
 	}
 
