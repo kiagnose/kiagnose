@@ -185,7 +185,7 @@ func waitForClusterRoleBindingDeletion(client kubernetes.Interface, name string,
 	return nil
 }
 
-func CreateRoles(client rbacv1client.RbacV1Interface, roles []*rbacv1.Role) ([]*rbacv1.Role, error) {
+func CreateRoles(client kubernetes.Interface, roles []*rbacv1.Role) ([]*rbacv1.Role, error) {
 	var createdRoles []*rbacv1.Role
 	for _, role := range roles {
 		createRole, err := createRole(client, role)
@@ -198,8 +198,8 @@ func CreateRoles(client rbacv1client.RbacV1Interface, roles []*rbacv1.Role) ([]*
 	return createdRoles, nil
 }
 
-func createRole(client rbacv1client.RbacV1Interface, role *rbacv1.Role) (*rbacv1.Role, error) {
-	createdRole, err := client.Roles(role.Namespace).Create(context.Background(), role, metav1.CreateOptions{})
+func createRole(client kubernetes.Interface, role *rbacv1.Role) (*rbacv1.Role, error) {
+	createdRole, err := client.RbacV1().Roles(role.Namespace).Create(context.Background(), role, metav1.CreateOptions{})
 	if err != nil {
 		return nil, err
 	}
