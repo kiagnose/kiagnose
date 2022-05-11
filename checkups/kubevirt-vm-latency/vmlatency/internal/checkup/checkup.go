@@ -28,13 +28,18 @@ import (
 )
 
 type checkup struct {
-	client  *client.Client
-	params  config.CheckupParameters
-	results status.Results
+	client    *client.Client
+	namespace string
+	params    config.CheckupParameters
+	results   status.Results
 }
 
-func New(c *client.Client, params config.CheckupParameters) *checkup {
-	return &checkup{client: c, params: params}
+func New(c *client.Client, namespace string, params config.CheckupParameters) *checkup {
+	return &checkup{
+		client:    c,
+		namespace: namespace,
+		params:    params,
+	}
 }
 
 func (c *checkup) Preflight() error {

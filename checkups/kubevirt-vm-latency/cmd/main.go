@@ -27,8 +27,15 @@ import (
 )
 
 func main() {
+	const errMessagePrefix = "Kubevirt VM latency checkup failed"
 	env := envToMap(os.Environ())
-	if err := vmlatency.Run(env); err != nil {
-		log.Fatalf("Kubevirt VM latency checkup failed: %v\n", err)
+
+	workingNamespace, err := readNamespaceFile()
+	if err != nil {
+		log.Fatalf("%s: %v\n", errMessagePrefix, err)
+	}
+
+	if err := vmlatency.Run(env, workingNamespace); err != nil {
+		log.Fatalf("%s: %v\n", errMessagePrefix, err)
 	}
 }
