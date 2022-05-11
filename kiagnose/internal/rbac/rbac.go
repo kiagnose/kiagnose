@@ -32,7 +32,6 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/client-go/kubernetes"
-	rbacv1client "k8s.io/client-go/kubernetes/typed/rbac/v1"
 )
 
 // CreateClusterRoleBindings creates the given ClusterRoleBindings in the cluster.
@@ -208,7 +207,7 @@ func createRole(client kubernetes.Interface, role *rbacv1.Role) (*rbacv1.Role, e
 	return createdRole, nil
 }
 
-func CreateRoleBindings(client rbacv1client.RbacV1Interface, bindings []*rbacv1.RoleBinding) ([]*rbacv1.RoleBinding, error) {
+func CreateRoleBindings(client kubernetes.Interface, bindings []*rbacv1.RoleBinding) ([]*rbacv1.RoleBinding, error) {
 	var createdRoleBindings []*rbacv1.RoleBinding
 	for _, roleBinding := range bindings {
 		createdBinding, err := createRoleBinding(client, roleBinding)
@@ -221,8 +220,8 @@ func CreateRoleBindings(client rbacv1client.RbacV1Interface, bindings []*rbacv1.
 	return createdRoleBindings, nil
 }
 
-func createRoleBinding(client rbacv1client.RbacV1Interface, crb *rbacv1.RoleBinding) (*rbacv1.RoleBinding, error) {
-	createdRb, err := client.RoleBindings(crb.Namespace).Create(context.Background(), crb, metav1.CreateOptions{})
+func createRoleBinding(client kubernetes.Interface, crb *rbacv1.RoleBinding) (*rbacv1.RoleBinding, error) {
+	createdRb, err := client.RbacV1().RoleBindings(crb.Namespace).Create(context.Background(), crb, metav1.CreateOptions{})
 	if err != nil {
 		return nil, err
 	}
