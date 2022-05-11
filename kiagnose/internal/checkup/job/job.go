@@ -29,11 +29,13 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	k8swatch "k8s.io/apimachinery/pkg/watch"
+
+	"k8s.io/client-go/kubernetes"
 	batchv1client "k8s.io/client-go/kubernetes/typed/batch/v1"
 )
 
-func Create(client batchv1client.BatchV1Interface, job *batchv1.Job) (*batchv1.Job, error) {
-	job, err := client.Jobs(job.Namespace).Create(context.Background(), job, metav1.CreateOptions{})
+func Create(client kubernetes.Interface, job *batchv1.Job) (*batchv1.Job, error) {
+	job, err := client.BatchV1().Jobs(job.Namespace).Create(context.Background(), job, metav1.CreateOptions{})
 	if err != nil {
 		return nil, err
 	}
