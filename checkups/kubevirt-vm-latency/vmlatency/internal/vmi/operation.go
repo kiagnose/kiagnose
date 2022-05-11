@@ -26,7 +26,7 @@ import (
 	"time"
 
 	k8scorev1 "k8s.io/api/core/v1"
-
+	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/util/wait"
 
 	kvcorev1 "kubevirt.io/api/core/v1"
@@ -35,6 +35,7 @@ import (
 type KubevirtVmisClient interface {
 	GetVirtualMachineInstance(namespace, name string) (*kvcorev1.VirtualMachineInstance, error)
 	CreateVirtualMachineInstance(namespace string, vmi *kvcorev1.VirtualMachineInstance) (*kvcorev1.VirtualMachineInstance, error)
+	DeleteVirtualMachineInstance(namespace, name string) error
 }
 
 func Start(c KubevirtVmisClient, namespace string, vmi *kvcorev1.VirtualMachineInstance) error {
@@ -72,6 +73,33 @@ func waitForVmiCondition(ctx context.Context, c KubevirtVmisClient, namespace, n
 	const interval = time.Second * 5
 	if err := wait.PollImmediateUntilWithContext(ctx, interval, conditionFn); err != nil {
 		return fmt.Errorf("failed to wait for VMI %s/%s condition %s: %v", namespace, name, conditionType, err)
+	}
+
+	return nil
+}
+
+func Delete(c KubevirtVmisClient, namespace, name string) error {
+	log.Printf("deleting VMI %s/%s..\n", namespace, name)
+
+	if err := c.DeleteVirtualMachineInstance(namespace, name); err != nil {
+		return fmt.Errorf("failed to delete VMI %s/%s: %v", namespace, name, err)
+	}
+	return nil
+}
+
+func WaitForVmiDispose(ctx context.Context, c KubevirtVmisClient, namespace, name string) error {
+	log.Printf("waiting for VMI %s/%s to dispose..\n", namespace, name)
+
+	conditionFn := func(ctx context.Context) (bool, error) {
+		_, err := c.GetVirtualMachineInstance(namespace, name)
+		if k8serrors.IsNotFound(err) {
+			return true, nil
+		}
+		return false, nil
+	}
+	const interval = time.Second * 5
+	if err := wait.PollImmediateUntilWithContext(ctx, interval, conditionFn); err != nil {
+		return fmt.Errorf("failed to wait for VMI %s/%s to dispose: %v", namespace, name, err)
 	}
 
 	return nil

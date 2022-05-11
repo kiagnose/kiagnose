@@ -27,6 +27,7 @@ import (
 	assert "github.com/stretchr/testify/require"
 
 	k8scorev1 "k8s.io/api/core/v1"
+	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 
 	kvcorev1 "kubevirt.io/api/core/v1"
 
@@ -37,17 +38,8 @@ import (
 )
 
 func TestLauncherShouldFail(t *testing.T) {
-	vmiReadyCondition := kvcorev1.VirtualMachineInstanceCondition{
-		Type:   kvcorev1.VirtualMachineInstanceAgentConnected,
-		Status: k8scorev1.ConditionTrue,
-	}
-	testReadyVmi := &kvcorev1.VirtualMachineInstance{
-		Status: kvcorev1.VirtualMachineInstanceStatus{
-			Conditions: []kvcorev1.VirtualMachineInstanceCondition{vmiReadyCondition},
-		},
-	}
 	testCheckup := checkup.New(
-		clientStub{returnVmi: testReadyVmi},
+		newFakeClient(),
 		k8scorev1.NamespaceDefault,
 		config.CheckupParameters{},
 	)
@@ -182,14 +174,45 @@ func (r reporterStub) Report(_ status.Status) error {
 	return r.failReport
 }
 
-type clientStub struct {
-	returnVmi *kvcorev1.VirtualMachineInstance
+type fakeClient struct {
+	vmiTracker map[string]*kvcorev1.VirtualMachineInstance
 }
 
-func (c clientStub) GetVirtualMachineInstance(_, _ string) (*kvcorev1.VirtualMachineInstance, error) {
-	return c.returnVmi, nil
+// newFakeClient returns fakeClient that tracks VMIs.
+// The VMI tracker acts as the cluster DB and keep records regarding
+// the VMIs that were created or deleted.
+func newFakeClient() *fakeClient {
+	return &fakeClient{vmiTracker: map[string]*kvcorev1.VirtualMachineInstance{}}
 }
 
-func (c clientStub) CreateVirtualMachineInstance(_ string, _ *kvcorev1.VirtualMachineInstance) (*kvcorev1.VirtualMachineInstance, error) {
-	return nil, nil
+func (c *fakeClient) GetVirtualMachineInstance(namespace, name string) (*kvcorev1.VirtualMachineInstance, error) {
+	vmi, exists := c.vmiTracker[vmiKey(namespace, name)]
+	if !exists {
+		return nil, k8serrors.NewNotFound(kvcorev1.Resource("VirtualMachineInstance"), "")
+	}
+	return vmi, nil
+}
+
+// CreateVirtualMachineInstance adds the given VMI to the VMI tracker,
+// and adds VirtualMachineInstanceReady condition to the VMI status.
+func (c *fakeClient) CreateVirtualMachineInstance(
+	namespace string,
+	vmi *kvcorev1.VirtualMachineInstance) (*kvcorev1.VirtualMachineInstance, error) {
+	vmi.Status.Conditions = append(vmi.Status.Conditions,
+		kvcorev1.VirtualMachineInstanceCondition{
+			Type:   kvcorev1.VirtualMachineInstanceAgentConnected,
+			Status: k8scorev1.ConditionTrue,
+		},
+	)
+	c.vmiTracker[vmiKey(namespace, vmi.Name)] = vmi
+	return vmi, nil
+}
+
+func (c *fakeClient) DeleteVirtualMachineInstance(namespace, name string) error {
+	delete(c.vmiTracker, vmiKey(namespace, name))
+	return nil
+}
+
+func vmiKey(namespace, name string) string {
+	return namespace + "/" + name
 }
