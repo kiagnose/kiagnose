@@ -25,8 +25,6 @@ import (
 
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	corev1client "k8s.io/client-go/kubernetes/typed/core/v1"
-
 	"k8s.io/client-go/kubernetes"
 )
 
@@ -43,6 +41,6 @@ func Get(client kubernetes.Interface, namespace, name string) (*corev1.ConfigMap
 	return client.CoreV1().ConfigMaps(namespace).Get(context.Background(), name, metav1.GetOptions{})
 }
 
-func Update(client corev1client.CoreV1Interface, configMap *corev1.ConfigMap) (*corev1.ConfigMap, error) {
-	return client.ConfigMaps(configMap.Namespace).Update(context.Background(), configMap, metav1.UpdateOptions{})
+func Update(client kubernetes.Interface, configMap *corev1.ConfigMap) (*corev1.ConfigMap, error) {
+	return client.CoreV1().ConfigMaps(configMap.Namespace).Update(context.Background(), configMap, metav1.UpdateOptions{})
 }

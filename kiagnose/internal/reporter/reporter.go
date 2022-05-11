@@ -87,7 +87,7 @@ func (r *Reporter) Report(statusData *status.Status) error {
 		r.configMap.Data[ResultsPrefix+k] = v
 	}
 
-	updatedConfigMap, err := configmap.Update(r.client.CoreV1(), r.configMap)
+	updatedConfigMap, err := configmap.Update(r.client, r.configMap)
 	if err != nil {
 		return err
 	}
