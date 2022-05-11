@@ -244,7 +244,7 @@ func (c *Checkup) Run() error {
 	const errPrefix = "run"
 	var err error
 
-	if c.job, err = job.Create(c.client.BatchV1(), c.job); err != nil {
+	if c.job, err = job.Create(c.client, c.job); err != nil {
 		return fmt.Errorf("%s: %v", errPrefix, err)
 	}
 
