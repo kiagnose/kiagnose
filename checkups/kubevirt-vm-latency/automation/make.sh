@@ -72,11 +72,11 @@ if [ "${ARGCOUNT}" -eq "0" ] ; then
 fi
 
 if [ -n "${OPT_LINT}" ]; then
-    golangci_lint_version=v1.44.2
+    golangci_lint_version=v1.45.2
     if [ ! -f $(go env GOPATH)/bin/golangci-lint ]; then
         curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b $(go env GOPATH)/bin $golangci_lint_version
     fi
-    golangci-lint run
+    golangci-lint run vmlatency/... cmd/...
 fi
 
 if [ -n "${OPT_UNIT_TEST}" ]; then
