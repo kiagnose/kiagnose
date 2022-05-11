@@ -52,7 +52,7 @@ func CreateClusterRoleBindings(client kubernetes.Interface, clusterRoleBindings 
 
 	if createErr != nil {
 		createErrMsg := fmt.Sprintf("failed for create ClusterRoleBindings: %v", createErr)
-		if deleteErr := DeleteClusterRoleBindings(client.RbacV1(), createdClusterRoleBindings, timeout); deleteErr != nil {
+		if deleteErr := DeleteClusterRoleBindings(client, createdClusterRoleBindings, timeout); deleteErr != nil {
 			return nil, fmt.Errorf("%s, clean up failed: %v", createErrMsg, deleteErr)
 		}
 		return nil, errors.New(createErrMsg)
@@ -129,7 +129,7 @@ func getRole(client kubernetes.Interface, namespace, name string) (*rbacv1.Role,
 }
 
 // DeleteClusterRoleBindings delete and waits for the given ClusterRoleBindings to dispose.
-func DeleteClusterRoleBindings(client rbacv1client.RbacV1Interface, clusterRoleBindings []*rbacv1.ClusterRoleBinding,
+func DeleteClusterRoleBindings(client kubernetes.Interface, clusterRoleBindings []*rbacv1.ClusterRoleBinding,
 	timeout time.Duration) error {
 	var danglingClusterRoleBindings []string
 	var deletedClusterRoleBindings []string
@@ -156,8 +156,8 @@ func DeleteClusterRoleBindings(client rbacv1client.RbacV1Interface, clusterRoleB
 	return nil
 }
 
-func deleteClusterRoleBinding(client rbacv1client.RbacV1Interface, clusterRoleBindingName string) error {
-	if err := client.ClusterRoleBindings().Delete(context.Background(), clusterRoleBindingName, metav1.DeleteOptions{}); err != nil {
+func deleteClusterRoleBinding(client kubernetes.Interface, clusterRoleBindingName string) error {
+	if err := client.RbacV1().ClusterRoleBindings().Delete(context.Background(), clusterRoleBindingName, metav1.DeleteOptions{}); err != nil {
 		return err
 	}
 	log.Printf("delete ClusterRoleBinding %q request sent", clusterRoleBindingName)
@@ -165,12 +165,12 @@ func deleteClusterRoleBinding(client rbacv1client.RbacV1Interface, clusterRoleBi
 }
 
 // waitForClusterRoleBindingDeletion waits until the given ClusterRoleBinding is disposed.
-func waitForClusterRoleBindingDeletion(client rbacv1client.RbacV1Interface, name string, timeout time.Duration) error {
+func waitForClusterRoleBindingDeletion(client kubernetes.Interface, name string, timeout time.Duration) error {
 	log.Printf("waiting for ClusterRoleBinding %q to dispose", name)
 
 	const pollInterval = time.Second * 5
 	conditionFn := func() (bool, error) {
-		_, err := client.ClusterRoleBindings().Get(context.Background(), name, metav1.GetOptions{})
+		_, err := client.RbacV1().ClusterRoleBindings().Get(context.Background(), name, metav1.GetOptions{})
 		custerRoleBindingNotFound := k8serrors.IsNotFound(err)
 		if err != nil && !custerRoleBindingNotFound {
 			log.Printf("failed to get ClusterRoleBinding %q while waiting for it to dispose: %v", name, err)
