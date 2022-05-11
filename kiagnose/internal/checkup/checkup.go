@@ -233,7 +233,7 @@ func (c *Checkup) Setup() error {
 		return fmt.Errorf("%s: %v", errPrefix, err)
 	}
 
-	if c.clusterRoleBindings, err = rbac.CreateClusterRoleBindings(c.client.RbacV1(), c.clusterRoleBindings, c.teardownTimeout); err != nil {
+	if c.clusterRoleBindings, err = rbac.CreateClusterRoleBindings(c.client, c.clusterRoleBindings, c.teardownTimeout); err != nil {
 		return fmt.Errorf("%s: %v", errPrefix, err)
 	}
 
