@@ -19,10 +19,17 @@
 
 package client
 
-type Client struct{}
+import "kubevirt.io/client-go/kubecli"
+
+type Client struct{ kubecli.KubevirtClient }
 
 func New() (*Client, error) {
-	return &Client{}, nil
+	c, err := kubecli.GetKubevirtClient()
+	if err != nil {
+		return nil, err
+	}
+
+	return &Client{c}, nil
 }
 
 func (c *Client) UpdateConfigMap(_, _ string, _ map[string]string) error {
