@@ -33,7 +33,7 @@ CORE_IMAGE="${IMAGE_REGISTRY}/${IMAGE_ORG}/${CORE_IMAGE_NAME}:${CORE_IMAGE_TAG}"
 CORE_BINARY_NAME="kiagnose"
 
 options=$(getopt --options "" \
-    --long lint,unit-test,build-core,build-core-image,push-core-image,help\
+    --long lint,unit-test,build-core,build-core-image,push-core-image,e2e,help\
     -- "${@}")
 eval set -- "$options"
 while true; do
@@ -53,9 +53,12 @@ while true; do
     --push-core-image)
         OPT_PUSH_CORE_IMAGE=1
         ;;
+    --e2e)
+        OPT_E2E=1
+        ;;
     --help)
         set +x
-        echo "$0 [--lint] [--unit-test] [--build-core] [--build-core-image] [--push-core-image]"
+        echo "$0 [--lint] [--unit-test] [--e2e] [--build-core] [--build-core-image] [--push-core-image]"
         exit
         ;;
     --)
@@ -98,4 +101,8 @@ fi
 if [ -n "${OPT_PUSH_CORE_IMAGE}" ]; then
     echo "Pushing \"${CORE_IMAGE}\"..."
     ${CRI} push ${CORE_IMAGE}
+fi
+
+if [ -n "${OPT_E2E}" ]; then
+    ./automation/e2e.sh $@
 fi
