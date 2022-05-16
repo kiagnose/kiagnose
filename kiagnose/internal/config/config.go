@@ -31,9 +31,13 @@ import (
 
 	"github.com/kiagnose/kiagnose/kiagnose/internal/configmap"
 	"github.com/kiagnose/kiagnose/kiagnose/internal/rbac"
+	"github.com/kiagnose/kiagnose/kiagnose/types"
 )
 
-var ErrConfigMapDataIsNil = errors.New("configMap Data field is nil")
+var (
+	ErrConfigMapDataIsNil      = errors.New("configMap Data field is nil")
+	ErrConfigMapIsAlreadyInUse = errors.New("configMap is already in use")
+)
 
 type Config struct {
 	Image        string
@@ -51,6 +55,10 @@ func ReadFromConfigMap(client kubernetes.Interface, configMapNamespace, configMa
 
 	if configMap.Data == nil {
 		return nil, ErrConfigMapDataIsNil
+	}
+
+	if isConfigMapAlreadyInUse(configMap.Data) {
+		return nil, ErrConfigMapIsAlreadyInUse
 	}
 
 	parser := newConfigMapParser(configMap.Data)
@@ -76,6 +84,11 @@ func ReadFromConfigMap(client kubernetes.Interface, configMapNamespace, configMa
 		ClusterRoles: clusterRoles,
 		Roles:        roles,
 	}, nil
+}
+
+func isConfigMapAlreadyInUse(data map[string]string) bool {
+	_, exists := data[types.StartTimestampKey]
+	return exists
 }
 
 func paramsToEnvVars(params map[string]string) []corev1.EnvVar {

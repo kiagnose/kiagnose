@@ -125,6 +125,24 @@ func TestReadFromConfigMapShouldFail(t *testing.T) {
 
 	failureTestCases := []loadFailureTestCase{
 		{
+			description: "when ConfigMap is already in use",
+			configMapData: map[string]string{
+				types.ImageKey:          imageName,
+				types.TimeoutKey:        timeoutValue,
+				types.StartTimestampKey: time.Now().Format(time.RFC3339),
+			},
+			expectedError: config.ErrConfigMapIsAlreadyInUse.Error(),
+		},
+		{
+			description: "when ConfigMap is already in use (startTimestamp exists but empty)",
+			configMapData: map[string]string{
+				types.ImageKey:          imageName,
+				types.TimeoutKey:        timeoutValue,
+				types.StartTimestampKey: "",
+			},
+			expectedError: config.ErrConfigMapIsAlreadyInUse.Error(),
+		},
+		{
 			description:   "when image field is missing",
 			configMapData: map[string]string{types.TimeoutKey: timeoutValue},
 			expectedError: config.ErrImageFieldIsMissing.Error(),
