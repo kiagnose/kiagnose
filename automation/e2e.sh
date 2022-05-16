@@ -124,7 +124,7 @@ if [ -n "${OPT_RUN_TEST}" ]; then
     KIAGNOSE_JOB=echo-checkup1
     ECHO_CONFIGMAP=echo-checkup-config
 
-    ${KUBECTL} wait --for=condition=complete --timeout=20s job.batch/${KIAGNOSE_JOB} -n ${KIAGNOSE_NAMESPACE}
+    ${KUBECTL} wait --for=condition=complete --timeout=1m job.batch/${KIAGNOSE_JOB} -n ${KIAGNOSE_NAMESPACE}
 
     echo
     echo "Result:"
