@@ -84,12 +84,12 @@ if [ -n "${OPT_LINT}" ]; then
 fi
 
 if [ -n "${OPT_UNIT_TEST}" ]; then
-    go test -v ./kiagnose/...
+    go test -v ${PWD}/kiagnose/...
 fi
 
 if [ -n "${OPT_BUILD_CORE}" ]; then
     echo "Trying to build \"${CORE_BINARY_NAME}\"..."
-    go build -v -o ./bin/${CORE_BINARY_NAME} ./cmd/
+    go build -v -o ${PWD}/bin/${CORE_BINARY_NAME} ${PWD}/cmd/
     echo "Successfully built \"${CORE_BINARY_NAME}\""
 fi
 
