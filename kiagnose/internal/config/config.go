@@ -20,6 +20,7 @@
 package config
 
 import (
+	"errors"
 	"strings"
 	"time"
 
@@ -31,6 +32,8 @@ import (
 	"github.com/kiagnose/kiagnose/kiagnose/internal/configmap"
 	"github.com/kiagnose/kiagnose/kiagnose/internal/rbac"
 )
+
+var ErrConfigMapDataIsNil = errors.New("configMap Data field is nil")
 
 type Config struct {
 	Image        string
@@ -44,6 +47,10 @@ func ReadFromConfigMap(client kubernetes.Interface, configMapNamespace, configMa
 	configMap, err := configmap.Get(client.CoreV1(), configMapNamespace, configMapName)
 	if err != nil {
 		return nil, err
+	}
+
+	if configMap.Data == nil {
+		return nil, ErrConfigMapDataIsNil
 	}
 
 	parser := newConfigMapParser(configMap.Data)
