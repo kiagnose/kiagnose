@@ -75,22 +75,16 @@ fi
 
 if [ -n "${OPT_INSTALL_KIND}" ]; then
     if [ ! -f "${KIND}" ]; then
-        curl -Lo ${PWD}/kind https://kind.sigs.k8s.io/dl/${KIND_VERSION}/kind-linux-amd64
-        chmod +x ${PWD}/kind
-        if [ "${KIND}" != "${PWD}/kind" ]; then
-            mv ${PWD}/kind "${KIND}"
-        fi
+        curl -Lo ${KIND} https://kind.sigs.k8s.io/dl/${KIND_VERSION}/kind-linux-amd64
+        chmod +x ${KIND}
         echo "kind installed successfully at ${KIND}"
     fi
 fi
 
 if [ -n "${OPT_INSTALL_KUBECTL}" ]; then
     if [ ! -f "${KUBECTL}" ]; then
-        curl -LO https://dl.k8s.io/release/${KUBECTL_VERSION}/bin/linux/amd64/kubectl
-        chmod +x ${PWD}/kubectl
-        if [ "${KUBECTL}" != "${PWD}/kubectl" ]; then
-            mv ${PWD}/kubectl "${KUBECTL}"
-        fi
+        curl -Lo ${KUBECTL} https://dl.k8s.io/release/${KUBECTL_VERSION}/bin/linux/amd64/kubectl
+        chmod +x ${KUBECTL}
         echo "kubectl installed successfully at ${KUBECTL}"
     fi
 fi
