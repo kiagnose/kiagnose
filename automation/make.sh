@@ -21,6 +21,8 @@ set -e
 
 ARGCOUNT=$#
 
+SCRIPT_PATH=$(dirname $(realpath -s $0))
+
 CRI=${CRI:-podman}
 
 IMAGE_REGISTRY=${IMAGE_REGISTRY:-quay.io}
@@ -104,5 +106,5 @@ if [ -n "${OPT_PUSH_CORE_IMAGE}" ]; then
 fi
 
 if [ -n "${OPT_E2E}" ]; then
-    ./automation/e2e.sh $@
+    ${SCRIPT_PATH}/e2e.sh $@
 fi
