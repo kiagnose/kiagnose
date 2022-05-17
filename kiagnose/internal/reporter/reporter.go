@@ -31,14 +31,7 @@ import (
 
 	"github.com/kiagnose/kiagnose/kiagnose/internal/configmap"
 	"github.com/kiagnose/kiagnose/kiagnose/internal/status"
-)
-
-const (
-	SucceededKey           = "status.succeeded"
-	FailureReasonKey       = "status.failureReason"
-	ResultsPrefix          = "status.result."
-	StartTimestampKey      = "status.startTimestamp"
-	CompletionTimestampKey = "status.completionTimestamp"
+	"github.com/kiagnose/kiagnose/kiagnose/types"
 )
 
 var ErrConfigMapDataIsNil = errors.New("configMap Data is nil")
@@ -75,17 +68,17 @@ func (r *Reporter) Report(statusData status.Status) error {
 	}
 
 	if !statusData.StartTimestamp.IsZero() {
-		r.configMap.Data[StartTimestampKey] = statusData.StartTimestamp.Format(time.RFC3339)
+		r.configMap.Data[types.StartTimestampKey] = statusData.StartTimestamp.Format(time.RFC3339)
 	}
 
 	if !statusData.CompletionTimestamp.IsZero() {
-		r.configMap.Data[CompletionTimestampKey] = statusData.CompletionTimestamp.Format(time.RFC3339)
-		r.configMap.Data[SucceededKey] = strconv.FormatBool(statusData.Succeeded)
-		r.configMap.Data[FailureReasonKey] = strings.Join(statusData.FailureReason, ",")
+		r.configMap.Data[types.CompletionTimestampKey] = statusData.CompletionTimestamp.Format(time.RFC3339)
+		r.configMap.Data[types.SucceededKey] = strconv.FormatBool(statusData.Succeeded)
+		r.configMap.Data[types.FailureReasonKey] = strings.Join(statusData.FailureReason, ",")
 	}
 
 	for k, v := range statusData.Results {
-		r.configMap.Data[ResultsPrefix+k] = v
+		r.configMap.Data[types.ResultsPrefix+k] = v
 	}
 
 	updatedConfigMap, err := configmap.Update(r.client.CoreV1(), r.configMap)

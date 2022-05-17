@@ -70,7 +70,7 @@ func TestReportShouldSucceed(t *testing.T) {
 		assert.NoError(t, reporterUnderTest.Report(checkupStatus))
 
 		expectedReportData := map[string]string{
-			reporter.StartTimestampKey: timestamp(checkupStatus.StartTimestamp),
+			types.StartTimestampKey: timestamp(checkupStatus.StartTimestamp),
 		}
 
 		assert.Equal(t,
@@ -105,10 +105,10 @@ func TestReportShouldSucceed(t *testing.T) {
 			assert.NoError(t, reporterUnderTest.Report(checkupStatus))
 
 			expectedReportData := map[string]string{
-				reporter.StartTimestampKey:      timestamp(checkupStatus.StartTimestamp),
-				reporter.SucceededKey:           strconv.FormatBool(checkupStatus.Succeeded),
-				reporter.FailureReasonKey:       strings.Join(checkupStatus.FailureReason, ","),
-				reporter.CompletionTimestampKey: timestamp(checkupStatus.CompletionTimestamp),
+				types.StartTimestampKey:      timestamp(checkupStatus.StartTimestamp),
+				types.SucceededKey:           strconv.FormatBool(checkupStatus.Succeeded),
+				types.FailureReasonKey:       strings.Join(checkupStatus.FailureReason, ","),
+				types.CompletionTimestampKey: timestamp(checkupStatus.CompletionTimestamp),
 			}
 
 			assert.Equal(t,

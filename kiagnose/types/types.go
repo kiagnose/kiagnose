@@ -26,3 +26,11 @@ const (
 	ClusterRolesKey    = "spec.clusterRoles"
 	RolesKey           = "spec.roles"
 )
+
+const (
+	SucceededKey           = "status.succeeded"
+	FailureReasonKey       = "status.failureReason"
+	ResultsPrefix          = "status.result."
+	StartTimestampKey      = "status.startTimestamp"
+	CompletionTimestampKey = "status.completionTimestamp"
+)
