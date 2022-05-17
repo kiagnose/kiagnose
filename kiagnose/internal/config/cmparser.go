@@ -23,14 +23,8 @@ import (
 	"errors"
 	"strings"
 	"time"
-)
 
-const (
-	ImageKey           = "spec.image"
-	TimeoutKey         = "spec.timeout"
-	ParamNameKeyPrefix = "spec.param."
-	ClusterRolesKey    = "spec.clusterRoles"
-	RolesKey           = "spec.roles"
+	"github.com/kiagnose/kiagnose/kiagnose/types"
 )
 
 var (
@@ -99,7 +93,7 @@ func (cmp *configMapParser) RoleNames() []string {
 func (cmp *configMapParser) parseImageField() error {
 	var exists bool
 
-	cmp.image, exists = cmp.configMapRawData[ImageKey]
+	cmp.image, exists = cmp.configMapRawData[types.ImageKey]
 	if !exists {
 		return ErrImageFieldIsMissing
 	}
@@ -108,7 +102,7 @@ func (cmp *configMapParser) parseImageField() error {
 }
 
 func (cmp *configMapParser) parseTimeoutField() error {
-	rawTimeout, exists := cmp.configMapRawData[TimeoutKey]
+	rawTimeout, exists := cmp.configMapRawData[types.TimeoutKey]
 	if !exists {
 		return ErrTimeoutFieldIsMissing
 	}
@@ -124,21 +118,21 @@ func (cmp *configMapParser) parseTimeoutField() error {
 
 func (cmp *configMapParser) parseParamsField() {
 	for k, v := range cmp.configMapRawData {
-		if strings.HasPrefix(k, ParamNameKeyPrefix) {
-			paramName := strings.TrimPrefix(k, ParamNameKeyPrefix)
+		if strings.HasPrefix(k, types.ParamNameKeyPrefix) {
+			paramName := strings.TrimPrefix(k, types.ParamNameKeyPrefix)
 			cmp.params[paramName] = v
 		}
 	}
 }
 
 func (cmp *configMapParser) parseClusterRoleNamesField() {
-	if rawClusterRoleNames := cmp.configMapRawData[ClusterRolesKey]; rawClusterRoleNames != "" {
+	if rawClusterRoleNames := cmp.configMapRawData[types.ClusterRolesKey]; rawClusterRoleNames != "" {
 		cmp.clusterRoleNames = parseListSeparatedByNewlines(rawClusterRoleNames)
 	}
 }
 
 func (cmp *configMapParser) parseRoleNamesField() {
-	if rawRoleNames := cmp.configMapRawData[RolesKey]; rawRoleNames != "" {
+	if rawRoleNames := cmp.configMapRawData[types.RolesKey]; rawRoleNames != "" {
 		cmp.roleNames = parseListSeparatedByNewlines(rawRoleNames)
 	}
 }
