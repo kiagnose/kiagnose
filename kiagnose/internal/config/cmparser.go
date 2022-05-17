@@ -28,7 +28,6 @@ import (
 )
 
 var (
-	ErrConfigMapDataIsNil    = errors.New("configMap Data field is nil")
 	ErrImageFieldIsMissing   = errors.New("image field is missing")
 	ErrTimeoutFieldIsMissing = errors.New("timeout field is missing")
 	ErrTimeoutFieldIsIllegal = errors.New("timeout field is illegal")
@@ -51,10 +50,6 @@ func newConfigMapParser(configMapRawData map[string]string) *configMapParser {
 }
 
 func (cmp *configMapParser) Parse() error {
-	if cmp.configMapRawData == nil {
-		return ErrConfigMapDataIsNil
-	}
-
 	if err := cmp.parseImageField(); err != nil {
 		return err
 	}
