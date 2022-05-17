@@ -88,11 +88,11 @@ func TestLauncherRunWithResultsWhen(t *testing.T) {
 			zeroTimestamps(actualCheckupData)
 
 			expectedData := checkupSpecData()
-			expectedData[reporter.SucceededKey] = strconv.FormatBool(testCase.inputResults.Succeeded)
-			expectedData[reporter.FailureReasonKey] = testCase.inputResults.FailureReason
+			expectedData[types.SucceededKey] = strconv.FormatBool(testCase.inputResults.Succeeded)
+			expectedData[types.FailureReasonKey] = testCase.inputResults.FailureReason
 
 			for k, v := range testCase.inputResults.Results {
-				expectedData[reporter.ResultsPrefix+k] = v
+				expectedData[types.ResultsPrefix+k] = v
 			}
 
 			zeroTimestamps(expectedData)
@@ -147,8 +147,8 @@ func TestLauncherRunShouldFailWithReportWhen(t *testing.T) {
 			zeroTimestamps(actualCheckupData)
 
 			expectedData := checkupSpecData()
-			expectedData[reporter.SucceededKey] = strconv.FormatBool(false)
-			expectedData[reporter.FailureReasonKey] = testCase.expectedError.Error()
+			expectedData[types.SucceededKey] = strconv.FormatBool(false)
+			expectedData[types.FailureReasonKey] = testCase.expectedError.Error()
 			zeroTimestamps(expectedData)
 
 			assert.Equal(t, expectedData, actualCheckupData)
@@ -306,6 +306,6 @@ func getCheckupData(t *testing.T, client kubernetes.Interface, configMapNamespac
 }
 
 func zeroTimestamps(data map[string]string) {
-	data[reporter.StartTimestampKey] = time.Time{}.Format(time.RFC3339)
-	data[reporter.CompletionTimestampKey] = time.Time{}.Format(time.RFC3339)
+	data[types.StartTimestampKey] = time.Time{}.Format(time.RFC3339)
+	data[types.CompletionTimestampKey] = time.Time{}.Format(time.RFC3339)
 }
