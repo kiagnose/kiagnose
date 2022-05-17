@@ -34,6 +34,7 @@ import (
 	"k8s.io/client-go/kubernetes/fake"
 
 	"github.com/kiagnose/kiagnose/kiagnose/internal/config"
+	"github.com/kiagnose/kiagnose/kiagnose/types"
 )
 
 const (
@@ -65,7 +66,7 @@ func TestReadFromConfigMapShouldSucceed(t *testing.T) {
 	testCases := []loadTestCase{
 		{
 			description:   "when supplied with required parameters only",
-			configMapData: map[string]string{config.ImageKey: imageName, config.TimeoutKey: timeoutValue},
+			configMapData: map[string]string{types.ImageKey: imageName, types.TimeoutKey: timeoutValue},
 			expectedConfig: &config.Config{
 				Image:   imageName,
 				Timeout: stringToDurationMustParse(timeoutValue),
@@ -76,12 +77,12 @@ func TestReadFromConfigMapShouldSucceed(t *testing.T) {
 			clusterRoles: expectedClusterRoles(),
 			roles:        expectedRoles(),
 			configMapData: map[string]string{
-				config.ImageKey:                       imageName,
-				config.TimeoutKey:                     timeoutValue,
-				config.ParamNameKeyPrefix + param1Key: param1Value,
-				config.ParamNameKeyPrefix + param2Key: param2Value,
-				config.ClusterRolesKey:                strings.Join(clusterRoleNamesList, "\n"),
-				config.RolesKey:                       strings.Join(roleNamesList, "\n"),
+				types.ImageKey:                       imageName,
+				types.TimeoutKey:                     timeoutValue,
+				types.ParamNameKeyPrefix + param1Key: param1Value,
+				types.ParamNameKeyPrefix + param2Key: param2Value,
+				types.ClusterRolesKey:                strings.Join(clusterRoleNamesList, "\n"),
+				types.RolesKey:                       strings.Join(roleNamesList, "\n"),
 			},
 			expectedConfig: &config.Config{
 				Image:        imageName,
@@ -125,17 +126,17 @@ func TestReadFromConfigMapShouldFail(t *testing.T) {
 	failureTestCases := []loadFailureTestCase{
 		{
 			description:   "when image field is missing",
-			configMapData: map[string]string{config.TimeoutKey: timeoutValue},
+			configMapData: map[string]string{types.TimeoutKey: timeoutValue},
 			expectedError: config.ErrImageFieldIsMissing.Error(),
 		},
 		{
 			description:   "when timout field is missing",
-			configMapData: map[string]string{config.ImageKey: imageName},
+			configMapData: map[string]string{types.ImageKey: imageName},
 			expectedError: config.ErrTimeoutFieldIsMissing.Error(),
 		},
 		{
 			description:   "when timout field is illegal",
-			configMapData: map[string]string{config.ImageKey: imageName, config.TimeoutKey: "illegalValue"},
+			configMapData: map[string]string{types.ImageKey: imageName, types.TimeoutKey: "illegalValue"},
 			expectedError: config.ErrTimeoutFieldIsIllegal.Error(),
 		},
 		{
@@ -145,17 +146,17 @@ func TestReadFromConfigMapShouldFail(t *testing.T) {
 		},
 		{
 			description:   "when ClusterRole doesn't exist",
-			configMapData: map[string]string{config.ImageKey: imageName, config.TimeoutKey: timeoutValue, config.ClusterRolesKey: "NA\n"},
+			configMapData: map[string]string{types.ImageKey: imageName, types.TimeoutKey: timeoutValue, types.ClusterRolesKey: "NA\n"},
 			expectedError: "clusterroles.rbac.authorization.k8s.io",
 		},
 		{
 			description:   "when Role doesn't exist",
-			configMapData: map[string]string{config.ImageKey: imageName, config.TimeoutKey: timeoutValue, config.RolesKey: "default/role999\n"},
+			configMapData: map[string]string{types.ImageKey: imageName, types.TimeoutKey: timeoutValue, types.RolesKey: "default/role999\n"},
 			expectedError: "roles.rbac.authorization.k8s.io",
 		},
 		{
 			description:   "when Role name is illegal",
-			configMapData: map[string]string{config.ImageKey: imageName, config.TimeoutKey: timeoutValue, config.RolesKey: "illegal name\n"},
+			configMapData: map[string]string{types.ImageKey: imageName, types.TimeoutKey: timeoutValue, types.RolesKey: "illegal name\n"},
 			expectedError: "role name",
 		},
 	}

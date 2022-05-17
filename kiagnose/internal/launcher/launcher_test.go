@@ -32,12 +32,12 @@ import (
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/kubernetes/fake"
 
-	"github.com/kiagnose/kiagnose/kiagnose/internal/config"
 	"github.com/kiagnose/kiagnose/kiagnose/internal/configmap"
 	"github.com/kiagnose/kiagnose/kiagnose/internal/launcher"
 	"github.com/kiagnose/kiagnose/kiagnose/internal/reporter"
 	"github.com/kiagnose/kiagnose/kiagnose/internal/results"
 	"github.com/kiagnose/kiagnose/kiagnose/internal/status"
+	"github.com/kiagnose/kiagnose/kiagnose/types"
 )
 
 const (
@@ -285,7 +285,7 @@ func checkupSpecData() map[string]string {
 		testTimeoutValue = "1m"
 	)
 
-	return map[string]string{config.ImageKey: testImageValue, config.TimeoutKey: testTimeoutValue}
+	return map[string]string{types.ImageKey: testImageValue, types.TimeoutKey: testTimeoutValue}
 }
 
 func newConfigMap(data map[string]string) *corev1.ConfigMap {
