@@ -22,10 +22,10 @@ set -e
 ARGCOUNT=$#
 
 KUBECTL_VERSION=${KUBECTL_VERSION:-v1.23.0}
-KUBECTL=${KUBECTL:-./kubectl}
+KUBECTL=${KUBECTL:-$PWD/kubectl}
 
 KIND_VERSION=${KIND_VERSION:-v0.12.0}
-KIND=${KIND:-./kind}
+KIND=${KIND:-$PWD/kind}
 
 options=$(getopt --options "" \
     --long install-kind,install-kubectl,create-cluster,delete-cluster,deploy-kiagnose,run-tests,help\
