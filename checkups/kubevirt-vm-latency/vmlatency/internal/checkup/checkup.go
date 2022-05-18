@@ -35,25 +35,28 @@ import (
 )
 
 type checker interface {
-	Check(sourceVMI, targetVMI *kvcorev1.VirtualMachineInstance) error
+	Check(sourceVMI, targetVMI *kvcorev1.VirtualMachineInstance, networkInterfaceName string, sampleTime time.Duration) (status.Results, error)
 }
 
 type checkup struct {
-	client    vmi.KubevirtVmisClient
-	namespace string
-	params    config.CheckupParameters
-	results   status.Results
-	sourceVM  *kvcorev1.VirtualMachineInstance
-	targetVM  *kvcorev1.VirtualMachineInstance
-	checker   checker
+	client               vmi.KubevirtVmisClient
+	namespace            string
+	params               config.CheckupParameters
+	results              status.Results
+	sourceVM             *kvcorev1.VirtualMachineInstance
+	targetVM             *kvcorev1.VirtualMachineInstance
+	checker              checker
+	networkInterfaceName string
 }
 
 func New(c vmi.KubevirtVmisClient, namespace string, params config.CheckupParameters, checker checker) *checkup {
+	const latencyCheckNetworkInterfaceName = "net0"
 	return &checkup{
-		client:    c,
-		namespace: namespace,
-		params:    params,
-		checker:   checker,
+		client:               c,
+		namespace:            namespace,
+		params:               params,
+		checker:              checker,
+		networkInterfaceName: latencyCheckNetworkInterfaceName,
 	}
 }
 
@@ -67,7 +70,6 @@ func (c *checkup) Setup(ctx context.Context) error {
 
 		defaultSetupTimeout = time.Minute * 10
 
-		networkName   = "net0"
 		sourceVmiName = "latency-check-source"
 		sourceVmiMac  = "02:00:00:01:00:01"
 		sourceVmiCidr = "192.168.100.10/24"
@@ -84,14 +86,14 @@ func (c *checkup) Setup(ctx context.Context) error {
 	sourceVmi := newLatencyCheckVmi(
 		sourceVmiName,
 		c.params.SourceNodeName,
-		networkName, netAttachDefNamespacedName,
+		c.networkInterfaceName, netAttachDefNamespacedName,
 		sourceVmiMac, sourceVmiCidr,
 	)
 
 	targetVmi := newLatencyCheckVmi(
 		targetVmiName,
 		c.params.TargetNodeName,
-		networkName, netAttachDefNamespacedName,
+		c.networkInterfaceName, netAttachDefNamespacedName,
 		targetVmiMac, targetVmiCidr,
 	)
 
