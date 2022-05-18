@@ -28,9 +28,10 @@ KIND_VERSION=${KIND_VERSION:-v0.12.0}
 KIND=${KIND:-$PWD/kind}
 
 KUBEVIRT_VERSION=${KUBEVIRT_VERSION:-v0.53.0}
+CNAO_VERSION=${CNAO_VERSION:-v0.74.0}
 
 options=$(getopt --options "" \
-    --long install-kind,install-kubectl,create-cluster,delete-cluster,deploy-kiagnose,deploy-kubevirt,help\
+    --long install-kind,install-kubectl,create-cluster,delete-cluster,deploy-kiagnose,deploy-kubevirt,deploy-cnao,help\
     -- "${@}")
 eval set -- "$options"
 while true; do
@@ -53,11 +54,14 @@ while true; do
     --deploy-kubevirt)
         OPT_DEPLOY_KUBEVIRT=1
         ;;
+    --deploy-cnao)
+        OPT_DEPLOY_CNAO=1
+        ;;
     --help)
         set +x
         echo -n "$0 [--install-kind] [--install-kubectl] "
         echo -n "[--create-cluster] [--delete-cluster] "
-        echo "[--deploy-kubevirt] [--deploy-kiagnose] "
+        echo "[--deploy-kubevirt] [--deploy-kiagnose] [--deploy-cnao] "
         exit
         ;;
     --)
@@ -74,6 +78,7 @@ if [ "${ARGCOUNT}" -eq "0" ] ; then
     OPT_CREATE_CLUSTER=1
     OPT_DEPLOY_KIAGNOSE=1
     OPT_DEPLOY_KUBEVIRT=1
+    OPT_DEPLOY_CNAO=1
     OPT_DELETE_CLUSTER=1
 fi
 
@@ -122,6 +127,33 @@ if [ -n "${OPT_DEPLOY_KUBEVIRT}" ]; then
     echo
     echo "Successfully deployed kubevirt:"
     kubectl get pods -n kubevirt
+fi
+
+if [ -n "${OPT_DEPLOY_CNAO}" ]; then
+    echo
+    echo "Deploy CNAO (with multus and bridge CNI/s)..."
+    echo
+    ${KUBECTL} apply -f https://github.com/kubevirt/cluster-network-addons-operator/releases/download/${CNAO_VERSION}/namespace.yaml
+    ${KUBECTL} apply -f https://github.com/kubevirt/cluster-network-addons-operator/releases/download/${CNAO_VERSION}/network-addons-config.crd.yaml
+    ${KUBECTL} apply -f https://github.com/kubevirt/cluster-network-addons-operator/releases/download/${CNAO_VERSION}/operator.yaml
+
+    cat <<EOF | ${KUBECTL} apply -f -
+---
+apiVersion: networkaddonsoperator.network.kubevirt.io/v1
+kind: NetworkAddonsConfig
+metadata:
+  name: cluster
+spec:
+  imagePullPolicy: IfNotPresent
+  linuxBridge: {}
+  multus: {}
+EOF
+
+    ${KUBECTL} wait --for condition=Available networkaddonsconfig cluster --timeout=2m
+
+    echo
+    echo "Successfully deployed CNAO:"
+    ${KUBECTL} get networkaddonsconfig cluster -o yaml
 fi
 
 if [ -n "${OPT_DELETE_CLUSTER}" ]; then
