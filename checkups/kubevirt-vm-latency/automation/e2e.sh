@@ -31,7 +31,7 @@ KUBEVIRT_VERSION=${KUBEVIRT_VERSION:-v0.53.0}
 CNAO_VERSION=${CNAO_VERSION:-v0.74.0}
 
 options=$(getopt --options "" \
-    --long install-kind,install-kubectl,create-cluster,delete-cluster,deploy-kiagnose,deploy-kubevirt,deploy-cnao,help\
+    --long install-kind,install-kubectl,create-cluster,delete-cluster,deploy-kiagnose,deploy-kubevirt,deploy-cnao,define-nad,help\
     -- "${@}")
 eval set -- "$options"
 while true; do
@@ -57,11 +57,15 @@ while true; do
     --deploy-cnao)
         OPT_DEPLOY_CNAO=1
         ;;
+    --define-nad)
+        OPT_DEFINE_NAD=1
+        ;;
     --help)
         set +x
         echo -n "$0 [--install-kind] [--install-kubectl] "
         echo -n "[--create-cluster] [--delete-cluster] "
-        echo "[--deploy-kubevirt] [--deploy-kiagnose] [--deploy-cnao] "
+        echo -n "[--deploy-kubevirt] [--deploy-kiagnose] [--deploy-cnao] "
+        echo "[--define-nad] "
         exit
         ;;
     --)
@@ -79,6 +83,7 @@ if [ "${ARGCOUNT}" -eq "0" ] ; then
     OPT_DEPLOY_KIAGNOSE=1
     OPT_DEPLOY_KUBEVIRT=1
     OPT_DEPLOY_CNAO=1
+    OPT_DEFINE_NAD=1
     OPT_DELETE_CLUSTER=1
 fi
 
@@ -154,6 +159,33 @@ EOF
     echo
     echo "Successfully deployed CNAO:"
     ${KUBECTL} get networkaddonsconfig cluster -o yaml
+fi
+
+if [ -n "${OPT_DEFINE_NAD}" ]; then
+    echo
+    echo "Define NetworkAttachmentDefinition (with a bridge CNI)..."
+    echo
+    cat <<EOF | ${KUBECTL} apply -f -
+---
+apiVersion: k8s.cni.cncf.io/v1
+kind: NetworkAttachmentDefinition
+metadata:
+  name: bridge-network
+  namespace: default
+spec:
+  config: |
+    {
+      "cniVersion":"0.3.1",
+      "name": "br10",
+      "plugins": [
+          {
+              "type": "cnv-bridge",
+              "bridge": "br10"
+          }
+      ]
+    }
+EOF
+
 fi
 
 if [ -n "${OPT_DELETE_CLUSTER}" ]; then
