@@ -194,6 +194,15 @@ func WithSriovBinding() interfaceOption {
 	}
 }
 
+// WithBridgeBinding set the interface with bridge binding method.
+func WithBridgeBinding() interfaceOption {
+	return func(iface *kvcorev1.Interface) {
+		iface.InterfaceBindingMethod = kvcorev1.InterfaceBindingMethod{
+			Bridge: &kvcorev1.InterfaceBridge{},
+		}
+	}
+}
+
 func NewFedora(name string, opts ...Option) *kvcorev1.VirtualMachineInstance {
 	const (
 		memory                                     = "512Mi"
