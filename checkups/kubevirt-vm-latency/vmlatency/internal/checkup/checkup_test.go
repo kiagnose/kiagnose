@@ -30,6 +30,7 @@ import (
 	k8scorev1 "k8s.io/api/core/v1"
 
 	kvcorev1 "kubevirt.io/api/core/v1"
+	"kubevirt.io/client-go/kubecli"
 
 	"github.com/kiagnose/kiagnose/checkups/kubevirt-vm-latency/vmlatency/internal/checkup"
 	"github.com/kiagnose/kiagnose/checkups/kubevirt-vm-latency/vmlatency/internal/config"
@@ -48,7 +49,9 @@ func TestCheckupSetupShouldFailWhen(t *testing.T) {
 		testCheckup := checkup.New(
 			clientStub{failCreateVmi: expectedError},
 			testNamespace,
-			newTestsCheckupParameters())
+			newTestsCheckupParameters(),
+			checkerStub{},
+		)
 
 		assert.NoError(t, testCheckup.Preflight())
 		assert.ErrorContains(t, testCheckup.Setup(context.Background()), expectedError.Error())
@@ -59,7 +62,9 @@ func TestCheckupSetupShouldFailWhen(t *testing.T) {
 		testCheckup := checkup.New(
 			clientStub{failGetVmi: expectedError},
 			testNamespace,
-			newTestsCheckupParameters())
+			newTestsCheckupParameters(),
+			checkerStub{},
+		)
 
 		testCtx, cancel := context.WithTimeout(context.Background(), testTimeout)
 		defer cancel()
@@ -75,7 +80,9 @@ func TestCheckupTeardownShouldFailWhen(t *testing.T) {
 		testCheckup := checkup.New(
 			testClient,
 			testNamespace,
-			newTestsCheckupParameters())
+			newTestsCheckupParameters(),
+			checkerStub{},
+		)
 		testCtx, cancel := context.WithTimeout(context.Background(), testTimeout)
 		defer cancel()
 
@@ -96,7 +103,9 @@ func TestCheckupTeardownShouldFailWhen(t *testing.T) {
 		testCheckup := checkup.New(
 			testClient,
 			testNamespace,
-			newTestsCheckupParameters())
+			newTestsCheckupParameters(),
+			checkerStub{},
+		)
 
 		assert.NoError(t, testCheckup.Preflight())
 
@@ -150,4 +159,14 @@ func (c clientStub) CreateVirtualMachineInstance(_ string, _ *kvcorev1.VirtualMa
 
 func (c clientStub) DeleteVirtualMachineInstance(_, _ string) error {
 	return c.failDeleteVmi
+}
+
+func (c clientStub) SerialConsole(_, _ string, _ time.Duration) (kubecli.StreamInterface, error) {
+	return nil, nil
+}
+
+type checkerStub struct{}
+
+func (c checkerStub) Check(_, _ *kvcorev1.VirtualMachineInstance) error {
+	return nil
 }
