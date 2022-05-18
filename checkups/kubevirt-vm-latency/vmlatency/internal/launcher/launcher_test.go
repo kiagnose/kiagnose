@@ -23,6 +23,7 @@ import (
 	"context"
 	"errors"
 	"testing"
+	"time"
 
 	assert "github.com/stretchr/testify/require"
 
@@ -30,6 +31,7 @@ import (
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 
 	kvcorev1 "kubevirt.io/api/core/v1"
+	"kubevirt.io/client-go/kubecli"
 
 	"github.com/kiagnose/kiagnose/checkups/kubevirt-vm-latency/vmlatency/internal/checkup"
 	"github.com/kiagnose/kiagnose/checkups/kubevirt-vm-latency/vmlatency/internal/config"
@@ -42,10 +44,11 @@ func TestLauncherShouldFail(t *testing.T) {
 		newFakeClient(),
 		k8scorev1.NamespaceDefault,
 		config.CheckupParameters{},
+		checkerStub{checkFailure: errorCheck},
 	)
 	testLauncher := launcher.New(testCheckup, reporterStub{})
 
-	assert.Equal(t, testLauncher.Run(), errors.New("run: not implemented"))
+	assert.Equal(t, testLauncher.Run(), errorCheck)
 }
 
 func TestLauncherShould(t *testing.T) {
@@ -213,6 +216,20 @@ func (c *fakeClient) DeleteVirtualMachineInstance(namespace, name string) error 
 	return nil
 }
 
+func (c *fakeClient) SerialConsole(namespace, vmiName string, timeout time.Duration) (kubecli.StreamInterface, error) {
+	return nil, nil
+}
+
 func vmiKey(namespace, name string) string {
 	return namespace + "/" + name
+}
+
+var errorCheck = errors.New("check failed")
+
+type checkerStub struct {
+	checkFailure error
+}
+
+func (c checkerStub) Check(_, _ *kvcorev1.VirtualMachineInstance) error {
+	return c.checkFailure
 }
