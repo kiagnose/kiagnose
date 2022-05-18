@@ -124,7 +124,7 @@ func newLatencyCheckVmi(
 			vmi.WithMatchingMAC(macAddress),
 		),
 	)
-	return vmi.NewAlpine(name,
+	return vmi.NewFedora(name,
 		vmi.WithNodeSelector(nodeName),
 		vmi.WithMultusNetwork(networkName, netAttachDef.String()),
 		vmi.WithInterface(

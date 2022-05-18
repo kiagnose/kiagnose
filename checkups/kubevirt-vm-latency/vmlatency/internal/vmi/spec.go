@@ -194,7 +194,7 @@ func WithSriovBinding() interfaceOption {
 	}
 }
 
-func NewAlpine(name string, opts ...Option) *kvcorev1.VirtualMachineInstance {
+func NewFedora(name string, opts ...Option) *kvcorev1.VirtualMachineInstance {
 	const (
 		memory                                     = "512Mi"
 		fedoraContainerDiskImage                   = "quay.io/kubevirt/fedora-with-test-tooling-container-disk:v0.53.0"
