@@ -21,10 +21,13 @@ package latency
 
 import (
 	"fmt"
+	"strings"
+	"time"
 
-	v1 "kubevirt.io/api/core/v1"
+	kvcorev1 "kubevirt.io/api/core/v1"
 
 	"github.com/kiagnose/kiagnose/checkups/kubevirt-vm-latency/vmlatency/internal/console"
+	"github.com/kiagnose/kiagnose/checkups/kubevirt-vm-latency/vmlatency/internal/status"
 	kubevmi "github.com/kiagnose/kiagnose/checkups/kubevirt-vm-latency/vmlatency/internal/vmi"
 )
 
@@ -36,12 +39,40 @@ func New(client kubevmi.KubevirtVmisClient) Latency {
 	return Latency{client: client}
 }
 
-func (l Latency) Check(sourceVMI, targetVMI *v1.VirtualMachineInstance) error {
+func (l Latency) Check(
+	sourceVMI, targetVMI *kvcorev1.VirtualMachineInstance,
+	networkInterfaceName string,
+	sampleTime time.Duration) (status.Results, error) {
 	sourceVMIConsole := console.NewConsole(l.client, sourceVMI)
 
 	if err := sourceVMIConsole.LoginToFedora(); err != nil {
-		return fmt.Errorf("failed to run check: %v", err)
+		return status.Results{}, fmt.Errorf("failed to run check: %v", err)
 	}
 
-	return nil
+	targetIPAddress, err := kubevmi.NetworkIPAddress(l.client, targetVMI.Namespace, targetVMI.Name, networkInterfaceName)
+	if err != nil {
+		return status.Results{}, err
+	}
+
+	start := time.Now()
+	res, err := sourceVMIConsole.RunCommand(composePingCommand(targetIPAddress, sampleTime), sampleTime+time.Minute)
+	if err != nil {
+		return status.Results{}, err
+	}
+	measurementDuration := time.Since(start)
+
+	results := ParsePingResults(res)
+	results.MeasurementDuration = measurementDuration
+
+	return results, nil
+}
+
+func composePingCommand(ipAddress string, timeout time.Duration) string {
+	const (
+		pingBinaryName  = "ping"
+		pingTimeoutFlag = "-w"
+	)
+	sampleTimeSeconds := fmt.Sprintf("%d", int(timeout.Seconds()))
+
+	return strings.Join([]string{pingBinaryName, ipAddress, pingTimeoutFlag, sampleTimeSeconds}, " ")
 }

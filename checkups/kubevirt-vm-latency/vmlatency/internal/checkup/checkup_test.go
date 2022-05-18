@@ -28,12 +28,12 @@ import (
 	assert "github.com/stretchr/testify/require"
 
 	k8scorev1 "k8s.io/api/core/v1"
-
 	kvcorev1 "kubevirt.io/api/core/v1"
 	"kubevirt.io/client-go/kubecli"
 
 	"github.com/kiagnose/kiagnose/checkups/kubevirt-vm-latency/vmlatency/internal/checkup"
 	"github.com/kiagnose/kiagnose/checkups/kubevirt-vm-latency/vmlatency/internal/config"
+	"github.com/kiagnose/kiagnose/checkups/kubevirt-vm-latency/vmlatency/internal/status"
 )
 
 const (
@@ -165,8 +165,10 @@ func (c clientStub) SerialConsole(_, _ string, _ time.Duration) (kubecli.StreamI
 	return nil, nil
 }
 
-type checkerStub struct{}
+type checkerStub struct {
+	checkFailure error
+}
 
-func (c checkerStub) Check(_, _ *kvcorev1.VirtualMachineInstance) error {
-	return nil
+func (c checkerStub) Check(_, _ *kvcorev1.VirtualMachineInstance, _ string, _ time.Duration) (status.Results, error) {
+	return status.Results{}, c.checkFailure
 }

@@ -106,3 +106,30 @@ func WaitForVmiDispose(ctx context.Context, c KubevirtVmisClient, namespace, nam
 
 	return nil
 }
+
+func NetworkIPAddress(client KubevirtVmisClient, namespace, name, networkName string) (string, error) {
+	var errMessagePrefix = fmt.Sprintf("failed to get VMI '%s/%s' network name %q IP address", namespace, name, networkName)
+
+	vmi, err := client.GetVirtualMachineInstance(namespace, name)
+	if err != nil {
+		return "", fmt.Errorf("%s: %v", errMessagePrefix, err)
+	}
+
+	var networkIface kvcorev1.VirtualMachineInstanceNetworkInterface
+	for _, net := range vmi.Status.Interfaces {
+		if net.Name == networkName {
+			networkIface = net
+			break
+		}
+	}
+
+	if networkIface.Name == "" {
+		return "", fmt.Errorf("%s: network %q not found", errMessagePrefix, networkIface)
+	}
+
+	if networkIface.IP == "" {
+		return "", fmt.Errorf("%s: network %q IP address is empty", errMessagePrefix, networkIface)
+	}
+
+	return networkIface.IP, nil
+}
