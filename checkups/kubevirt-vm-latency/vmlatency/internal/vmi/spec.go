@@ -193,12 +193,12 @@ func WithSriovBinding() interfaceOption {
 
 func NewAlpine(name string, opts ...Option) *kvcorev1.VirtualMachineInstance {
 	const (
-		memory                                     = "128Mi"
-		alpineContainerDiskImage                   = "quay.io/kubevirt/alpine-with-test-tooling-container-disk:v0.53.0"
+		memory                                     = "512Mi"
+		fedoraContainerDiskImage                   = "quay.io/kubevirt/fedora-with-test-tooling-container-disk:v0.53.0"
 		defaultTerminationGracePeriodSeconds int64 = 5
 	)
 	latencyCheckOpts := []Option{
-		withContainerDiskImage(alpineContainerDiskImage),
+		withContainerDiskImage(fedoraContainerDiskImage),
 		withTerminationGracePeriodSecond(defaultTerminationGracePeriodSeconds),
 		withResourceMemory(memory),
 		withRng(),
