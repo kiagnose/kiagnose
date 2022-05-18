@@ -30,12 +30,14 @@ import (
 	"k8s.io/apimachinery/pkg/util/wait"
 
 	kvcorev1 "kubevirt.io/api/core/v1"
+	"kubevirt.io/client-go/kubecli"
 )
 
 type KubevirtVmisClient interface {
 	GetVirtualMachineInstance(namespace, name string) (*kvcorev1.VirtualMachineInstance, error)
 	CreateVirtualMachineInstance(namespace string, vmi *kvcorev1.VirtualMachineInstance) (*kvcorev1.VirtualMachineInstance, error)
 	DeleteVirtualMachineInstance(namespace, name string) error
+	SerialConsole(namespace, vmiName string, timeout time.Duration) (kubecli.StreamInterface, error)
 }
 
 func Start(c KubevirtVmisClient, namespace string, vmi *kvcorev1.VirtualMachineInstance) error {

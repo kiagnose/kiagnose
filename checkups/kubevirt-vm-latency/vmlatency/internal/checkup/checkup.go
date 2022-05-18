@@ -34,6 +34,10 @@ import (
 	"github.com/kiagnose/kiagnose/checkups/kubevirt-vm-latency/vmlatency/internal/vmi"
 )
 
+type checker interface {
+	Check(sourceVMI, targetVMI *kvcorev1.VirtualMachineInstance) error
+}
+
 type checkup struct {
 	client    vmi.KubevirtVmisClient
 	namespace string
@@ -41,13 +45,15 @@ type checkup struct {
 	results   status.Results
 	sourceVM  *kvcorev1.VirtualMachineInstance
 	targetVM  *kvcorev1.VirtualMachineInstance
+	checker   checker
 }
 
-func New(c vmi.KubevirtVmisClient, namespace string, params config.CheckupParameters) *checkup {
+func New(c vmi.KubevirtVmisClient, namespace string, params config.CheckupParameters, checker checker) *checkup {
 	return &checkup{
 		client:    c,
 		namespace: namespace,
 		params:    params,
+		checker:   checker,
 	}
 }
 
@@ -138,8 +144,10 @@ func newLatencyCheckVmi(
 }
 
 func (c *checkup) Run() error {
-	const errMessagePrefix = "run"
-	return fmt.Errorf("%s: not implemented", errMessagePrefix)
+	if err := c.checker.Check(c.sourceVM, c.targetVM); err != nil {
+		return err
+	}
+	return nil
 }
 
 func (c *checkup) Teardown(waitCtx context.Context) error {
