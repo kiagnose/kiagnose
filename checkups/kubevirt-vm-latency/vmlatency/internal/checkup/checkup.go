@@ -129,15 +129,19 @@ func newLatencyCheckVmi(
 			vmi.WithMatchingMAC(macAddress),
 		),
 	)
+
+	var vmiInterface kvcorev1.Interface
+	// This is a temporary hack to support both bridge and SR-IOV.
+	// For a specific NAD name, we will use bridge binding at the VMI, anything else is left as SR-IOV.
+	if netAttachDef.Name == "bridge-network" {
+		vmiInterface = vmi.NewInterface(networkName, vmi.WithMacAddress(macAddress), vmi.WithBridgeBinding())
+	} else {
+		vmiInterface = vmi.NewInterface(networkName, vmi.WithMacAddress(macAddress), vmi.WithSriovBinding())
+	}
 	return vmi.NewFedora(name,
 		vmi.WithNodeSelector(nodeName),
 		vmi.WithMultusNetwork(networkName, netAttachDef.String()),
-		vmi.WithInterface(
-			vmi.NewInterface(networkName,
-				vmi.WithMacAddress(macAddress),
-				vmi.WithSriovBinding(),
-			),
-		),
+		vmi.WithInterface(vmiInterface),
 		vmi.WithCloudInitNoCloudNetworkData(networkData),
 	)
 }
