@@ -62,6 +62,9 @@ func withTerminationGracePeriodSecond(duration int64) Option {
 // WithNodeSelector ensures that the VMI gets scheduled on the specified node.
 func WithNodeSelector(nodeName string) Option {
 	return func(vmi *kvcorev1.VirtualMachineInstance) {
+		if nodeName == "" {
+			return
+		}
 		if vmi.Spec.NodeSelector == nil {
 			vmi.Spec.NodeSelector = map[string]string{}
 		}
