@@ -7,3 +7,6 @@ rules:
 - apiGroups: ["kubevirt.io"]
   resources: ["virtualmachineinstances"]
   verbs: ["get", "create", "delete"]
+- apiGroups: ["subresources.kubevirt.io"]
+  resources: ["virtualmachineinstances/console"]
+  verbs: ["get"]
