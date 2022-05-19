@@ -46,24 +46,23 @@ func Start(c KubevirtVmisClient, namespace string, vmi *kvcorev1.VirtualMachineI
 	return nil
 }
 
-func WaitUntilReady(ctx context.Context, c KubevirtVmisClient, namespace, name string) error {
+func WaitUntilReady(ctx context.Context, c KubevirtVmisClient, namespace, name string) (*kvcorev1.VirtualMachineInstance, error) {
 	log.Printf("waiting for VMI %s/%s to be ready..\n", namespace, name)
 
-	if err := waitForVmiCondition(ctx, c, namespace, name, kvcorev1.VirtualMachineInstanceAgentConnected); err != nil {
-		return fmt.Errorf("VMI %s/%s was not ready on time: %v", namespace, name, err)
-	}
-
-	return nil
+	return waitForVmiCondition(ctx, c, namespace, name, kvcorev1.VirtualMachineInstanceAgentConnected)
 }
 
 func waitForVmiCondition(ctx context.Context, c KubevirtVmisClient, namespace, name string,
-	conditionType kvcorev1.VirtualMachineInstanceConditionType) error {
+	conditionType kvcorev1.VirtualMachineInstanceConditionType) (*kvcorev1.VirtualMachineInstance, error) {
+	var updatedVMI *kvcorev1.VirtualMachineInstance
+
 	conditionFn := func(ctx context.Context) (bool, error) {
-		updatedVmi, err := c.GetVirtualMachineInstance(namespace, name)
+		var err error
+		updatedVMI, err = c.GetVirtualMachineInstance(namespace, name)
 		if err != nil {
 			return false, nil
 		}
-		for _, condition := range updatedVmi.Status.Conditions {
+		for _, condition := range updatedVMI.Status.Conditions {
 			if condition.Type == conditionType && condition.Status == k8scorev1.ConditionTrue {
 				return true, nil
 			}
@@ -72,10 +71,10 @@ func waitForVmiCondition(ctx context.Context, c KubevirtVmisClient, namespace, n
 	}
 	const interval = time.Second * 5
 	if err := wait.PollImmediateUntilWithContext(ctx, interval, conditionFn); err != nil {
-		return fmt.Errorf("failed to wait for VMI %s/%s condition %s: %v", namespace, name, conditionType, err)
+		return nil, fmt.Errorf("failed to wait for VMI '%s/%s' condition %q: %v", namespace, name, conditionType, err)
 	}
 
-	return nil
+	return updatedVMI, nil
 }
 
 func Delete(c KubevirtVmisClient, namespace, name string) error {
