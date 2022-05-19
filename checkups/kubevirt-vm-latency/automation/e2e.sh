@@ -29,6 +29,7 @@ KIND=${KIND:-$PWD/kind}
 CLUSTER_NAME=${CLUSTER_NAME:-kind}
 
 KUBEVIRT_VERSION=${KUBEVIRT_VERSION:-v0.53.0}
+KUBEVIRT_USE_EMULATION=${KUBEVIRT_USE_EMULATION:-"false"}
 CNAO_VERSION=${CNAO_VERSION:-v0.74.0}
 
 FRAMEWORK_IMAGE="quay.io/kiagnose/kiagnose:devel"
@@ -82,7 +83,12 @@ if [ -n "${OPT_DEPLOY_KUBEVIRT}" ]; then
     echo
     kubectl create -f https://github.com/kubevirt/kubevirt/releases/download/${KUBEVIRT_VERSION}/kubevirt-operator.yaml
     kubectl create -f https://github.com/kubevirt/kubevirt/releases/download/${KUBEVIRT_VERSION}/kubevirt-cr.yaml
-    kubectl patch kubevirt kubevirt --namespace kubevirt --type=merge --patch '{"spec":{"configuration":{"developerConfiguration":{"useEmulation":true}}}}'
+
+    if [ "${KUBEVIRT_USE_EMULATION}" = "true" ]; then
+      echo "Configure Kubevirt to use emulation"
+      kubectl patch kubevirt kubevirt --namespace kubevirt --type=merge --patch '{"spec":{"configuration":{"developerConfiguration":{"useEmulation":true}}}}'
+    fi
+
     kubectl wait --for=condition=Available kubevirt kubevirt --namespace=kubevirt --timeout=2m
 
     echo
