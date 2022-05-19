@@ -71,3 +71,30 @@ jobs:
       - name: Run build
         working-directory: ./checkups/kubevirt-vm-latency
         run: ./automation/make.sh --build-checkup
+  e2e-test:
+    name: e2e
+    runs-on: ubuntu-latest
+    env:
+      KIND: /usr/local/bin/kind
+      KUBECTL: /usr/local/bin/kubectl
+      CRI: docker
+    steps:
+      - name: Check out code
+        uses: actions/checkout@v2
+      - name: Build kiagnose image
+        run: ./automation/make.sh --build-core --build-core-image
+      - name: Build checkup image
+        working-directory: ./checkups/kubevirt-vm-latency
+        run: ./automation/make.sh --build-checkup --build-checkup-image
+      - name: Start cluster
+        run: ./checkups/kubevirt-vm-latency/automation/make.sh --e2e -- --install-kind --install-kubectl --create-cluster
+      - name: Deploy kiagnose
+        run: ./checkups/kubevirt-vm-latency/automation/make.sh --e2e -- --deploy-kiagnose
+      - name: Deploy kubevirt, CNAO and the NetworkAttachementDefinition
+        run: ./checkups/kubevirt-vm-latency/automation/make.sh --e2e -- --deploy-kubevirt --deploy-cnao --define-nad
+      - name: Deploy VM latency checkup
+        run: ./checkups/kubevirt-vm-latency/automation/make.sh --e2e -- --deploy-checkup
+      - name: Run e2e tests
+        run: ./checkups/kubevirt-vm-latency/automation/make.sh --e2e -- --run-tests
+      - name: Delete cluster
+        run: ./automation/make.sh --e2e -- --delete-cluster
