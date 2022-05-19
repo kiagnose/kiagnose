@@ -78,6 +78,7 @@ jobs:
       KIND: /usr/local/bin/kind
       KUBECTL: /usr/local/bin/kubectl
       CRI: docker
+      KUBEVIRT_USE_EMULATION: true
     steps:
       - name: Check out code
         uses: actions/checkout@v2
