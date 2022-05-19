@@ -33,7 +33,7 @@ KUBEVIRT_VERSION=${KUBEVIRT_VERSION:-v0.53.0}
 CNAO_VERSION=${CNAO_VERSION:-v0.74.0}
 
 options=$(getopt --options "" \
-    --long install-kind,install-kubectl,create-cluster,delete-cluster,deploy-kiagnose,deploy-kubevirt,deploy-cnao,deploy-checkup,define-nad,help\
+    --long install-kind,install-kubectl,create-cluster,delete-cluster,deploy-kiagnose,deploy-kubevirt,deploy-cnao,deploy-checkup,define-nad,run-tests,help\
     -- "${@}")
 eval set -- "$options"
 while true; do
@@ -65,12 +65,15 @@ while true; do
     --define-nad)
         OPT_DEFINE_NAD=1
         ;;
+    --run-tests)
+        OPT_RUN_TEST=1
+        ;;
     --help)
         set +x
         echo -n "$0 [--install-kind] [--install-kubectl] "
         echo -n "[--create-cluster] [--delete-cluster] "
         echo -n "[--deploy-kubevirt] [--deploy-kiagnose] [--deploy-cnao] [--deploy-checkup] "
-        echo "[--define-nad] "
+        echo "[--define-nad] [--run-tests]"
         exit
         ;;
     --)
@@ -90,6 +93,7 @@ if [ "${ARGCOUNT}" -eq "0" ] ; then
     OPT_DEPLOY_CNAO=1
     OPT_DEPLOY_CHECKUP=1
     OPT_DEFINE_NAD=1
+    OPT_RUN_TEST=1
     OPT_DELETE_CLUSTER=1
 fi
 
@@ -199,6 +203,66 @@ if [ -n "${OPT_DEPLOY_CHECKUP}" ]; then
     echo "Deploy kubevirt-vm-latency..."
     echo
     kubectl create -f ${SCRIPT_PATH}/../manifests/clusterroles.yaml
+fi
+
+if [ -n "${OPT_RUN_TEST}" ]; then
+    KIAGNOSE_NAMESPACE=kiagnose
+    KIAGNOSE_JOB=kubevirt-vm-latency-checkup
+    VM_LATENCY_CONFIGMAP=kubevirt-vm-latency-checkup
+
+    echo
+    echo "Deploy ConfigMap with input data: "
+    echo
+    cat <<EOF | ${KUBECTL} apply -f -
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: ${VM_LATENCY_CONFIGMAP}
+  namespace: ${KIAGNOSE_NAMESPACE}
+data:
+  spec.image: quay.io/kiagnose/kubevirt-vm-latency-checkup:main
+  spec.timeout: 5m
+  spec.clusterRoles: |
+    kubevirt-vmis-manager
+  spec.param.network_attachment_definition_namespace: "default"
+  spec.param.network_attachment_definition_name: "bridge-network"
+  spec.param.max_desired_latency_milliseconds: "10"
+  spec.param.sample_duration_seconds: "5"
+EOF
+
+    echo
+    echo "Deploy and run kiagnose job: "
+    echo
+    cat <<EOF | ${KUBECTL} apply -f -
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: ${KIAGNOSE_JOB}
+  namespace: ${KIAGNOSE_NAMESPACE}
+spec:
+  backoffLimit: 0
+  template:
+    spec:
+      serviceAccount: kiagnose
+      restartPolicy: Never
+      containers:
+        - name: framework
+          image: quay.io/kiagnose/kiagnose:main
+          env:
+            - name: CONFIGMAP_NAMESPACE
+              value: ${KIAGNOSE_NAMESPACE}
+            - name: CONFIGMAP_NAME
+              value: ${VM_LATENCY_CONFIGMAP}
+EOF
+
+    # ${KUBECTL} wait --for=condition=complete --timeout=3m job.batch/${KIAGNOSE_JOB} -n ${KIAGNOSE_NAMESPACE}
+
+    echo
+    echo "Result:"
+    echo
+    ${KUBECTL} get configmap ${VM_LATENCY_CONFIGMAP} -n ${KIAGNOSE_NAMESPACE} -o yaml
 fi
 
 if [ -n "${OPT_DELETE_CLUSTER}" ]; then
