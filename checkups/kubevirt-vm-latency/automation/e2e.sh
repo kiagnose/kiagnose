@@ -21,6 +21,8 @@ set -e
 
 ARGCOUNT=$#
 
+SCRIPT_PATH=$(dirname $(realpath -s $0))
+
 KUBECTL_VERSION=${KUBECTL_VERSION:-v1.23.0}
 KUBECTL=${KUBECTL:-$PWD/kubectl}
 
@@ -31,7 +33,7 @@ KUBEVIRT_VERSION=${KUBEVIRT_VERSION:-v0.53.0}
 CNAO_VERSION=${CNAO_VERSION:-v0.74.0}
 
 options=$(getopt --options "" \
-    --long install-kind,install-kubectl,create-cluster,delete-cluster,deploy-kiagnose,deploy-kubevirt,deploy-cnao,define-nad,help\
+    --long install-kind,install-kubectl,create-cluster,delete-cluster,deploy-kiagnose,deploy-kubevirt,deploy-cnao,deploy-checkup,define-nad,help\
     -- "${@}")
 eval set -- "$options"
 while true; do
@@ -57,6 +59,9 @@ while true; do
     --deploy-cnao)
         OPT_DEPLOY_CNAO=1
         ;;
+    --deploy-checkup)
+        OPT_DEPLOY_CHECKUP=1
+        ;;
     --define-nad)
         OPT_DEFINE_NAD=1
         ;;
@@ -64,7 +69,7 @@ while true; do
         set +x
         echo -n "$0 [--install-kind] [--install-kubectl] "
         echo -n "[--create-cluster] [--delete-cluster] "
-        echo -n "[--deploy-kubevirt] [--deploy-kiagnose] [--deploy-cnao] "
+        echo -n "[--deploy-kubevirt] [--deploy-kiagnose] [--deploy-cnao] [--deploy-checkup] "
         echo "[--define-nad] "
         exit
         ;;
@@ -83,6 +88,7 @@ if [ "${ARGCOUNT}" -eq "0" ] ; then
     OPT_DEPLOY_KIAGNOSE=1
     OPT_DEPLOY_KUBEVIRT=1
     OPT_DEPLOY_CNAO=1
+    OPT_DEPLOY_CHECKUP=1
     OPT_DEFINE_NAD=1
     OPT_DELETE_CLUSTER=1
 fi
@@ -186,6 +192,13 @@ spec:
     }
 EOF
 
+fi
+
+if [ -n "${OPT_DEPLOY_CHECKUP}" ]; then
+    echo
+    echo "Deploy kubevirt-vm-latency..."
+    echo
+    kubectl create -f ${SCRIPT_PATH}/../manifests/clusterroles.yaml
 fi
 
 if [ -n "${OPT_DELETE_CLUSTER}" ]; then
