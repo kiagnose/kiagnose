@@ -100,15 +100,14 @@ func (c *checkup) Setup(ctx context.Context) error {
 	waitCtx, cancel := context.WithTimeout(ctx, defaultSetupTimeout)
 	defer cancel()
 
-	if err := vmi.WaitUntilReady(waitCtx, c.client, c.namespace, targetVmi.Name); err != nil {
+	var err error
+	if c.targetVM, err = vmi.WaitUntilReady(waitCtx, c.client, c.namespace, targetVmi.Name); err != nil {
 		return fmt.Errorf("%s: %v", errMessagePrefix, err)
 	}
 
-	if err := vmi.WaitUntilReady(waitCtx, c.client, c.namespace, sourceVmi.Name); err != nil {
+	if c.sourceVM, err = vmi.WaitUntilReady(waitCtx, c.client, c.namespace, sourceVmi.Name); err != nil {
 		return fmt.Errorf("%s: %v", errMessagePrefix, err)
 	}
-	c.sourceVM = sourceVmi
-	c.targetVM = targetVmi
 
 	return nil
 }
