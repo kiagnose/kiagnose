@@ -104,7 +104,7 @@ func (c *checkup) Setup(ctx context.Context) error {
 		return fmt.Errorf("%s: %v", errMessagePrefix, err)
 	}
 
-	if err := vmi.WaitUntilReady(waitCtx, c.client, c.namespace, targetVmi.Name); err != nil {
+	if err := vmi.WaitUntilReady(waitCtx, c.client, c.namespace, sourceVmi.Name); err != nil {
 		return fmt.Errorf("%s: %v", errMessagePrefix, err)
 	}
 	c.sourceVM = sourceVmi
