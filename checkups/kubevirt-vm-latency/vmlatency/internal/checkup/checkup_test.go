@@ -50,7 +50,7 @@ func TestCheckupSetupShouldFailWhen(t *testing.T) {
 			clientStub{failCreateVmi: expectedError},
 			testNamespace,
 			newTestsCheckupParameters(),
-			checkerStub{},
+			&checkerStub{},
 		)
 
 		assert.NoError(t, testCheckup.Preflight())
@@ -63,7 +63,7 @@ func TestCheckupSetupShouldFailWhen(t *testing.T) {
 			clientStub{failGetVmi: expectedError},
 			testNamespace,
 			newTestsCheckupParameters(),
-			checkerStub{},
+			&checkerStub{},
 		)
 
 		testCtx, cancel := context.WithTimeout(context.Background(), testTimeout)
@@ -81,7 +81,7 @@ func TestCheckupTeardownShouldFailWhen(t *testing.T) {
 			testClient,
 			testNamespace,
 			newTestsCheckupParameters(),
-			checkerStub{},
+			&checkerStub{},
 		)
 		testCtx, cancel := context.WithTimeout(context.Background(), testTimeout)
 		defer cancel()
@@ -104,7 +104,7 @@ func TestCheckupTeardownShouldFailWhen(t *testing.T) {
 			testClient,
 			testNamespace,
 			newTestsCheckupParameters(),
-			checkerStub{},
+			&checkerStub{},
 		)
 
 		assert.NoError(t, testCheckup.Preflight())
@@ -167,6 +167,6 @@ func (c clientStub) SerialConsole(_, _ string, _ time.Duration) (kubecli.StreamI
 
 type checkerStub struct{}
 
-func (c checkerStub) Check(_, _ *kvcorev1.VirtualMachineInstance) error {
+func (c *checkerStub) Check(_, _ *kvcorev1.VirtualMachineInstance) error {
 	return nil
 }

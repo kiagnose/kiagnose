@@ -44,7 +44,7 @@ func TestLauncherShouldFail(t *testing.T) {
 		newFakeClient(),
 		k8scorev1.NamespaceDefault,
 		config.CheckupParameters{},
-		checkerStub{checkFailure: errorCheck},
+		&checkerStub{checkFailure: errorCheck},
 	)
 	testLauncher := launcher.New(testCheckup, reporterStub{})
 
@@ -230,6 +230,6 @@ type checkerStub struct {
 	checkFailure error
 }
 
-func (c checkerStub) Check(_, _ *kvcorev1.VirtualMachineInstance) error {
+func (c *checkerStub) Check(_, _ *kvcorev1.VirtualMachineInstance) error {
 	return c.checkFailure
 }

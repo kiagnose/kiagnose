@@ -32,11 +32,11 @@ type Latency struct {
 	client kubevmi.KubevirtVmisClient
 }
 
-func New(client kubevmi.KubevirtVmisClient) Latency {
-	return Latency{client: client}
+func New(client kubevmi.KubevirtVmisClient) *Latency {
+	return &Latency{client: client}
 }
 
-func (l Latency) Check(sourceVMI, targetVMI *v1.VirtualMachineInstance) error {
+func (l *Latency) Check(sourceVMI, targetVMI *v1.VirtualMachineInstance) error {
 	sourceVMIConsole := console.NewConsole(l.client, sourceVMI)
 
 	if err := sourceVMIConsole.LoginToFedora(); err != nil {
