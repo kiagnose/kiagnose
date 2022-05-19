@@ -33,6 +33,8 @@ CLUSTER_NAME=${CLUSTER_NAME:-kind}
 KUBEVIRT_VERSION=${KUBEVIRT_VERSION:-v0.53.0}
 CNAO_VERSION=${CNAO_VERSION:-v0.74.0}
 
+FRAMEWORK_IMAGE="quay.io/kiagnose/kiagnose:devel"
+
 options=$(getopt --options "" \
     --long install-kind,install-kubectl,create-cluster,delete-cluster,deploy-kiagnose,deploy-kubevirt,deploy-cnao,deploy-checkup,define-nad,run-tests,help\
     -- "${@}")
@@ -127,7 +129,8 @@ if [ -n "${OPT_CREATE_CLUSTER}" ]; then
 fi
 
 if [ -n "${OPT_DEPLOY_KIAGNOSE}" ]; then
-    ${KUBECTL} apply -f manifests/kiagnose.yaml
+  ${KIND} load docker-image "${FRAMEWORK_IMAGE}" --name "${CLUSTER_NAME}"
+  ${KUBECTL} apply -f manifests/kiagnose.yaml
 fi
 
 if [ -n "${OPT_DEPLOY_KUBEVIRT}" ]; then
@@ -249,7 +252,7 @@ spec:
       restartPolicy: Never
       containers:
         - name: framework
-          image: quay.io/kiagnose/kiagnose:main
+          image: ${FRAMEWORK_IMAGE}
           env:
             - name: CONFIGMAP_NAMESPACE
               value: ${KIAGNOSE_NAMESPACE}
