@@ -35,7 +35,11 @@ import (
 )
 
 type checker interface {
-	Check(sourceVMI, targetVMI *kvcorev1.VirtualMachineInstance) error
+	Check(sourceVMI, targetVMI *kvcorev1.VirtualMachineInstance, sampleTime time.Duration) error
+	MinLatency() time.Duration
+	AverageLatency() time.Duration
+	MaxLatency() time.Duration
+	CheckDuration() time.Duration
 }
 
 type checkup struct {
@@ -147,9 +151,24 @@ func newLatencyCheckVmi(
 }
 
 func (c *checkup) Run() error {
-	if err := c.checker.Check(c.sourceVM, c.targetVM); err != nil {
-		return err
+	sampleDuration := time.Duration(c.params.SampleDurationSeconds) * time.Second
+	if err := c.checker.Check(c.sourceVM, c.targetVM, sampleDuration); err != nil {
+		return fmt.Errorf("run: %v", err)
 	}
+
+	c.results = status.Results{
+		MinLatency:          c.checker.MinLatency(),
+		AvgLatency:          c.checker.AverageLatency(),
+		MaxLatency:          c.checker.MaxLatency(),
+		MeasurementDuration: c.checker.CheckDuration(),
+	}
+
+	actualMaxLatency := c.results.MaxLatency.Milliseconds()
+	maxLatencyDesired := int64(c.params.DesiredMaxLatencyMilliseconds)
+	if actualMaxLatency > maxLatencyDesired {
+		return fmt.Errorf("run : actual max latency (%d) is greater then desired (%d)", actualMaxLatency, maxLatencyDesired)
+	}
+
 	return nil
 }
 

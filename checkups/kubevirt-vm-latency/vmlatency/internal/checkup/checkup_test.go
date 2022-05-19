@@ -165,8 +165,26 @@ func (c clientStub) SerialConsole(_, _ string, _ time.Duration) (kubecli.StreamI
 	return nil, nil
 }
 
-type checkerStub struct{}
+type checkerStub struct {
+	checkFailure error
+}
 
-func (c *checkerStub) Check(_, _ *kvcorev1.VirtualMachineInstance) error {
-	return nil
+func (c *checkerStub) Check(_, _ *kvcorev1.VirtualMachineInstance, _ time.Duration) error {
+	return c.checkFailure
+}
+
+func (c *checkerStub) MinLatency() time.Duration {
+	return 0
+}
+
+func (c *checkerStub) AverageLatency() time.Duration {
+	return 0
+}
+
+func (c *checkerStub) MaxLatency() time.Duration {
+	return 0
+}
+
+func (c *checkerStub) CheckDuration() time.Duration {
+	return 0
 }

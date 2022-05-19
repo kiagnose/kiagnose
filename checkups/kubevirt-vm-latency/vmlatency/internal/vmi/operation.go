@@ -79,6 +79,30 @@ func waitForVmiCondition(ctx context.Context, c KubevirtVmisClient, namespace, n
 	return updatedVMI, nil
 }
 
+func WaitForStatusIPAddress(ctx context.Context, c KubevirtVmisClient, namespace, name string) (string, error) {
+	log.Printf("waiting for VMI %s/%s IP address to appear on status..\n", namespace, name)
+	var updatedVMI *kvcorev1.VirtualMachineInstance
+
+	conditionFn := func(ctx context.Context) (bool, error) {
+		var err error
+		updatedVMI, err = c.GetVirtualMachineInstance(namespace, name)
+		if err != nil {
+			return false, nil
+		}
+		return vmiIPAddressExists(updatedVMI), nil
+	}
+	const interval = time.Second * 5
+	if err := wait.PollImmediateUntilWithContext(ctx, interval, conditionFn); err != nil {
+		return "", fmt.Errorf("failed to wait for VMI '%s/%s' IP address to appear on status: %v", namespace, name, err)
+	}
+
+	return updatedVMI.Status.Interfaces[0].IP, nil
+}
+
+func vmiIPAddressExists(vmi *kvcorev1.VirtualMachineInstance) bool {
+	return len(vmi.Status.Interfaces) > 0 && vmi.Status.Interfaces[0].IP != ""
+}
+
 func Delete(c KubevirtVmisClient, namespace, name string) error {
 	log.Printf("deleting VMI %s/%s..\n", namespace, name)
 
