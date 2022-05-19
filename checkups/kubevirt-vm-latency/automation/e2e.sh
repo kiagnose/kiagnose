@@ -33,9 +33,10 @@ KUBEVIRT_VERSION=${KUBEVIRT_VERSION:-v0.53.0}
 CNAO_VERSION=${CNAO_VERSION:-v0.74.0}
 
 FRAMEWORK_IMAGE="quay.io/kiagnose/kiagnose:devel"
+CHECKUP_IMAGE="quay.io/kiagnose/kubevirt-vm-latency:devel"
 
 options=$(getopt --options "" \
-    --long install-kind,install-kubectl,create-cluster,delete-cluster,build-kiagnose,deploy-kiagnose,deploy-kubevirt,deploy-cnao,deploy-checkup,define-nad,run-tests,help\
+    --long install-kind,install-kubectl,create-cluster,delete-cluster,build-kiagnose,deploy-kiagnose,deploy-kubevirt,deploy-cnao,build-checkup,deploy-checkup,define-nad,run-tests,help\
     -- "${@}")
 eval set -- "$options"
 while true; do
@@ -64,6 +65,9 @@ while true; do
     --deploy-cnao)
         OPT_DEPLOY_CNAO=1
         ;;
+    --build-checkup)
+        OPT_BUILD_CHECKUP=1
+        ;;
     --deploy-checkup)
         OPT_DEPLOY_CHECKUP=1
         ;;
@@ -77,7 +81,7 @@ while true; do
         set +x
         echo -n "$0 [--install-kind] [--install-kubectl] "
         echo -n "[--create-cluster] [--delete-cluster] "
-        echo -n "[--deploy-kubevirt] [--build-kiagnose] [--deploy-kiagnose] [--deploy-cnao] [--deploy-checkup] "
+        echo -n "[--deploy-kubevirt] [--build-kiagnose] [--deploy-kiagnose] [--deploy-cnao] [--build-checkup] [--deploy-checkup] "
         echo "[--define-nad] [--run-tests]"
         exit
         ;;
@@ -97,10 +101,11 @@ if [ "${ARGCOUNT}" -eq "0" ] ; then
     OPT_BUILD_KIAGNOSE=1
     OPT_DEPLOY_KUBEVIRT=1
     OPT_DEPLOY_CNAO=1
+    OPT_BUILD_CHECKUP=1
     OPT_DEPLOY_CHECKUP=1
     OPT_DEFINE_NAD=1
     OPT_RUN_TEST=1
-    OPT_DELETE_CLUSTER=1
+#    OPT_DELETE_CLUSTER=1
 fi
 
 if [ -n "${OPT_INSTALL_KIND}" ]; then
@@ -211,11 +216,19 @@ EOF
 
 fi
 
+if [ -n "${OPT_BUILD_CHECKUP}" ]; then
+  cd ${SCRIPT_PATH}/..
+  ./automation/make.sh --build-checkup --build-checkup-image
+  cd -
+fi
+
 if [ -n "${OPT_DEPLOY_CHECKUP}" ]; then
     echo
     echo "Deploy kubevirt-vm-latency..."
     echo
     kubectl create -f ${SCRIPT_PATH}/../manifests/clusterroles.yaml
+
+    ${KIND} load docker-image "${CHECKUP_IMAGE}" --name "${CLUSTER_NAME}"
 fi
 
 if [ -n "${OPT_RUN_TEST}" ]; then
@@ -234,7 +247,7 @@ metadata:
   name: ${VM_LATENCY_CONFIGMAP}
   namespace: ${KIAGNOSE_NAMESPACE}
 data:
-  spec.image: quay.io/kiagnose/kubevirt-vm-latency-checkup:main
+  spec.image: ${CHECKUP_IMAGE}
   spec.timeout: 5m
   spec.clusterRoles: |
     kubevirt-vmis-manager
