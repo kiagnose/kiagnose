@@ -34,6 +34,7 @@ KUBEVIRT_VERSION=${KUBEVIRT_VERSION:-v0.53.0}
 CNAO_VERSION=${CNAO_VERSION:-v0.74.0}
 
 FRAMEWORK_IMAGE="quay.io/kiagnose/kiagnose:devel"
+CHECKUP_IMAGE="quay.io/kiagnose/kubevirt-vm-latency:devel"
 
 options=$(getopt --options "" \
     --long install-kind,install-kubectl,create-cluster,delete-cluster,deploy-kiagnose,deploy-kubevirt,deploy-cnao,deploy-checkup,define-nad,run-tests,help\
@@ -97,7 +98,6 @@ if [ "${ARGCOUNT}" -eq "0" ] ; then
     OPT_DEPLOY_CHECKUP=1
     OPT_DEFINE_NAD=1
     OPT_RUN_TEST=1
-    OPT_DELETE_CLUSTER=1
 fi
 
 if [ -n "${OPT_INSTALL_KIND}" ]; then
@@ -206,6 +206,8 @@ if [ -n "${OPT_DEPLOY_CHECKUP}" ]; then
     echo "Deploy kubevirt-vm-latency..."
     echo
     kubectl create -f ${SCRIPT_PATH}/../manifests/clusterroles.yaml
+
+    ${KIND} load docker-image "${CHECKUP_IMAGE}" --name "${CLUSTER_NAME}"
 fi
 
 if [ -n "${OPT_RUN_TEST}" ]; then
@@ -224,7 +226,7 @@ metadata:
   name: ${VM_LATENCY_CONFIGMAP}
   namespace: ${KIAGNOSE_NAMESPACE}
 data:
-  spec.image: quay.io/kiagnose/kubevirt-vm-latency-checkup:main
+  spec.image: ${CHECKUP_IMAGE}
   spec.timeout: 10m
   spec.clusterRoles: |
     kubevirt-vmis-manager
