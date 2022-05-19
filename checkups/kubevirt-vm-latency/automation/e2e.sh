@@ -32,8 +32,10 @@ KIND=${KIND:-$PWD/kind}
 KUBEVIRT_VERSION=${KUBEVIRT_VERSION:-v0.53.0}
 CNAO_VERSION=${CNAO_VERSION:-v0.74.0}
 
+FRAMEWORK_IMAGE="quay.io/kiagnose/kiagnose:devel"
+
 options=$(getopt --options "" \
-    --long install-kind,install-kubectl,create-cluster,delete-cluster,deploy-kiagnose,deploy-kubevirt,deploy-cnao,deploy-checkup,define-nad,run-tests,help\
+    --long install-kind,install-kubectl,create-cluster,delete-cluster,build-kiagnose,deploy-kiagnose,deploy-kubevirt,deploy-cnao,deploy-checkup,define-nad,run-tests,help\
     -- "${@}")
 eval set -- "$options"
 while true; do
@@ -49,6 +51,9 @@ while true; do
         ;;
     --delete-cluster)
         OPT_DELETE_CLUSTER=1
+        ;;
+    --build-kiagnose)
+        OPT_BUILD_KIAGNOSE=1
         ;;
     --deploy-kiagnose)
         OPT_DEPLOY_KIAGNOSE=1
@@ -72,7 +77,7 @@ while true; do
         set +x
         echo -n "$0 [--install-kind] [--install-kubectl] "
         echo -n "[--create-cluster] [--delete-cluster] "
-        echo -n "[--deploy-kubevirt] [--deploy-kiagnose] [--deploy-cnao] [--deploy-checkup] "
+        echo -n "[--deploy-kubevirt] [--build-kiagnose] [--deploy-kiagnose] [--deploy-cnao] [--deploy-checkup] "
         echo "[--define-nad] [--run-tests]"
         exit
         ;;
@@ -89,6 +94,7 @@ if [ "${ARGCOUNT}" -eq "0" ] ; then
     OPT_INSTALL_KUBECTL=1
     OPT_CREATE_CLUSTER=1
     OPT_DEPLOY_KIAGNOSE=1
+    OPT_BUILD_KIAGNOSE=1
     OPT_DEPLOY_KUBEVIRT=1
     OPT_DEPLOY_CNAO=1
     OPT_DEPLOY_CHECKUP=1
@@ -126,8 +132,15 @@ if [ -n "${OPT_CREATE_CLUSTER}" ]; then
     fi
 fi
 
+if [ -n "${OPT_BUILD_KIAGNOSE}" ]; then
+  cd ${SCRIPT_PATH}/../../..
+  ./automation/make.sh --build-core --build-core-image
+  cd -
+fi
+
 if [ -n "${OPT_DEPLOY_KIAGNOSE}" ]; then
-    ${KUBECTL} apply -f manifests/kiagnose.yaml
+  ${KIND} load docker-image "${FRAMEWORK_IMAGE}" --name "${CLUSTER_NAME}"
+  ${KUBECTL} apply -f manifests/kiagnose.yaml
 fi
 
 if [ -n "${OPT_DEPLOY_KUBEVIRT}" ]; then
@@ -249,7 +262,7 @@ spec:
       restartPolicy: Never
       containers:
         - name: framework
-          image: quay.io/kiagnose/kiagnose:main
+          image: ${FRAMEWORK_IMAGE}
           env:
             - name: CONFIGMAP_NAMESPACE
               value: ${KIAGNOSE_NAMESPACE}
