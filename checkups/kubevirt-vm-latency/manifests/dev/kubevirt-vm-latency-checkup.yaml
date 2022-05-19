@@ -88,7 +88,7 @@ spec:
             - name: RESULT_CONFIGMAP_NAME
               value: "kubevirt-vm-latency-checkup-results"
             - name: NETWORK_ATTACHMENT_DEFINITION_NAME
-              value: "sriov-network"
+              value: "bridge-network"
             - name: NETWORK_ATTACHMENT_DEFINITION_NAMESPACE
               value: "default"
             - name: SAMPLE_DURATION_SECONDS

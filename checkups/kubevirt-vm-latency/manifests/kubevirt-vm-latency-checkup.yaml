@@ -10,11 +10,11 @@ data:
   spec.clusterRoles: |
     kubevirt-vmis-manager
   spec.param.network_attachment_definition_namespace: "default"
-  spec.param.network_attachment_definition_name: "sriov-network"
+  spec.param.network_attachment_definition_name: "bridge-network"
   spec.param.max_desired_latency_milliseconds: "10"
   spec.param.sample_duration_seconds: "5"
-  spec.param.source_node: "sriov-worker"
-  spec.param.target_node: "sriov-worker2"
+  spec.param.source_node: "test-control-place"
+  spec.param.target_node: "test-control-place"
 ---
 apiVersion: batch/v1
 kind: Job
