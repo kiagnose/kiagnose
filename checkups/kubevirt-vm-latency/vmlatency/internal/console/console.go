@@ -24,6 +24,7 @@ import (
 	"io"
 	"log"
 	"regexp"
+	"strings"
 	"time"
 
 	expect "github.com/google/goexpect"
@@ -119,6 +120,92 @@ func (c Console) LoginToFedora() error {
 	}
 
 	return configureConsole(expecter)
+}
+
+// RunCommand runs the command line from `command` connecting to an already logged in console at vmi
+// and waiting `timeout` for command to return.
+// Note: A multiline command is not supported.
+func (c Console) RunCommand(command string, timeout time.Duration) (string, error) {
+	if strings.ContainsRune(command, '\n') {
+		return "", fmt.Errorf("RunCommand failed: multiline command is not supported")
+	}
+
+	results, err := c.safeExpectBatch([]expect.Batcher{
+		&expect.BSnd{S: "\n"},
+		&expect.BExp{R: PromptExpression},
+		&expect.BSnd{S: command + "\n"},
+		&expect.BExp{R: PromptExpression},
+		&expect.BSnd{S: "echo $?\n"},
+	}, timeout)
+
+	var output string
+	for i, r := range results {
+		log.Printf("Debug batch result: %+v\n", r)
+		output += "\n" + fmt.Sprintf("[%d] %s", i, r.Output)
+	}
+	return output, err
+}
+
+// safeExpectBatch runs the batch from `expected`, connecting to a VMI's console and
+// waiting `wait` seconds for the batch to return with a response.
+// It validates that the commands arrive to the console.
+//
+// The safe mechanism is implemented by adding the expect.BSnd command to the exect.BExp expression.
+// It is done so, to make sure the match was found in the result of the expect.BSnd
+// command and not in a leftover that wasn't removed from the buffer.
+// NOTE: the method contains the following limitations:
+//       - Use of `BatchSwitchCase`
+//       - Multiline commands
+//       - No more than one sequential send or receive
+func (c Console) safeExpectBatch(batches []expect.Batcher, timeout time.Duration) ([]expect.BatchRes, error) {
+	const connectTimeout = 30 * time.Second
+	expecter, err := c.newExpecter(connectTimeout)
+	if err != nil {
+		return nil, err
+	}
+	defer expecter.Close()
+
+	sendFlag := false
+	expectFlag := false
+	previousSend := ""
+
+	const minimumRequiredBatches = 2
+	if len(batches) < minimumRequiredBatches {
+		return nil, fmt.Errorf("ExpectBatchWithValidatedSend requires at least 2 batchers, supplied %v", batches)
+	}
+
+	for i, batch := range batches {
+		switch batch.Cmd() {
+		case expect.BatchExpect:
+			if expectFlag {
+				return nil, fmt.Errorf("two sequential expect.BExp are not allowed")
+			}
+			expectFlag = true
+			sendFlag = false
+			if _, ok := batches[i].(*expect.BExp); !ok {
+				return nil, fmt.Errorf("ExpectBatchWithValidatedSend support only expect of type BExp")
+			}
+			bExp, _ := batches[i].(*expect.BExp)
+			previousSend = regexp.QuoteMeta(previousSend)
+
+			// Remove the \n since it is translated by the console to \r\n.
+			previousSend = strings.TrimSuffix(previousSend, "\n")
+			bExp.R = fmt.Sprintf("%s%s%s", previousSend, "((?s).*)", bExp.R)
+		case expect.BatchSend:
+			if sendFlag {
+				return nil, fmt.Errorf("two sequential expect.BSend are not allowed")
+			}
+			sendFlag = true
+			expectFlag = false
+			previousSend = batch.Arg()
+		case expect.BatchSwitchCase:
+			return nil, fmt.Errorf("ExpectBatchWithValidatedSend doesn't support BatchSwitchCase")
+		default:
+			return nil, fmt.Errorf("unknown command: ExpectBatchWithValidatedSend supports only BatchExpect and BatchSend")
+		}
+	}
+
+	return expecter.ExpectBatch(batches, timeout)
 }
 
 // newExpecter will connect to an already logged in VMI console and return the generated expecter it will wait `timeout` for the connection.
