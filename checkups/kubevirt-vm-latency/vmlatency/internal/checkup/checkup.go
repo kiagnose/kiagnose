@@ -108,15 +108,23 @@ func (c *checkup) Setup(ctx context.Context) error {
 	waitCtx, cancel := context.WithTimeout(ctx, defaultSetupTimeout)
 	defer cancel()
 
-	if err := vmi.WaitUntilReady(waitCtx, c.client, c.namespace, targetVmi.Name); err != nil {
+	if err := vmi.WaitUntilReady(waitCtx, c.client, c.namespace, sourceVmi.Name); err != nil {
 		return fmt.Errorf("%s: %v", errMessagePrefix, err)
 	}
 
 	if err := vmi.WaitUntilReady(waitCtx, c.client, c.namespace, targetVmi.Name); err != nil {
 		return fmt.Errorf("%s: %v", errMessagePrefix, err)
 	}
-	c.sourceVM = sourceVmi
-	c.targetVM = targetVmi
+
+	var err error
+
+	if c.sourceVM, err = c.client.GetVirtualMachineInstance(c.namespace, sourceVmi.Name); err != nil {
+		return fmt.Errorf("%s: %v", errMessagePrefix, err)
+	}
+
+	if c.targetVM, err = c.client.GetVirtualMachineInstance(c.namespace, targetVmi.Name); err != nil {
+		return fmt.Errorf("%s: %v", errMessagePrefix, err)
+	}
 
 	return nil
 }
