@@ -21,7 +21,6 @@ package job
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"log"
 	"time"
@@ -73,9 +72,6 @@ func waitForJob(ctx context.Context, watcher k8swatch.Interface) (*batchv1.Job, 
 				continue
 			}
 			if finished(job) {
-				if jobStatus, err := json.MarshalIndent(job.Status, "", " "); err == nil {
-					log.Printf("received job event '%s/%s': \n%v\n", job.Namespace, job.Name, string(jobStatus))
-				}
 				return job, nil
 			}
 		case <-ctx.Done():
