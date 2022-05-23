@@ -25,11 +25,13 @@ import (
 	"time"
 
 	corev1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/util/wait"
+	k8slabels "k8s.io/apimachinery/pkg/labels"
+	k8swatch "k8s.io/apimachinery/pkg/watch"
 
 	"k8s.io/client-go/kubernetes"
+	"k8s.io/client-go/tools/cache"
+	k8swatchtools "k8s.io/client-go/tools/watch"
 )
 
 func Create(client kubernetes.Interface, namespace *corev1.Namespace) (*corev1.Namespace, error) {
@@ -44,32 +46,34 @@ func Create(client kubernetes.Interface, namespace *corev1.Namespace) (*corev1.N
 
 // DeleteAndWait delete and waits for the given namespace to dispose.
 func DeleteAndWait(client kubernetes.Interface, namespace *corev1.Namespace, timeout time.Duration) error {
-	nsName := namespace.Name
+	ctx, cancel := context.WithTimeout(context.Background(), timeout)
+	defer cancel()
 
-	if err := client.CoreV1().Namespaces().Delete(context.Background(), nsName, metav1.DeleteOptions{}); err != nil {
+	if err := client.CoreV1().Namespaces().Delete(ctx, namespace.Name, metav1.DeleteOptions{}); err != nil {
 		return err
 	}
-	log.Printf("deleted namespace %q request sent", nsName)
+	log.Printf("delete namespace %q request sent", namespace.Name)
 
-	if err := waitForDeletion(client, nsName, timeout); err != nil {
-		return err
+	nsLabel := k8slabels.Set{corev1.LabelMetadataName: namespace.Name}
+	w := &cache.ListWatch{
+		WatchFunc: func(options metav1.ListOptions) (k8swatch.Interface, error) {
+			if options.LabelSelector != "" {
+				options.LabelSelector = "," + nsLabel.String()
+			} else {
+				options.LabelSelector = nsLabel.String()
+			}
+			return client.CoreV1().Namespaces().Watch(ctx, options)
+		},
 	}
-	log.Printf("namespace %q successfully deleted", nsName)
-
-	return nil
-}
-
-// waitForDeletion waits until the given namespace is disposed.
-func waitForDeletion(client kubernetes.Interface, nsName string, timeout time.Duration) error {
-	log.Printf("waiting for namespace %q to dispose", nsName)
-
-	const pollInterval = time.Second * 5
-	return wait.PollImmediate(pollInterval, timeout, func() (bool, error) {
-		_, err := client.CoreV1().Namespaces().Get(context.Background(), nsName, metav1.GetOptions{})
-		namespaceNotFound := errors.IsNotFound(err)
-		if err != nil && !namespaceNotFound {
-			log.Printf("failed to get namespace %q while waiting for it to dispose: %v", nsName, err)
+	_, err := k8swatchtools.Until(ctx, namespace.ResourceVersion, w, func(event k8swatch.Event) (bool, error) {
+		if event.Type != k8swatch.Deleted {
+			return false, nil
 		}
-		return namespaceNotFound, nil
+		_, ok := event.Object.(*corev1.Namespace)
+		return ok, nil
 	})
+	if err == nil {
+		log.Printf("Namespace %q deleted", namespace.Name)
+	}
+	return err
 }

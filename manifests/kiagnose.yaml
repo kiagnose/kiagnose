@@ -30,6 +30,7 @@ rules:
       - list
       - create
       - delete
+      - watch
   - apiGroups: [ "" ]
     resources: [ "serviceaccounts" ]
     verbs:
