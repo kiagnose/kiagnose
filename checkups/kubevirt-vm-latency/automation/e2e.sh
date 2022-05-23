@@ -23,10 +23,8 @@ ARGCOUNT=$#
 
 SCRIPT_PATH=$(dirname $(realpath -s $0))
 
-KUBECTL_VERSION=${KUBECTL_VERSION:-v1.23.0}
 KUBECTL=${KUBECTL:-$PWD/kubectl}
 
-KIND_VERSION=${KIND_VERSION:-v0.12.0}
 KIND=${KIND:-$PWD/kind}
 CLUSTER_NAME=${CLUSTER_NAME:-kind}
 
@@ -37,20 +35,11 @@ FRAMEWORK_IMAGE="quay.io/kiagnose/kiagnose:devel"
 CHECKUP_IMAGE="quay.io/kiagnose/kubevirt-vm-latency:devel"
 
 options=$(getopt --options "" \
-    --long install-kind,install-kubectl,create-cluster,delete-cluster,deploy-kiagnose,deploy-kubevirt,deploy-cnao,deploy-checkup,define-nad,run-tests,help\
+    --long delete-cluster,deploy-kiagnose,deploy-kubevirt,deploy-cnao,deploy-checkup,define-nad,run-tests,help\
     -- "${@}")
 eval set -- "$options"
 while true; do
     case "$1" in
-    --install-kind)
-        OPT_INSTALL_KIND=1
-        ;;
-    --install-kubectl)
-        OPT_INSTALL_KUBECTL=1
-        ;;
-    --create-cluster)
-        OPT_CREATE_CLUSTER=1
-        ;;
     --delete-cluster)
         OPT_DELETE_CLUSTER=1
         ;;
@@ -74,8 +63,7 @@ while true; do
         ;;
     --help)
         set +x
-        echo -n "$0 [--install-kind] [--install-kubectl] "
-        echo -n "[--create-cluster] [--delete-cluster] "
+        echo -n "$0 [--delete-cluster] "
         echo -n "[--deploy-kubevirt] [--deploy-kiagnose] [--deploy-cnao] [--deploy-checkup] "
         echo "[--define-nad] [--run-tests]"
         exit
@@ -89,43 +77,12 @@ while true; do
 done
 
 if [ "${ARGCOUNT}" -eq "0" ] ; then
-    OPT_INSTALL_KIND=1
-    OPT_INSTALL_KUBECTL=1
-    OPT_CREATE_CLUSTER=1
     OPT_DEPLOY_KIAGNOSE=1
     OPT_DEPLOY_KUBEVIRT=1
     OPT_DEPLOY_CNAO=1
     OPT_DEPLOY_CHECKUP=1
     OPT_DEFINE_NAD=1
     OPT_RUN_TEST=1
-fi
-
-if [ -n "${OPT_INSTALL_KIND}" ]; then
-    if [ ! -f "${KIND}" ]; then
-        curl -Lo ${KIND} https://kind.sigs.k8s.io/dl/${KIND_VERSION}/kind-linux-amd64
-        chmod +x ${KIND}
-        echo "kind installed successfully at ${KIND}"
-    fi
-fi
-
-if [ -n "${OPT_INSTALL_KUBECTL}" ]; then
-    if [ ! -f "${KUBECTL}" ]; then
-        curl -Lo ${KUBECTL} https://dl.k8s.io/release/${KUBECTL_VERSION}/bin/linux/amd64/kubectl
-        chmod +x ${KUBECTL}
-        echo "kubectl installed successfully at ${KUBECTL}"
-    fi
-fi
-
-if [ -n "${OPT_CREATE_CLUSTER}" ]; then
-    if ! ${KIND} get clusters | grep ${CLUSTER_NAME}; then
-        ${KIND} create cluster --wait 2m
-        echo "Waiting for the network to be ready..."
-        ${KUBECTL} wait --for=condition=ready pods --namespace=kube-system -l k8s-app=kube-dns --timeout=2m
-        echo "K8S cluster is up:"
-        ${KUBECTL} get nodes -o wide
-    else
-        echo "Cluster '${CLUSTER_NAME}' already exists!"
-    fi
 fi
 
 if [ -n "${OPT_DEPLOY_KIAGNOSE}" ]; then

@@ -26,6 +26,7 @@ KUBECTL=${KUBECTL:-$PWD/kubectl}
 
 KIND_VERSION=${KIND_VERSION:-v0.12.0}
 KIND=${KIND:-$PWD/kind}
+CLUSTER_NAME=${CLUSTER_NAME:-kind}
 
 options=$(getopt --options "" \
     --long install-kind,install-kubectl,create-cluster,delete-cluster,deploy-kiagnose,run-tests,help\
@@ -90,7 +91,6 @@ if [ -n "${OPT_INSTALL_KUBECTL}" ]; then
 fi
 
 if [ -n "${OPT_CREATE_CLUSTER}" ]; then
-    CLUSTER_NAME=kind
     if ! ${KIND} get clusters | grep ${CLUSTER_NAME}; then
         ${KIND} create cluster --wait 2m
         echo "Waiting for the network to be ready..."
