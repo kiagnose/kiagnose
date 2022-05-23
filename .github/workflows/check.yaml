@@ -71,9 +71,12 @@ jobs:
     env:
       KIND: /usr/local/bin/kind
       KUBECTL: /usr/local/bin/kubectl
+      CRI: docker
     steps:
       - name: Check out code
         uses: actions/checkout@v2
+      - name: Build kiagnose image
+        run: ./automation/make.sh --build-core --build-core-image
       - name: Deploy
         run: ./automation/make.sh --e2e -- --install-kind --install-kubectl --create-cluster --deploy-kiagnose
       - name: Run e2e tests

@@ -35,16 +35,13 @@ FRAMEWORK_IMAGE="quay.io/kiagnose/kiagnose:devel"
 CHECKUP_IMAGE="quay.io/kiagnose/kubevirt-vm-latency:devel"
 
 options=$(getopt --options "" \
-    --long delete-cluster,deploy-kiagnose,deploy-kubevirt,deploy-cnao,deploy-checkup,define-nad,run-tests,help\
+    --long delete-cluster,deploy-kubevirt,deploy-cnao,deploy-checkup,define-nad,run-tests,help\
     -- "${@}")
 eval set -- "$options"
 while true; do
     case "$1" in
     --delete-cluster)
         OPT_DELETE_CLUSTER=1
-        ;;
-    --deploy-kiagnose)
-        OPT_DEPLOY_KIAGNOSE=1
         ;;
     --deploy-kubevirt)
         OPT_DEPLOY_KUBEVIRT=1
@@ -64,7 +61,7 @@ while true; do
     --help)
         set +x
         echo -n "$0 [--delete-cluster] "
-        echo -n "[--deploy-kubevirt] [--deploy-kiagnose] [--deploy-cnao] [--deploy-checkup] "
+        echo -n "[--deploy-kubevirt] [--deploy-cnao] [--deploy-checkup] "
         echo "[--define-nad] [--run-tests]"
         exit
         ;;
@@ -77,17 +74,11 @@ while true; do
 done
 
 if [ "${ARGCOUNT}" -eq "0" ] ; then
-    OPT_DEPLOY_KIAGNOSE=1
     OPT_DEPLOY_KUBEVIRT=1
     OPT_DEPLOY_CNAO=1
     OPT_DEPLOY_CHECKUP=1
     OPT_DEFINE_NAD=1
     OPT_RUN_TEST=1
-fi
-
-if [ -n "${OPT_DEPLOY_KIAGNOSE}" ]; then
-  ${KIND} load docker-image "${FRAMEWORK_IMAGE}" --name "${CLUSTER_NAME}"
-  ${KUBECTL} apply -f manifests/kiagnose.yaml
 fi
 
 if [ -n "${OPT_DEPLOY_KUBEVIRT}" ]; then

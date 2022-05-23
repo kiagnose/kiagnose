@@ -28,6 +28,8 @@ KIND_VERSION=${KIND_VERSION:-v0.12.0}
 KIND=${KIND:-$PWD/kind}
 CLUSTER_NAME=${CLUSTER_NAME:-kind}
 
+FRAMEWORK_IMAGE="quay.io/kiagnose/kiagnose:devel"
+
 options=$(getopt --options "" \
     --long install-kind,install-kubectl,create-cluster,delete-cluster,deploy-kiagnose,run-tests,help\
     -- "${@}")
@@ -103,7 +105,8 @@ if [ -n "${OPT_CREATE_CLUSTER}" ]; then
 fi
 
 if [ -n "${OPT_DEPLOY_KIAGNOSE}" ]; then
-    ${KUBECTL} apply -f manifests/kiagnose.yaml
+  ${KIND} load docker-image "${FRAMEWORK_IMAGE}" --name "${CLUSTER_NAME}"
+  ${KUBECTL} apply -f manifests/kiagnose.yaml
 fi
 
 if [ -n "${OPT_RUN_TEST}" ]; then
