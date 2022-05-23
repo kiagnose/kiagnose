@@ -97,54 +97,40 @@ func New(c client, checkupConfig *config.Config) *Checkup {
 		roleBindings:        checkupRoleBindings,
 		jobTimeout:          checkupConfig.Timeout,
 		clusterRoleBindings: NewClusterRoleBindings(checkupConfig.ClusterRoles, ServiceAccountName, NamespaceName),
-		job: NewCheckupJob(JobName,
+		job: NewCheckupJob(
+			JobName,
 			NamespaceName,
 			ServiceAccountName,
 			checkupConfig.Image,
 			int64(checkupConfig.Timeout.Seconds()),
-			checkupEnvVars),
+			checkupEnvVars,
+		),
 	}
 }
 
 func NewNamespace(name string) *corev1.Namespace {
 	return &corev1.Namespace{
-		ObjectMeta: metav1.ObjectMeta{
-			Name: name,
-		},
+		ObjectMeta: metav1.ObjectMeta{Name: name},
 	}
 }
 
 func NewServiceAccount(name, namespaceName string) *corev1.ServiceAccount {
 	return &corev1.ServiceAccount{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      name,
-			Namespace: namespaceName,
-		},
+		ObjectMeta: metav1.ObjectMeta{Name: name, Namespace: namespaceName},
 	}
 }
 
 func NewConfigMap(name, namespaceName string) *corev1.ConfigMap {
 	return &corev1.ConfigMap{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      name,
-			Namespace: namespaceName,
-		},
+		ObjectMeta: metav1.ObjectMeta{Name: name, Namespace: namespaceName},
 	}
 }
 
 func NewConfigMapWriterRole(name, namespaceName, configMapName string) *rbacv1.Role {
 	return &rbacv1.Role{
-		TypeMeta: metav1.TypeMeta{
-			Kind:       "Role",
-			APIVersion: rbacv1.GroupName,
-		},
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      name,
-			Namespace: namespaceName,
-		},
-		Rules: []rbacv1.PolicyRule{
-			newConfigMapWriterPolicyRule(configMapName),
-		},
+		TypeMeta:   metav1.TypeMeta{Kind: "Role", APIVersion: rbacv1.GroupName},
+		ObjectMeta: metav1.ObjectMeta{Name: name, Namespace: namespaceName},
+		Rules:      []rbacv1.PolicyRule{newConfigMapWriterPolicyRule(configMapName)},
 	}
 }
 
@@ -159,18 +145,10 @@ func newConfigMapWriterPolicyRule(cmName string) rbacv1.PolicyRule {
 
 func NewRoleBinding(roleName, namespaceName string, subject rbacv1.Subject) *rbacv1.RoleBinding {
 	return &rbacv1.RoleBinding{
-		TypeMeta: metav1.TypeMeta{
-			Kind:       "RoleBinding",
-			APIVersion: rbacv1.GroupName,
-		},
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      roleName,
-			Namespace: namespaceName},
-		Subjects: []rbacv1.Subject{subject},
-		RoleRef: rbacv1.RoleRef{
-			Kind:     "Role",
-			APIGroup: rbacv1.GroupName,
-			Name:     roleName},
+		TypeMeta:   metav1.TypeMeta{Kind: "RoleBinding", APIVersion: rbacv1.GroupName},
+		ObjectMeta: metav1.ObjectMeta{Name: roleName, Namespace: namespaceName},
+		Subjects:   []rbacv1.Subject{subject},
+		RoleRef:    rbacv1.RoleRef{Kind: "Role", APIGroup: rbacv1.GroupName, Name: roleName},
 	}
 }
 
@@ -193,13 +171,9 @@ func newServiceAccountSubject(serviceAccountName, serviceAccountNamespace string
 
 func newClusterRoleBinding(clusterRoleName string, subject rbacv1.Subject) *rbacv1.ClusterRoleBinding {
 	return &rbacv1.ClusterRoleBinding{
-		TypeMeta: metav1.TypeMeta{
-			Kind:       "ClusterRoleBinding",
-			APIVersion: rbacv1.GroupName,
-		},
-		ObjectMeta: metav1.ObjectMeta{
-			Name: clusterRoleName},
-		Subjects: []rbacv1.Subject{subject},
+		TypeMeta:   metav1.TypeMeta{Kind: "ClusterRoleBinding", APIVersion: rbacv1.GroupName},
+		ObjectMeta: metav1.ObjectMeta{Name: clusterRoleName},
+		Subjects:   []rbacv1.Subject{subject},
 		RoleRef: rbacv1.RoleRef{
 			Kind:     "ClusterRole",
 			APIGroup: rbacv1.GroupName,
@@ -210,11 +184,7 @@ func newClusterRoleBinding(clusterRoleName string, subject rbacv1.Subject) *rbac
 func NewCheckupJob(name, namespaceName, serviceAccountName, image string, activeDeadlineSeconds int64, envs []corev1.EnvVar) *batchv1.Job {
 	const containerName = "checkup"
 
-	checkupContainer := corev1.Container{
-		Name:  containerName,
-		Image: image,
-		Env:   envs,
-	}
+	checkupContainer := corev1.Container{Name: containerName, Image: image, Env: envs}
 	var defaultTerminationGracePeriodSeconds int64 = 5
 	checkupPodSpec := corev1.PodTemplateSpec{
 		ObjectMeta: metav1.ObjectMeta{},
@@ -227,10 +197,7 @@ func NewCheckupJob(name, namespaceName, serviceAccountName, image string, active
 	}
 	var backoffLimit int32 = 0
 	return &batchv1.Job{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      name,
-			Namespace: namespaceName,
-		},
+		ObjectMeta: metav1.ObjectMeta{Name: name, Namespace: namespaceName},
 		Spec: batchv1.JobSpec{
 			BackoffLimit:          &backoffLimit,
 			ActiveDeadlineSeconds: &activeDeadlineSeconds,
