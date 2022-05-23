@@ -89,7 +89,7 @@ jobs:
       - name: Start cluster
         run: ./automation/make.sh --e2e -- --install-kind --install-kubectl --create-cluster
       - name: Deploy kiagnose
-        run: ./checkups/kubevirt-vm-latency/automation/make.sh --e2e -- --deploy-kiagnose
+        run: ./automation/make.sh --e2e -- --deploy-kiagnose
       - name: Deploy kubevirt, CNAO and the NetworkAttachementDefinition
         run: ./checkups/kubevirt-vm-latency/automation/make.sh --e2e -- --deploy-kubevirt --deploy-cnao --define-nad
       - name: Deploy VM latency checkup
