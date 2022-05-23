@@ -35,14 +35,11 @@ FRAMEWORK_IMAGE="quay.io/kiagnose/kiagnose:devel"
 CHECKUP_IMAGE="quay.io/kiagnose/kubevirt-vm-latency:devel"
 
 options=$(getopt --options "" \
-    --long delete-cluster,deploy-kubevirt,deploy-cnao,deploy-checkup,define-nad,run-tests,help\
+    --long deploy-kubevirt,deploy-cnao,deploy-checkup,define-nad,run-tests,help\
     -- "${@}")
 eval set -- "$options"
 while true; do
     case "$1" in
-    --delete-cluster)
-        OPT_DELETE_CLUSTER=1
-        ;;
     --deploy-kubevirt)
         OPT_DEPLOY_KUBEVIRT=1
         ;;
@@ -60,9 +57,7 @@ while true; do
         ;;
     --help)
         set +x
-        echo -n "$0 [--delete-cluster] "
-        echo -n "[--deploy-kubevirt] [--deploy-cnao] [--deploy-checkup] "
-        echo "[--define-nad] [--run-tests]"
+        echo -n "$0 [--deploy-kubevirt] [--deploy-cnao] [--deploy-checkup] [--define-nad] [--run-tests]"
         exit
         ;;
     --)
@@ -216,8 +211,4 @@ EOF
     echo "Result:"
     echo
     ${KUBECTL} get configmap ${VM_LATENCY_CONFIGMAP} -n ${KIAGNOSE_NAMESPACE} -o yaml
-fi
-
-if [ -n "${OPT_DELETE_CLUSTER}" ]; then
-    ${KIND} delete cluster
 fi
