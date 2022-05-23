@@ -36,7 +36,7 @@ FRAMEWORK_IMAGE="quay.io/kiagnose/kiagnose:devel"
 CHECKUP_IMAGE="quay.io/kiagnose/kubevirt-vm-latency:devel"
 
 options=$(getopt --options "" \
-    --long deploy-kubevirt,deploy-cnao,deploy-checkup,define-nad,run-tests,help\
+    --long deploy-kubevirt,deploy-cnao,deploy-checkup,create-bridge,define-nad,run-tests,help\
     -- "${@}")
 eval set -- "$options"
 while true; do
@@ -49,6 +49,9 @@ while true; do
         ;;
     --deploy-checkup)
         OPT_DEPLOY_CHECKUP=1
+        ;;
+    --create-bridge)
+        OPT_CREATE_BRIDGE=1
         ;;
     --define-nad)
         OPT_DEFINE_NAD=1
@@ -123,6 +126,19 @@ EOF
     ${KUBECTL} get networkaddonsconfig cluster -o yaml
 fi
 
+BRIDGE_NAME="${BRIDGE_NAME:-kgns0}"
+BRIDGE_GATEWAY="${BRIDGE_GATEWAY:-192.168.100.1/24}"
+
+if [ -n "${OPT_CREATE_BRIDGE}" ]; then
+  echo
+  echo "Creating bridge on cluster nodes..."
+  echo
+  for node in "$(${KIND} get nodes --name ${CLUSTER_NAME})"; do
+    docker exec ${node} ip link add name ${BRIDGE_NAME} type bridge || true
+    docker exec ${node} ip addr add ${BRIDGE_GATEWAY} dev ${BRIDGE_NAME} || true
+  done
+fi
+
 if [ -n "${OPT_DEFINE_NAD}" ]; then
     echo
     echo "Define NetworkAttachmentDefinition (with a bridge CNI)..."
@@ -138,11 +154,11 @@ spec:
   config: |
     {
       "cniVersion":"0.3.1",
-      "name": "br10",
+      "name": "${BRIDGE_NAME}",
       "plugins": [
           {
               "type": "cnv-bridge",
-              "bridge": "br10"
+              "bridge": "${BRIDGE_NAME}"
           }
       ]
     }
