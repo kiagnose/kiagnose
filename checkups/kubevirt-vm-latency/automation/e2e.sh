@@ -210,5 +210,7 @@ EOF
     echo
     echo "Result:"
     echo
-    ${KUBECTL} get configmap ${VM_LATENCY_CONFIGMAP} -n ${KIAGNOSE_NAMESPACE} -o yaml
+    ${KUBECTL} get configmap ${VM_LATENCY_CONFIGMAP} -n ${KIAGNOSE_NAMESPACE} -o jsonpath='{.data}' | \
+      sed -e 's/{/\n{\n\t/g' -e 's/,/,\n\t/g' -e 's/}/\n}\n/g'
+    echo
 fi
