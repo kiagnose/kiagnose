@@ -233,4 +233,10 @@ EOF
     echo "Result:"
     echo
     ${KUBECTL} get configmap ${VM_LATENCY_CONFIGMAP} -n ${KIAGNOSE_NAMESPACE} -o yaml
+
+    succeded=$(${KUBECTL} get configmap ${VM_LATENCY_CONFIGMAP} -n ${KIAGNOSE_NAMESPACE} -o jsonpath='{.data}' | \
+      grep -Po "(?<=\"status.succeeded\":\")(false|true)+")
+    if [ "${succeded}" == "false" ]; then
+      echo "Kubevirt VM latency checkup failed" && exit 1
+    fi
 fi
