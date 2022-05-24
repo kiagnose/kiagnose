@@ -81,19 +81,19 @@ if [ -n "${OPT_DEPLOY_KUBEVIRT}" ]; then
     echo
     echo "Deploy kubevirt..."
     echo
-    kubectl create -f https://github.com/kubevirt/kubevirt/releases/download/${KUBEVIRT_VERSION}/kubevirt-operator.yaml
-    kubectl create -f https://github.com/kubevirt/kubevirt/releases/download/${KUBEVIRT_VERSION}/kubevirt-cr.yaml
+    ${KUBECTL} create -f https://github.com/kubevirt/kubevirt/releases/download/${KUBEVIRT_VERSION}/kubevirt-operator.yaml
+    ${KUBECTL} create -f https://github.com/kubevirt/kubevirt/releases/download/${KUBEVIRT_VERSION}/kubevirt-cr.yaml
 
     if [ "${KUBEVIRT_USE_EMULATION}" = "true" ]; then
       echo "Configure Kubevirt to use emulation"
-      kubectl patch kubevirt kubevirt --namespace kubevirt --type=merge --patch '{"spec":{"configuration":{"developerConfiguration":{"useEmulation":true}}}}'
+      ${KUBECTL} patch kubevirt kubevirt --namespace kubevirt --type=merge --patch '{"spec":{"configuration":{"developerConfiguration":{"useEmulation":true}}}}'
     fi
 
-    kubectl wait --for=condition=Available kubevirt kubevirt --namespace=kubevirt --timeout=2m
+    ${KUBECTL} wait --for=condition=Available kubevirt kubevirt --namespace=kubevirt --timeout=2m
 
     echo
     echo "Successfully deployed kubevirt:"
-    kubectl get pods -n kubevirt
+    ${KUBECTL} get pods -n kubevirt
 fi
 
 if [ -n "${OPT_DEPLOY_CNAO}" ]; then
@@ -154,7 +154,7 @@ if [ -n "${OPT_DEPLOY_CHECKUP}" ]; then
     echo
     echo "Deploy kubevirt-vm-latency..."
     echo
-    kubectl create -f ${SCRIPT_PATH}/../manifests/clusterroles.yaml
+    ${KUBECTL} create -f ${SCRIPT_PATH}/../manifests/clusterroles.yaml
 
     ${KIND} load docker-image "${CHECKUP_IMAGE}" --name "${CLUSTER_NAME}"
 fi
