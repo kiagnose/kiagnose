@@ -25,11 +25,12 @@ import (
 
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	corev1client "k8s.io/client-go/kubernetes/typed/core/v1"
+
+	"k8s.io/client-go/kubernetes"
 )
 
-func Create(client corev1client.CoreV1Interface, sa *corev1.ServiceAccount) (*corev1.ServiceAccount, error) {
-	createdSa, err := client.ServiceAccounts(sa.Namespace).Create(context.Background(), sa, metav1.CreateOptions{})
+func Create(client kubernetes.Interface, sa *corev1.ServiceAccount) (*corev1.ServiceAccount, error) {
+	createdSa, err := client.CoreV1().ServiceAccounts(sa.Namespace).Create(context.Background(), sa, metav1.CreateOptions{})
 	if err != nil {
 		return nil, err
 	}

@@ -217,7 +217,7 @@ func (c *Checkup) Setup() error {
 		}
 	}()
 
-	if c.serviceAccount, err = serviceaccount.Create(c.client.CoreV1(), c.serviceAccount); err != nil {
+	if c.serviceAccount, err = serviceaccount.Create(c.client, c.serviceAccount); err != nil {
 		return fmt.Errorf("%s: %v", errPrefix, err)
 	}
 
