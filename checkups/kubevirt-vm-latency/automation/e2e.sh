@@ -197,7 +197,7 @@ data:
     kubevirt-vmis-manager
   spec.param.network_attachment_definition_namespace: "default"
   spec.param.network_attachment_definition_name: "bridge-network"
-  spec.param.max_desired_latency_milliseconds: "10"
+  spec.param.max_desired_latency_milliseconds: "50"
   spec.param.sample_duration_seconds: "5"
 EOF
 
