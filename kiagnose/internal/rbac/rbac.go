@@ -27,25 +27,13 @@ import (
 	"strings"
 	"time"
 
-	corev1 "k8s.io/api/core/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/client-go/kubernetes"
-	corev1client "k8s.io/client-go/kubernetes/typed/core/v1"
 	rbacv1client "k8s.io/client-go/kubernetes/typed/rbac/v1"
 )
-
-func CreateServiceAccount(client corev1client.CoreV1Interface, sa *corev1.ServiceAccount) (*corev1.ServiceAccount, error) {
-	createdSa, err := client.ServiceAccounts(sa.Namespace).Create(context.Background(), sa, metav1.CreateOptions{})
-	if err != nil {
-		return nil, err
-	}
-	log.Printf("ServiceAccount '%s/%s' successfully created", sa.Namespace, sa.Name)
-
-	return createdSa, nil
-}
 
 // CreateClusterRoleBindings creates the given ClusterRoleBindings in the cluster.
 // In case of failure it will delete and waits for the ClusterRoleBindings to dispose.

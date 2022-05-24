@@ -35,6 +35,7 @@ import (
 
 	"github.com/kiagnose/kiagnose/kiagnose/internal/checkup/job"
 	"github.com/kiagnose/kiagnose/kiagnose/internal/checkup/namespace"
+	"github.com/kiagnose/kiagnose/kiagnose/internal/checkup/serviceaccount"
 	"github.com/kiagnose/kiagnose/kiagnose/internal/config"
 	"github.com/kiagnose/kiagnose/kiagnose/internal/configmap"
 	"github.com/kiagnose/kiagnose/kiagnose/internal/rbac"
@@ -223,7 +224,7 @@ func (c *Checkup) Setup() error {
 		}
 	}()
 
-	if c.serviceAccount, err = rbac.CreateServiceAccount(c.client.CoreV1(), c.serviceAccount); err != nil {
+	if c.serviceAccount, err = serviceaccount.Create(c.client.CoreV1(), c.serviceAccount); err != nil {
 		return fmt.Errorf("%s: %v", errPrefix, err)
 	}
 
