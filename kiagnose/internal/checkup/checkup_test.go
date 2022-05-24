@@ -88,13 +88,15 @@ func TestCheckupWith(t *testing.T) {
 				Roles:        testCase.roles,
 			})
 
+			checkupNamespaceName := checkup.NamespaceName
+
 			assert.NoError(t, testCheckup.Setup())
-			assertNamespaceCreated(t, c)
-			assertServiceAccountCreated(t, c)
-			assertResultsConfigMapCreated(t, c)
-			assertConfigMapWriterRoleCreated(t, c)
-			assertConfigMapWriterRoleBindingCreated(t, c)
-			assertClusterRoleBindingsCreated(t, testsClient{c}, testCase.clusterRole)
+			assertNamespaceCreated(t, c, checkupNamespaceName)
+			assertServiceAccountCreated(t, c, checkupNamespaceName)
+			assertResultsConfigMapCreated(t, c, checkupNamespaceName)
+			assertConfigMapWriterRoleCreated(t, c, checkupNamespaceName)
+			assertConfigMapWriterRoleBindingCreated(t, c, checkupNamespaceName)
+			assertClusterRoleBindingsCreated(t, testsClient{c}, testCase.clusterRole, checkupNamespaceName)
 		})
 	}
 }
@@ -255,24 +257,26 @@ func TestCheckupRunShouldCreateAJob(t *testing.T) {
 	for _, testCase := range checkupRunTestCases {
 		t.Run(testCase.description, func(t *testing.T) {
 			testClient := newNormalizedFakeClientset()
-			completeTrueJobCondition := &batchv1.JobCondition{Type: batchv1.JobComplete, Status: corev1.ConditionTrue}
-			testClient.injectJobWatchEvent(newJobWithCondition(checkup.NamespaceName, checkup.JobName, completeTrueJobCondition))
 			testClient.injectResourceVersionUpdateOnNamespaceCreation()
 			testClient.injectWatchWithNamespaceDeleteEvent()
 
 			testCheckup := checkup.New(testClient, &config.Config{Image: testImage, Timeout: testTimeout, EnvVars: testCase.envVars})
+
+			checkupNamespaceName := checkup.NamespaceName
+			completeTrueJobCondition := &batchv1.JobCondition{Type: batchv1.JobComplete, Status: corev1.ConditionTrue}
+			testClient.injectJobWatchEvent(newJobWithCondition(checkupNamespaceName, checkup.JobName, completeTrueJobCondition))
 
 			assert.NoError(t, testCheckup.Setup())
 			assert.NoError(t, testCheckup.Run())
 
 			expectedEnvVars := []corev1.EnvVar{
 				{Name: checkup.ResultsConfigMapNameEnvVarName, Value: checkup.ResultsConfigMapName},
-				{Name: checkup.ResultsConfigMapNameEnvVarNamespace, Value: checkup.NamespaceName},
+				{Name: checkup.ResultsConfigMapNameEnvVarNamespace, Value: checkupNamespaceName},
 			}
 			expectedEnvVars = append(expectedEnvVars, testCase.envVars...)
 			expectedJob := checkup.NewCheckupJob(
-				checkup.JobName, checkup.NamespaceName, checkup.ServiceAccountName, testImage, int64(testTimeout.Seconds()), expectedEnvVars)
-			actualJob, err := testClient.BatchV1().Jobs(checkup.NamespaceName).Get(context.Background(), checkup.JobName, metav1.GetOptions{})
+				checkup.JobName, checkupNamespaceName, checkup.ServiceAccountName, testImage, int64(testTimeout.Seconds()), expectedEnvVars)
+			actualJob, err := testClient.BatchV1().Jobs(checkupNamespaceName).Get(context.Background(), checkup.JobName, metav1.GetOptions{})
 			assert.NoError(t, err)
 
 			assert.Equal(t, actualJob, expectedJob)
@@ -291,11 +295,13 @@ func TestCheckupRunShouldSucceed(t *testing.T) {
 	for _, testCase := range checkupRunTestCases {
 		t.Run(testCase.description, func(t *testing.T) {
 			testClient := newNormalizedFakeClientset()
-			testClient.injectJobWatchEvent(newJobWithCondition(checkup.NamespaceName, checkup.JobName, testCase.jobCondition))
 			testClient.injectResourceVersionUpdateOnNamespaceCreation()
 			testClient.injectWatchWithNamespaceDeleteEvent()
 
 			testCheckup := checkup.New(testClient, &config.Config{Image: testImage, Timeout: testTimeout})
+
+			checkupNamespaceName := checkup.NamespaceName
+			testClient.injectJobWatchEvent(newJobWithCondition(checkupNamespaceName, checkup.JobName, testCase.jobCondition))
 
 			assert.NoError(t, testCheckup.Setup())
 			assert.NoError(t, testCheckup.Run())
@@ -355,8 +361,10 @@ func TestCheckupRunShouldFailWhen(t *testing.T) {
 		testClient.injectWatchWithNamespaceDeleteEvent()
 
 		testCheckup := checkup.New(testClient, &config.Config{Image: testImage, Timeout: time.Second})
+
+		checkupNamespaceName := checkup.NamespaceName
 		completeFalseJobCondition := &batchv1.JobCondition{Type: batchv1.JobComplete, Status: corev1.ConditionFalse}
-		testClient.injectJobWatchEvent(newJobWithCondition(checkup.NamespaceName, checkup.JobName, completeFalseJobCondition))
+		testClient.injectJobWatchEvent(newJobWithCondition(checkupNamespaceName, checkup.JobName, completeFalseJobCondition))
 
 		assert.NoError(t, testCheckup.Setup())
 		assert.ErrorContains(t, testCheckup.Run(), context.DeadlineExceeded.Error())
@@ -543,60 +551,60 @@ func (c *testsClient) listObjectsByKind(group, resourceName, resourceKind string
 	return c.Tracker().List(gvr, gvk, "")
 }
 
-func assertNamespaceCreated(t *testing.T, testClient *fake.Clientset) {
+func assertNamespaceCreated(t *testing.T, testClient *fake.Clientset, nsName string) {
 	gvr := schema.GroupVersionResource{Group: "", Version: "v1", Resource: namespaceResource}
-	actualNs, err := testClient.Tracker().Get(gvr, "", checkup.NamespaceName)
+	actualNs, err := testClient.Tracker().Get(gvr, "", nsName)
 
 	assert.NoError(t, err)
-	assert.Equal(t, checkup.NewNamespace(checkup.NamespaceName), actualNs)
+	assert.Equal(t, checkup.NewNamespace(nsName), actualNs)
 }
 
-func assertServiceAccountCreated(t *testing.T, testClient *fake.Clientset) {
+func assertServiceAccountCreated(t *testing.T, testClient *fake.Clientset, nsName string) {
 	gvr := schema.GroupVersionResource{Group: "", Version: "v1", Resource: serviceAccountResource}
-	actualServiceAccount, err := testClient.Tracker().Get(gvr, checkup.NamespaceName, checkup.ServiceAccountName)
+	actualServiceAccount, err := testClient.Tracker().Get(gvr, nsName, checkup.ServiceAccountName)
 
 	assert.NoError(t, err)
-	assert.Equal(t, checkup.NewServiceAccount(checkup.ServiceAccountName, checkup.NamespaceName), actualServiceAccount)
+	assert.Equal(t, checkup.NewServiceAccount(checkup.ServiceAccountName, nsName), actualServiceAccount)
 }
 
-func assertResultsConfigMapCreated(t *testing.T, testClient *fake.Clientset) {
+func assertResultsConfigMapCreated(t *testing.T, testClient *fake.Clientset, nsName string) {
 	gvr := schema.GroupVersionResource{Group: "", Version: "v1", Resource: configMapResource}
-	actualConfingMap, err := testClient.Tracker().Get(gvr, checkup.NamespaceName, checkup.ResultsConfigMapName)
+	actualConfingMap, err := testClient.Tracker().Get(gvr, nsName, checkup.ResultsConfigMapName)
 
 	assert.NoError(t, err)
-	assert.Equal(t, checkup.NewConfigMap(checkup.ResultsConfigMapName, checkup.NamespaceName), actualConfingMap)
+	assert.Equal(t, checkup.NewConfigMap(checkup.ResultsConfigMapName, nsName), actualConfingMap)
 }
 
-func assertConfigMapWriterRoleCreated(t *testing.T, testClient *fake.Clientset) {
+func assertConfigMapWriterRoleCreated(t *testing.T, testClient *fake.Clientset, nsName string) {
 	gvr := schema.GroupVersionResource{Group: rbacv1.GroupName, Version: "v1", Resource: rolesResource}
-	actualRole, err := testClient.Tracker().Get(gvr, checkup.NamespaceName, checkup.ResultsConfigMapWriterRoleName)
+	actualRole, err := testClient.Tracker().Get(gvr, nsName, checkup.ResultsConfigMapWriterRoleName)
 
 	assert.NoError(t, err)
 
 	expectedRole := checkup.NewConfigMapWriterRole(
-		checkup.ResultsConfigMapWriterRoleName, checkup.NamespaceName, checkup.ResultsConfigMapName)
+		checkup.ResultsConfigMapWriterRoleName, nsName, checkup.ResultsConfigMapName)
 
 	assert.Equal(t, expectedRole, actualRole)
 }
 
-func assertConfigMapWriterRoleBindingCreated(t *testing.T, testClient *fake.Clientset) {
+func assertConfigMapWriterRoleBindingCreated(t *testing.T, testClient *fake.Clientset, nsName string) {
 	gvr := schema.GroupVersionResource{Group: rbacv1.GroupName, Version: "v1", Resource: rolesBindingResource}
-	actualRoleBinding, err := testClient.Tracker().Get(gvr, checkup.NamespaceName, checkup.ResultsConfigMapWriterRoleName)
+	actualRoleBinding, err := testClient.Tracker().Get(gvr, nsName, checkup.ResultsConfigMapWriterRoleName)
 
 	assert.NoError(t, err)
 
-	subject := rbacv1.Subject{Kind: rbacv1.ServiceAccountKind, Name: checkup.ServiceAccountName, Namespace: checkup.NamespaceName}
-	expectedRoleBinding := checkup.NewRoleBinding(checkup.ResultsConfigMapWriterRoleName, checkup.NamespaceName, subject)
+	subject := rbacv1.Subject{Kind: rbacv1.ServiceAccountKind, Name: checkup.ServiceAccountName, Namespace: nsName}
+	expectedRoleBinding := checkup.NewRoleBinding(checkup.ResultsConfigMapWriterRoleName, nsName, subject)
 
 	assert.Equal(t, expectedRoleBinding, actualRoleBinding)
 }
 
-func assertClusterRoleBindingsCreated(t *testing.T, testClient testsClient, clusterRoles []*rbacv1.ClusterRole) {
+func assertClusterRoleBindingsCreated(t *testing.T, testClient testsClient, clusterRoles []*rbacv1.ClusterRole, nsName string) {
 	actualClusterRoleBindings, err := testClient.listClusterRoleBindings()
 	assert.NoError(t, err)
 
 	var expectedClusterRoleBindings []rbacv1.ClusterRoleBinding
-	for _, clusterRoleBindingPtr := range checkup.NewClusterRoleBindings(clusterRoles, checkup.ServiceAccountName, checkup.NamespaceName) {
+	for _, clusterRoleBindingPtr := range checkup.NewClusterRoleBindings(clusterRoles, checkup.ServiceAccountName, nsName) {
 		expectedClusterRoleBindings = append(expectedClusterRoleBindings, *clusterRoleBindingPtr)
 	}
 	assert.Subset(t, actualClusterRoleBindings, expectedClusterRoleBindings)
