@@ -81,8 +81,8 @@ if [ -n "${OPT_DEPLOY_KUBEVIRT}" ]; then
     echo
     echo "Deploy kubevirt..."
     echo
-    ${KUBECTL} create -f https://github.com/kubevirt/kubevirt/releases/download/${KUBEVIRT_VERSION}/kubevirt-operator.yaml
-    ${KUBECTL} create -f https://github.com/kubevirt/kubevirt/releases/download/${KUBEVIRT_VERSION}/kubevirt-cr.yaml
+    ${KUBECTL} apply -f https://github.com/kubevirt/kubevirt/releases/download/${KUBEVIRT_VERSION}/kubevirt-operator.yaml
+    ${KUBECTL} apply -f https://github.com/kubevirt/kubevirt/releases/download/${KUBEVIRT_VERSION}/kubevirt-cr.yaml
 
     if [ "${KUBEVIRT_USE_EMULATION}" = "true" ]; then
       echo "Configure Kubevirt to use emulation"
@@ -154,7 +154,7 @@ if [ -n "${OPT_DEPLOY_CHECKUP}" ]; then
     echo
     echo "Deploy kubevirt-vm-latency..."
     echo
-    ${KUBECTL} create -f ${SCRIPT_PATH}/../manifests/clusterroles.yaml
+    ${KUBECTL} apply -f ${SCRIPT_PATH}/../manifests/clusterroles.yaml
 
     ${KIND} load docker-image "${CHECKUP_IMAGE}" --name "${CLUSTER_NAME}"
 fi
