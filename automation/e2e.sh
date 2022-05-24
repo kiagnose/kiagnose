@@ -78,22 +78,22 @@ fi
 
 if [ -n "${OPT_INSTALL_KIND}" ]; then
     if [ ! -f "${KIND}" ]; then
-        curl -Lo ${KIND} https://kind.sigs.k8s.io/dl/${KIND_VERSION}/kind-linux-amd64
-        chmod +x ${KIND}
+        curl -Lo "${KIND}" https://kind.sigs.k8s.io/dl/"${KIND_VERSION}"/kind-linux-amd64
+        chmod +x "${KIND}"
         echo "kind installed successfully at ${KIND}"
     fi
 fi
 
 if [ -n "${OPT_INSTALL_KUBECTL}" ]; then
     if [ ! -f "${KUBECTL}" ]; then
-        curl -Lo ${KUBECTL} https://dl.k8s.io/release/${KUBECTL_VERSION}/bin/linux/amd64/kubectl
-        chmod +x ${KUBECTL}
+        curl -Lo "${KUBECTL}" https://dl.k8s.io/release/"${KUBECTL_VERSION}"/bin/linux/amd64/kubectl
+        chmod +x "${KUBECTL}"
         echo "kubectl installed successfully at ${KUBECTL}"
     fi
 fi
 
 if [ -n "${OPT_CREATE_CLUSTER}" ]; then
-    if ! ${KIND} get clusters | grep ${CLUSTER_NAME}; then
+    if ! ${KIND} get clusters | grep "${CLUSTER_NAME}"; then
         ${KIND} create cluster --wait 2m
         echo "Waiting for the network to be ready..."
         ${KUBECTL} wait --for=condition=ready pods --namespace=kube-system -l k8s-app=kube-dns --timeout=2m

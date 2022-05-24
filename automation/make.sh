@@ -21,7 +21,7 @@ set -e
 
 ARGCOUNT=$#
 
-SCRIPT_PATH=$(dirname $(realpath -s $0))
+SCRIPT_PATH=$(dirname $(realpath -s "$0"))
 
 CRI=${CRI:-podman}
 
@@ -86,12 +86,12 @@ if [ -n "${OPT_LINT}" ]; then
 fi
 
 if [ -n "${OPT_UNIT_TEST}" ]; then
-    go test -v ${PWD}/kiagnose/...
+    go test -v "${PWD}"/kiagnose/...
 fi
 
 if [ -n "${OPT_BUILD_CORE}" ]; then
     echo "Trying to build \"${CORE_BINARY_NAME}\"..."
-    go build -v -o ${PWD}/bin/${CORE_BINARY_NAME} ${PWD}/cmd/
+    go build -v -o "${PWD}"/bin/${CORE_BINARY_NAME} "${PWD}"/cmd/
     echo "Successfully built \"${CORE_BINARY_NAME}\""
 fi
 
@@ -102,9 +102,9 @@ fi
 
 if [ -n "${OPT_PUSH_CORE_IMAGE}" ]; then
     echo "Pushing \"${CORE_IMAGE}\"..."
-    ${CRI} push ${CORE_IMAGE}
+    ${CRI} push "${CORE_IMAGE}"
 fi
 
 if [ -n "${OPT_E2E}" ]; then
-    ${SCRIPT_PATH}/e2e.sh $@
+    "${SCRIPT_PATH}"/e2e.sh $@
 fi
