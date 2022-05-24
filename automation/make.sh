@@ -106,5 +106,5 @@ if [ -n "${OPT_PUSH_CORE_IMAGE}" ]; then
 fi
 
 if [ -n "${OPT_E2E}" ]; then
-    "${SCRIPT_PATH}"/e2e.sh $@
+    "${SCRIPT_PATH}"/e2e.sh "$@"
 fi
