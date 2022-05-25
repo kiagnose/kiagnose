@@ -33,6 +33,8 @@ CHECKUP_IMAGE_NAME="kubevirt-vm-latency"
 CHECKUP_IMAGE_TAG=${CORE_IMAGE_TAG:-devel}
 CHECKUP_IMAGE=${IMAGE_REGISTRY}/${IMAGE_ORG}/${CHECKUP_IMAGE_NAME}:${CHECKUP_IMAGE_TAG}
 
+GOFLAGS=-mod=vendor
+
 options=$(getopt --options "" \
     --long lint,unit-test,build-checkup,build-checkup-image,push-checkup-image,e2e,help\
     -- "${@}")
