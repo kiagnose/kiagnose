@@ -35,8 +35,12 @@ CNAO_VERSION=${CNAO_VERSION:-v0.74.0}
 FRAMEWORK_IMAGE="quay.io/kiagnose/kiagnose:devel"
 CHECKUP_IMAGE="quay.io/kiagnose/kubevirt-vm-latency:devel"
 
+KIAGNOSE_NAMESPACE=kiagnose
+KIAGNOSE_JOB=kubevirt-vm-latency-checkup
+VM_LATENCY_CONFIGMAP=kubevirt-vm-latency-checkup
+
 options=$(getopt --options "" \
-    --long deploy-kubevirt,deploy-cnao,deploy-checkup,define-nad,run-tests,help\
+    --long deploy-kubevirt,deploy-cnao,deploy-checkup,define-nad,run-tests,clean-run,help\
     -- "${@}")
 eval set -- "$options"
 while true; do
@@ -56,9 +60,12 @@ while true; do
     --run-tests)
         OPT_RUN_TEST=1
         ;;
+    --clean-run)
+        OPT_CLEAN_RUN=1
+        ;;
     --help)
         set +x
-        echo -n "$0 [--deploy-kubevirt] [--deploy-cnao] [--deploy-checkup] [--define-nad] [--run-tests]"
+        echo -n "$0 [--deploy-kubevirt] [--deploy-cnao] [--deploy-checkup] [--define-nad] [--run-tests] [--clean-run]"
         exit
         ;;
     --)
@@ -160,10 +167,6 @@ if [ -n "${OPT_DEPLOY_CHECKUP}" ]; then
 fi
 
 if [ -n "${OPT_RUN_TEST}" ]; then
-    KIAGNOSE_NAMESPACE=kiagnose
-    KIAGNOSE_JOB=kubevirt-vm-latency-checkup
-    VM_LATENCY_CONFIGMAP=kubevirt-vm-latency-checkup
-
     echo
     echo "Deploy ConfigMap with input data: "
     echo
@@ -224,4 +227,9 @@ EOF
       echo "Kubevirt VM latency checkup failed: ${failureReason}"
       exit 1
     fi
+fi
+
+if [ -n "${OPT_CLEAN_RUN}" ];then
+  ${KUBECTL} delete job ${KIAGNOSE_JOB} -n ${KIAGNOSE_NAMESPACE} --ignore-not-found
+  ${KUBECTL} delete configmap ${VM_LATENCY_CONFIGMAP} -n ${KIAGNOSE_NAMESPACE} --ignore-not-found
 fi
