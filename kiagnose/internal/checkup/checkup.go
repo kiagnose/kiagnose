@@ -155,7 +155,7 @@ func NewClusterRoleBindings(clusterRoles []*rbacv1.ClusterRole, serviceAccountNa
 	subject := newServiceAccountSubject(serviceAccountName, serviceAccountNs)
 	var clusterRoleBindings []*rbacv1.ClusterRoleBinding
 	for _, clusterRole := range clusterRoles {
-		clusterRoleBindings = append(clusterRoleBindings, newClusterRoleBinding(clusterRole.Name, subject))
+		clusterRoleBindings = append(clusterRoleBindings, newClusterRoleBinding(clusterRole.Name, clusterRole.Name, subject))
 	}
 	return clusterRoleBindings
 }
@@ -168,15 +168,16 @@ func newServiceAccountSubject(serviceAccountName, serviceAccountNamespace string
 	}
 }
 
-func newClusterRoleBinding(clusterRoleName string, subject rbacv1.Subject) *rbacv1.ClusterRoleBinding {
+func newClusterRoleBinding(name, clusterRoleName string, subject rbacv1.Subject) *rbacv1.ClusterRoleBinding {
 	return &rbacv1.ClusterRoleBinding{
 		TypeMeta:   metav1.TypeMeta{Kind: "ClusterRoleBinding", APIVersion: rbacv1.GroupName},
-		ObjectMeta: metav1.ObjectMeta{Name: clusterRoleName},
+		ObjectMeta: metav1.ObjectMeta{Name: name},
 		Subjects:   []rbacv1.Subject{subject},
 		RoleRef: rbacv1.RoleRef{
 			Kind:     "ClusterRole",
 			APIGroup: rbacv1.GroupName,
-			Name:     clusterRoleName},
+			Name:     clusterRoleName,
+		},
 	}
 }
 
