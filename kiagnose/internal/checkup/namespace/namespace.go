@@ -43,7 +43,9 @@ func Create(client kubernetes.Interface, namespace *corev1.Namespace) (*corev1.N
 }
 
 // DeleteAndWait delete and waits for the given namespace to dispose.
-func DeleteAndWait(client kubernetes.Interface, nsName string, timeout time.Duration) error {
+func DeleteAndWait(client kubernetes.Interface, namespace *corev1.Namespace, timeout time.Duration) error {
+	nsName := namespace.Name
+
 	if err := client.CoreV1().Namespaces().Delete(context.Background(), nsName, metav1.DeleteOptions{}); err != nil {
 		return err
 	}
