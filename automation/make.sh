@@ -34,6 +34,8 @@ CORE_IMAGE="${IMAGE_REGISTRY}/${IMAGE_ORG}/${CORE_IMAGE_NAME}:${CORE_IMAGE_TAG}"
 
 CORE_BINARY_NAME="kiagnose"
 
+export GOFLAGS=-mod=vendor
+
 options=$(getopt --options "" \
     --long lint,unit-test,build-core,build-core-image,push-core-image,e2e,help\
     -- "${@}")
