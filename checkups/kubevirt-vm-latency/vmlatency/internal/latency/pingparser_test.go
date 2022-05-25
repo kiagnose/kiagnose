@@ -102,6 +102,22 @@ var pingResultsWithoutLacksPacketsInfo = latency.Results{
 	Max:     time.Nanosecond * 2382000,
 }
 
+const failingPingOutput = `
+ PING 192.168.100.20 (192.168.100.20) 56(84) bytes of data.
+ From 192.168.100.10 icmp_seq=1 Destination Host Unreachable
+ From 192.168.100.10 icmp_seq=2 Destination Host Unreachable
+ From 192.168.100.10 icmp_seq=3 Destination Host Unreachable
+
+ --- 192.168.100.20 ping statistics ---
+ 3 packets transmitted, 0 received, +3 errors, 100% packet loss, time 2085ms
+ `
+
+var failingPingResults = latency.Results{
+	Transmitted: 3,
+	Received:    0,
+	Time:        time.Millisecond * 2085,
+}
+
 type pingParserTestCase struct {
 	description     string
 	pingOutput      string
@@ -114,6 +130,11 @@ func TestParsePingShouldSucceedGiven(t *testing.T) {
 			description:     "successful ping output",
 			pingOutput:      successfulPingOutput,
 			expectedResults: successfulPingResults,
+		},
+		{
+			description:     "failing ping output",
+			pingOutput:      failingPingOutput,
+			expectedResults: failingPingResults,
 		},
 		{
 			description:     "empty string",
