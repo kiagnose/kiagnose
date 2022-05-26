@@ -110,3 +110,17 @@ jobs:
         run: ./checkups/kubevirt-vm-latency/automation/make.sh --e2e -- --run-tests
       - name: Delete cluster
         run: ./automation/make.sh --e2e -- --delete-cluster
+  debug:
+    name: test-internal-bridge-net
+    runs-on: ubuntu-latest
+    env:
+      CRI: docker
+    steps:
+    - name: Allow traffic between bridge ports
+      run: | 
+        sudo rmmod br_netfilter
+    - name: Test traffic between bridge ports
+      run : |
+        curl -L -o test.sh "https://gist.githubusercontent.com/ormergi/d4c9bb9679bb1264dc7dac0ad411981a/raw/f5b78bdc935e76cdc5b138da8b734f52e125ed51/connect-netns-w-bridge.sh"
+        sudo chmod +x ./test.sh 
+        sudo ./test.sh
