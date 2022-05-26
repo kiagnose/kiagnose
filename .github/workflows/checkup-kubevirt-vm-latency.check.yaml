@@ -80,6 +80,17 @@ jobs:
       CRI: docker
       KUBEVIRT_USE_EMULATION: true
     steps:
+      - name: Print system config
+        run: |
+          sudo lsmod
+          sudo sysctl -a
+          sudo ip a
+      - name: Enable traffic between bridge ports
+        run: |
+          sudo sysctl -w net.bridge.bridge-nf-call-ip6tables=0
+          sudo sysctl -w net.bridge.bridge-nf-call-iptables=0
+          sudo sysctl -w net.bridge.bridge-nf-call-arptables=0
+          sudo rmmod br_netfilter
       - name: Check out code
         uses: actions/checkout@v2
       - name: Build kiagnose image
@@ -92,7 +103,7 @@ jobs:
       - name: Deploy kiagnose
         run: ./automation/make.sh --e2e -- --deploy-kiagnose
       - name: Deploy kubevirt, CNAO and the NetworkAttachementDefinition
-        run: ./checkups/kubevirt-vm-latency/automation/make.sh --e2e -- --deploy-kubevirt --deploy-cnao --create-bridge --define-nad
+        run: ./checkups/kubevirt-vm-latency/automation/make.sh --e2e -- --deploy-kubevirt --deploy-cnao --define-nad
       - name: Deploy VM latency checkup
         run: ./checkups/kubevirt-vm-latency/automation/make.sh --e2e -- --deploy-checkup
       - name: Run e2e tests
