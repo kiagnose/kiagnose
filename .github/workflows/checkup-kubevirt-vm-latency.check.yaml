@@ -80,6 +80,8 @@ jobs:
       CRI: docker
       KUBEVIRT_USE_EMULATION: true
     steps:
+      - name: Unload the br_netfilter kernel module to remove traffic restriction between bridge ports
+        run:  sudo rmmod br_netfilter
       - name: Check out code
         uses: actions/checkout@v2
       - name: Build kiagnose image
