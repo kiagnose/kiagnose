@@ -29,6 +29,7 @@ import (
 
 var (
 	ErrImageFieldIsMissing   = errors.New("image field is missing")
+	ErrImageFieldIsIllegal   = errors.New("image field is illegal")
 	ErrTimeoutFieldIsMissing = errors.New("timeout field is missing")
 	ErrTimeoutFieldIsIllegal = errors.New("timeout field is illegal")
 )
@@ -91,6 +92,10 @@ func (cmp *configMapParser) parseImageField() error {
 	cmp.image, exists = cmp.configMapRawData[types.ImageKey]
 	if !exists {
 		return ErrImageFieldIsMissing
+	}
+
+	if cmp.image == "" {
+		return ErrImageFieldIsIllegal
 	}
 
 	return nil

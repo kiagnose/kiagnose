@@ -148,6 +148,11 @@ func TestReadFromConfigMapShouldFail(t *testing.T) {
 			expectedError: config.ErrImageFieldIsMissing.Error(),
 		},
 		{
+			description:   "when image field value is empty",
+			configMapData: map[string]string{types.ImageKey: "", types.TimeoutKey: timeoutValue},
+			expectedError: config.ErrImageFieldIsIllegal.Error(),
+		},
+		{
 			description:   "when timout field is missing",
 			configMapData: map[string]string{types.ImageKey: imageName},
 			expectedError: config.ErrTimeoutFieldIsMissing.Error(),
