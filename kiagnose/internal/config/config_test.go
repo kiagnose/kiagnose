@@ -123,6 +123,8 @@ func TestReadFromConfigMapShouldFail(t *testing.T) {
 		expectedError string
 	}
 
+	const emptyParamName = ""
+
 	failureTestCases := []loadFailureTestCase{
 		{
 			description: "when ConfigMap is already in use",
@@ -176,6 +178,15 @@ func TestReadFromConfigMapShouldFail(t *testing.T) {
 			description:   "when Role name is illegal",
 			configMapData: map[string]string{types.ImageKey: imageName, types.TimeoutKey: timeoutValue, types.RolesKey: "illegal name\n"},
 			expectedError: "role name",
+		},
+		{
+			description: "when param name is empty",
+			configMapData: map[string]string{
+				types.ImageKey:   imageName,
+				types.TimeoutKey: timeoutValue,
+				types.ParamNameKeyPrefix + emptyParamName: "some value",
+			},
+			expectedError: config.ErrParamNameIsIllegal.Error(),
 		},
 	}
 

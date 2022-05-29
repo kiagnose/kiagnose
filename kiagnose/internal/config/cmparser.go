@@ -31,6 +31,7 @@ var (
 	ErrImageFieldIsMissing   = errors.New("image field is missing")
 	ErrTimeoutFieldIsMissing = errors.New("timeout field is missing")
 	ErrTimeoutFieldIsIllegal = errors.New("timeout field is illegal")
+	ErrParamNameIsIllegal    = errors.New("param name is illegal")
 )
 
 type configMapParser struct {
@@ -58,7 +59,10 @@ func (cmp *configMapParser) Parse() error {
 		return err
 	}
 
-	cmp.parseParamsField()
+	if err := cmp.parseParamsField(); err != nil {
+		return err
+	}
+
 	cmp.parseClusterRoleNamesField()
 	cmp.parseRoleNamesField()
 
@@ -111,13 +115,19 @@ func (cmp *configMapParser) parseTimeoutField() error {
 	return nil
 }
 
-func (cmp *configMapParser) parseParamsField() {
+func (cmp *configMapParser) parseParamsField() error {
 	for k, v := range cmp.configMapRawData {
 		if strings.HasPrefix(k, types.ParamNameKeyPrefix) {
 			paramName := strings.TrimPrefix(k, types.ParamNameKeyPrefix)
+			if paramName == "" {
+				return ErrParamNameIsIllegal
+			}
+
 			cmp.params[paramName] = v
 		}
 	}
+
+	return nil
 }
 
 func (cmp *configMapParser) parseClusterRoleNamesField() {
