@@ -32,6 +32,8 @@ import (
 	kvcorev1 "kubevirt.io/api/core/v1"
 	"kubevirt.io/client-go/kubecli"
 
+	netattdefv1 "github.com/k8snetworkplumbingwg/network-attachment-definition-client/pkg/apis/k8s.cni.cncf.io/v1"
+
 	"github.com/kiagnose/kiagnose/checkups/kubevirt-vm-latency/vmlatency/internal/checkup"
 	"github.com/kiagnose/kiagnose/checkups/kubevirt-vm-latency/vmlatency/internal/config"
 )
@@ -42,6 +44,18 @@ const (
 	testSampleDurationSeconds = 1
 	testTimeout               = time.Nanosecond
 )
+
+func TestCheckupPreflightShouldFailWhenNetAttachDefDoesNotExist(t *testing.T) {
+	expectedError := errors.New("get netAttachDef test error")
+	testCheckup := checkup.New(
+		&clientStub{failGetNetAttachDef: expectedError},
+		testNamespace,
+		newTestsCheckupParameters(),
+		&checkerStub{},
+	)
+
+	assert.ErrorContains(t, testCheckup.Preflight(), expectedError.Error())
+}
 
 func TestCheckupSetupShouldFailWhen(t *testing.T) {
 	t.Run("failed to create a VM", func(t *testing.T) {
@@ -143,10 +157,12 @@ func newTestsCheckupParameters() config.CheckupParameters {
 }
 
 type clientStub struct {
-	returnVmi     *kvcorev1.VirtualMachineInstance
-	failGetVmi    error
-	failCreateVmi error
-	failDeleteVmi error
+	returnVmi *kvcorev1.VirtualMachineInstance
+
+	failGetNetAttachDef error
+	failGetVmi          error
+	failCreateVmi       error
+	failDeleteVmi       error
 }
 
 func (c clientStub) GetVirtualMachineInstance(_, _ string) (*kvcorev1.VirtualMachineInstance, error) {
@@ -163,6 +179,10 @@ func (c clientStub) DeleteVirtualMachineInstance(_, _ string) error {
 
 func (c clientStub) SerialConsole(_, _ string, _ time.Duration) (kubecli.StreamInterface, error) {
 	return nil, nil
+}
+
+func (c clientStub) GetNetworkAttachmentDefinition(_, _ string) (*netattdefv1.NetworkAttachmentDefinition, error) {
+	return nil, c.failGetNetAttachDef
 }
 
 type checkerStub struct {

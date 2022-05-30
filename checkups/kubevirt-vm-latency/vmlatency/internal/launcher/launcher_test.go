@@ -33,6 +33,8 @@ import (
 	kvcorev1 "kubevirt.io/api/core/v1"
 	"kubevirt.io/client-go/kubecli"
 
+	netattdefv1 "github.com/k8snetworkplumbingwg/network-attachment-definition-client/pkg/apis/k8s.cni.cncf.io/v1"
+
 	"github.com/kiagnose/kiagnose/checkups/kubevirt-vm-latency/vmlatency/internal/checkup"
 	"github.com/kiagnose/kiagnose/checkups/kubevirt-vm-latency/vmlatency/internal/config"
 	"github.com/kiagnose/kiagnose/checkups/kubevirt-vm-latency/vmlatency/internal/launcher"
@@ -229,6 +231,10 @@ func (c *fakeClient) DeleteVirtualMachineInstance(namespace, name string) error 
 }
 
 func (c *fakeClient) SerialConsole(namespace, vmiName string, timeout time.Duration) (kubecli.StreamInterface, error) {
+	return nil, nil
+}
+
+func (c *fakeClient) GetNetworkAttachmentDefinition(_, _ string) (*netattdefv1.NetworkAttachmentDefinition, error) {
 	return nil, nil
 }
 

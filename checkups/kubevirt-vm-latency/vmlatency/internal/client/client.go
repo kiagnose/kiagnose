@@ -28,9 +28,15 @@ import (
 
 	kvcorev1 "kubevirt.io/api/core/v1"
 	"kubevirt.io/client-go/kubecli"
+
+	netattdefv1 "github.com/k8snetworkplumbingwg/network-attachment-definition-client/pkg/apis/k8s.cni.cncf.io/v1"
+	netattdefclient "kubevirt.io/client-go/generated/network-attachment-definition-client/clientset/versioned/typed/k8s.cni.cncf.io/v1"
 )
 
-type Client struct{ kubecli.KubevirtClient }
+type Client struct {
+	kubecli.KubevirtClient
+	netattdefclient.K8sCniCncfIoV1Interface
+}
 
 func New() (*Client, error) {
 	kubeconfig, err := rest.InClusterConfig()
@@ -43,7 +49,12 @@ func New() (*Client, error) {
 		return nil, err
 	}
 
-	return &Client{c}, nil
+	cniClient, err := netattdefclient.NewForConfig(kubeconfig)
+	if err != nil {
+		return nil, err
+	}
+
+	return &Client{c, cniClient}, nil
 }
 
 func (c *Client) UpdateConfigMap(namespace, name string, date map[string]string) error {
@@ -76,4 +87,8 @@ func (c *Client) DeleteVirtualMachineInstance(namespace, name string) error {
 
 func (c *Client) SerialConsole(namespace, vmiName string, timeout time.Duration) (kubecli.StreamInterface, error) {
 	return c.KubevirtClient.VirtualMachineInstance(namespace).SerialConsole(vmiName, &kubecli.SerialConsoleOptions{ConnectionTimeout: timeout})
+}
+
+func (c *Client) GetNetworkAttachmentDefinition(namespace, name string) (*netattdefv1.NetworkAttachmentDefinition, error) {
+	return c.K8sCniCncfIoV1Interface.NetworkAttachmentDefinitions(namespace).Get(context.Background(), name, metav1.GetOptions{})
 }
