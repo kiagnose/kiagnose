@@ -24,6 +24,8 @@ import (
 	"time"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/client-go/rest"
+
 	kvcorev1 "kubevirt.io/api/core/v1"
 	"kubevirt.io/client-go/kubecli"
 )
@@ -31,7 +33,12 @@ import (
 type Client struct{ kubecli.KubevirtClient }
 
 func New() (*Client, error) {
-	c, err := kubecli.GetKubevirtClient()
+	kubeconfig, err := rest.InClusterConfig()
+	if err != nil {
+		return nil, err
+	}
+
+	c, err := kubecli.GetKubevirtClientFromRESTConfig(kubeconfig)
 	if err != nil {
 		return nil, err
 	}
