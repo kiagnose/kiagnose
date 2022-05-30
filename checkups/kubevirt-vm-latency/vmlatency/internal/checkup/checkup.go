@@ -62,6 +62,13 @@ func New(c vmi.KubevirtVmisClient, namespace string, params config.CheckupParame
 }
 
 func (c *checkup) Preflight() error {
+	if _, err := c.client.GetNetworkAttachmentDefinition(
+		c.params.NetworkAttachmentDefinitionNamespace,
+		c.params.NetworkAttachmentDefinitionName,
+	); err != nil {
+		return fmt.Errorf("preflight: %v", err)
+	}
+
 	return nil
 }
 

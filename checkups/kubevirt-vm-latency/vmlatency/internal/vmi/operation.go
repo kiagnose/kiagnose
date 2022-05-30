@@ -31,6 +31,8 @@ import (
 
 	kvcorev1 "kubevirt.io/api/core/v1"
 	"kubevirt.io/client-go/kubecli"
+
+	netattdefv1 "github.com/k8snetworkplumbingwg/network-attachment-definition-client/pkg/apis/k8s.cni.cncf.io/v1"
 )
 
 type KubevirtVmisClient interface {
@@ -38,6 +40,7 @@ type KubevirtVmisClient interface {
 	CreateVirtualMachineInstance(namespace string, vmi *kvcorev1.VirtualMachineInstance) (*kvcorev1.VirtualMachineInstance, error)
 	DeleteVirtualMachineInstance(namespace, name string) error
 	SerialConsole(namespace, vmiName string, timeout time.Duration) (kubecli.StreamInterface, error)
+	GetNetworkAttachmentDefinition(namespace, name string) (*netattdefv1.NetworkAttachmentDefinition, error)
 }
 
 func Start(c KubevirtVmisClient, namespace string, vmi *kvcorev1.VirtualMachineInstance) error {

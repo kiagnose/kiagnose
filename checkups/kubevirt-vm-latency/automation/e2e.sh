@@ -178,7 +178,7 @@ data:
   spec.image: ${CHECKUP_IMAGE}
   spec.timeout: 10m
   spec.clusterRoles: |
-    kubevirt-vmis-manager
+    kubevirt-vm-latency-checker
   spec.param.network_attachment_definition_namespace: "default"
   spec.param.network_attachment_definition_name: "bridge-network"
   spec.param.max_desired_latency_milliseconds: "10"

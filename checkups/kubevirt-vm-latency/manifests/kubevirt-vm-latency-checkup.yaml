@@ -8,7 +8,7 @@ data:
   spec.image: quay.io/kiagnose/kubevirt-vm-latency-checkup:main
   spec.timeout: 5m
   spec.clusterRoles: |
-    kubevirt-vmis-manager
+    kubevirt-vm-latency-checker
   spec.param.network_attachment_definition_namespace: "default"
   spec.param.network_attachment_definition_name: "sriov-network"
   spec.param.max_desired_latency_milliseconds: "10"
