@@ -55,7 +55,7 @@ type Checkup struct {
 }
 
 const (
-	NamespaceName                  = "checkup-workspace"
+	NamespaceName                  = "kiagnose-checkup"
 	ServiceAccountName             = "checkup-sa"
 	ResultsConfigMapName           = "checkup-results"
 	ResultsConfigMapWriterRoleName = "results-configmap-writer"
@@ -65,18 +65,23 @@ const (
 	ResultsConfigMapNameEnvVarNamespace = "RESULT_CONFIGMAP_NAMESPACE"
 )
 
-func New(c kubernetes.Interface, checkupConfig *config.Config) *Checkup {
-	checkupRoles := []*rbacv1.Role{NewConfigMapWriterRole(ResultsConfigMapWriterRoleName, NamespaceName, ResultsConfigMapName)}
+type namer interface {
+	Name(string) string
+}
 
-	subject := newServiceAccountSubject(ServiceAccountName, NamespaceName)
+func New(c kubernetes.Interface, checkupConfig *config.Config, namer namer) *Checkup {
+	nsName := namer.Name(NamespaceName)
+	checkupRoles := []*rbacv1.Role{NewConfigMapWriterRole(ResultsConfigMapWriterRoleName, nsName, ResultsConfigMapName)}
+
+	subject := newServiceAccountSubject(ServiceAccountName, nsName)
 	var checkupRoleBindings []*rbacv1.RoleBinding
 	for _, role := range checkupRoles {
-		checkupRoleBindings = append(checkupRoleBindings, NewRoleBinding(role.Name, NamespaceName, subject))
+		checkupRoleBindings = append(checkupRoleBindings, NewRoleBinding(role.Name, nsName, subject))
 	}
 
 	checkupEnvVars := []corev1.EnvVar{
 		{Name: ResultsConfigMapNameEnvVarName, Value: ResultsConfigMapName},
-		{Name: ResultsConfigMapNameEnvVarNamespace, Value: NamespaceName},
+		{Name: ResultsConfigMapNameEnvVarNamespace, Value: nsName},
 	}
 	checkupEnvVars = append(checkupEnvVars, checkupConfig.EnvVars...)
 
@@ -84,16 +89,16 @@ func New(c kubernetes.Interface, checkupConfig *config.Config) *Checkup {
 	return &Checkup{
 		client:              c,
 		teardownTimeout:     defaultTeardownTimeout,
-		namespace:           NewNamespace(NamespaceName),
-		serviceAccount:      NewServiceAccount(ServiceAccountName, NamespaceName),
-		resultConfigMap:     NewConfigMap(ResultsConfigMapName, NamespaceName),
+		namespace:           NewNamespace(nsName),
+		serviceAccount:      NewServiceAccount(ServiceAccountName, nsName),
+		resultConfigMap:     NewConfigMap(ResultsConfigMapName, nsName),
 		roles:               checkupRoles,
 		roleBindings:        checkupRoleBindings,
 		jobTimeout:          checkupConfig.Timeout,
-		clusterRoleBindings: NewClusterRoleBindings(checkupConfig.ClusterRoles, ServiceAccountName, NamespaceName),
+		clusterRoleBindings: NewClusterRoleBindings(checkupConfig.ClusterRoles, ServiceAccountName, nsName),
 		job: NewCheckupJob(
 			JobName,
-			NamespaceName,
+			nsName,
 			ServiceAccountName,
 			checkupConfig.Image,
 			int64(checkupConfig.Timeout.Seconds()),
