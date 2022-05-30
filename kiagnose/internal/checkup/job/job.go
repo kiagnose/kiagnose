@@ -28,9 +28,11 @@ import (
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	k8slabels "k8s.io/apimachinery/pkg/labels"
 	k8swatch "k8s.io/apimachinery/pkg/watch"
-
 	"k8s.io/client-go/kubernetes"
+	"k8s.io/client-go/tools/cache"
+	k8swatchtools "k8s.io/client-go/tools/watch"
 )
 
 func Create(client kubernetes.Interface, job *batchv1.Job) (*batchv1.Job, error) {
@@ -43,42 +45,51 @@ func Create(client kubernetes.Interface, job *batchv1.Job) (*batchv1.Job, error)
 }
 
 func WaitForJobToFinish(client kubernetes.Interface, job *batchv1.Job, timeout time.Duration) (*batchv1.Job, error) {
-	const JobNameLabel = "job-name"
-
-	jobLabel := fmt.Sprintf("%s=%s", JobNameLabel, job.Name)
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 	defer cancel()
-	jobWatcher, err := client.BatchV1().Jobs(job.Namespace).Watch(ctx, metav1.ListOptions{LabelSelector: jobLabel})
-	if err != nil {
-		return nil, err
+
+	const JobNameLabel = "job-name"
+	jobLabel := k8slabels.Set{JobNameLabel: job.Name}
+	w := &cache.ListWatch{
+		WatchFunc: func(options metav1.ListOptions) (k8swatch.Interface, error) {
+			if options.LabelSelector != "" {
+				options.LabelSelector = "," + jobLabel.String()
+			} else {
+				options.LabelSelector = jobLabel.String()
+			}
+			return client.BatchV1().Jobs(job.Namespace).Watch(ctx, options)
+		},
 	}
 
-	finishedJob, err := waitForJob(ctx, jobWatcher)
+	event, err := k8swatchtools.Until(ctx, job.ResourceVersion, w, batchJobFinished)
 	if err != nil {
 		return nil, fmt.Errorf("failed to wait for Job '%s/%s' to finish: %v", job.Namespace, job.Name, err)
 	}
+
+	updatedJob, ok := event.Object.(*batchv1.Job)
+	if !ok {
+		return nil, fmt.Errorf("failed to wait for Job '%s/%s' to finish: wrong event", job.Namespace, job.Name)
+	}
+
 	log.Printf("Job '%s/%s' is finished", job.Namespace, job.Name)
 
-	return finishedJob, nil
+	return updatedJob, nil
 }
 
-func waitForJob(ctx context.Context, watcher k8swatch.Interface) (*batchv1.Job, error) {
-	eventsCh := watcher.ResultChan()
-	defer watcher.Stop()
-	for {
-		select {
-		case event := <-eventsCh:
-			job, ok := event.Object.(*batchv1.Job)
-			if !ok {
-				continue
-			}
-			if finished(job) {
-				return job, nil
-			}
-		case <-ctx.Done():
-			return nil, ctx.Err()
-		}
+func batchJobFinished(event k8swatch.Event) (bool, error) {
+	j, ok := event.Object.(*batchv1.Job)
+	if !ok {
+		return false, nil
 	}
+
+	switch event.Type {
+	case k8swatch.Deleted:
+		return false, fmt.Errorf("unexpected event: %+v", event)
+	case k8swatch.Added, k8swatch.Modified:
+		return finished(j), nil
+	case k8swatch.Bookmark, k8swatch.Error:
+	}
+	return false, nil
 }
 
 func finished(job *batchv1.Job) bool {
