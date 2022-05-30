@@ -95,7 +95,7 @@ func New(c kubernetes.Interface, checkupConfig *config.Config, namer namer) *Che
 		roles:               checkupRoles,
 		roleBindings:        checkupRoleBindings,
 		jobTimeout:          checkupConfig.Timeout,
-		clusterRoleBindings: NewClusterRoleBindings(checkupConfig.ClusterRoles, ServiceAccountName, nsName),
+		clusterRoleBindings: NewClusterRoleBindings(checkupConfig.ClusterRoles, ServiceAccountName, nsName, namer),
 		job: NewCheckupJob(
 			JobName,
 			nsName,
@@ -151,11 +151,16 @@ func NewRoleBinding(roleName, namespaceName string, subject rbacv1.Subject) *rba
 	}
 }
 
-func NewClusterRoleBindings(clusterRoles []*rbacv1.ClusterRole, serviceAccountName, serviceAccountNs string) []*rbacv1.ClusterRoleBinding {
+func NewClusterRoleBindings(
+	clusterRoles []*rbacv1.ClusterRole,
+	serviceAccountName,
+	serviceAccountNs string,
+	namer namer) []*rbacv1.ClusterRoleBinding {
 	subject := newServiceAccountSubject(serviceAccountName, serviceAccountNs)
 	var clusterRoleBindings []*rbacv1.ClusterRoleBinding
 	for _, clusterRole := range clusterRoles {
-		clusterRoleBindings = append(clusterRoleBindings, newClusterRoleBinding(clusterRole.Name, clusterRole.Name, subject))
+		clusterRoleBindingName := namer.Name(clusterRole.Name)
+		clusterRoleBindings = append(clusterRoleBindings, newClusterRoleBinding(clusterRoleBindingName, clusterRole.Name, subject))
 	}
 	return clusterRoleBindings
 }
