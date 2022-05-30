@@ -148,10 +148,8 @@ func TestCheckupSetupShould(t *testing.T) {
 		nameGen := nameGeneratorStub{}
 		secondClusterRoleBindingName := nameGen.Name(expectedClusterRoles[1].Name)
 		testClient.injectClusterRoleBindingCreateError(secondClusterRoleBindingName, expectedErr)
-
-		testCheckup := checkup.New(
-			testClient,
-			&config.Config{Image: testImage, Timeout: testTimeout, ClusterRoles: expectedClusterRoles},
+		testClient.injectResourceVersionUpdateOnJobCreation()
+		testCheckup := checkup.New(testClient, &config.Config{Image: testImage, Timeout: testTimeout, ClusterRoles: expectedClusterRoles},
 			nameGen,
 		)
 
@@ -285,6 +283,7 @@ func TestCheckupRunShouldCreateAJob(t *testing.T) {
 	for _, testCase := range checkupRunTestCases {
 		t.Run(testCase.description, func(t *testing.T) {
 			testClient := newNormalizedFakeClientset()
+			testClient.injectResourceVersionUpdateOnJobCreation()
 			testClient.injectResourceVersionUpdateOnNamespaceCreation()
 			testClient.injectWatchWithNamespaceDeleteEvent()
 
@@ -312,6 +311,7 @@ func TestCheckupRunShouldCreateAJob(t *testing.T) {
 			actualJob, err := testClient.BatchV1().Jobs(checkupNamespaceName).Get(context.Background(), checkup.JobName, metav1.GetOptions{})
 			assert.NoError(t, err)
 
+			actualJob.ResourceVersion = ""
 			assert.Equal(t, actualJob, expectedJob)
 
 			assert.NoError(t, testCheckup.Teardown())
@@ -329,6 +329,7 @@ func TestCheckupRunShouldSucceed(t *testing.T) {
 		t.Run(testCase.description, func(t *testing.T) {
 			testClient := newNormalizedFakeClientset()
 			testClient.injectResourceVersionUpdateOnNamespaceCreation()
+			testClient.injectResourceVersionUpdateOnJobCreation()
 			testClient.injectWatchWithNamespaceDeleteEvent()
 
 			nameGen := nameGeneratorStub{}
@@ -350,6 +351,7 @@ func TestCheckupRunShouldFailWhen(t *testing.T) {
 		const expectedErr = "failed to create Job"
 		testClient := newNormalizedFakeClientset()
 		testClient.injectCreateErrorForResource(jobResource, expectedErr)
+		testClient.injectResourceVersionUpdateOnJobCreation()
 		testClient.injectResourceVersionUpdateOnNamespaceCreation()
 		testClient.injectWatchWithNamespaceDeleteEvent()
 
@@ -362,35 +364,35 @@ func TestCheckupRunShouldFailWhen(t *testing.T) {
 	})
 
 	t.Run("fail to watch Job", func(t *testing.T) {
-		const expectedErr = "failed to watch Job"
 		testClient := newNormalizedFakeClientset()
-		testClient.injectJobWatchError(expectedErr)
 		testClient.injectResourceVersionUpdateOnNamespaceCreation()
 		testClient.injectWatchWithNamespaceDeleteEvent()
 
 		testCheckup := checkup.New(testClient, &config.Config{Image: testImage, Timeout: testTimeout}, nameGeneratorStub{})
 
 		assert.NoError(t, testCheckup.Setup())
-		assert.ErrorContains(t, testCheckup.Run(), expectedErr)
+		assert.ErrorContains(t, testCheckup.Run(), "initial RV \"\" is not supported")
 		assert.NoError(t, testCheckup.Teardown())
 		assertNoObjectExists(t, testClient)
 	})
 
 	t.Run("Job wont finish on time", func(t *testing.T) {
 		testClient := newNormalizedFakeClientset()
+		testClient.injectResourceVersionUpdateOnJobCreation()
 		testClient.injectResourceVersionUpdateOnNamespaceCreation()
 		testClient.injectWatchWithNamespaceDeleteEvent()
 
 		testCheckup := checkup.New(testClient, &config.Config{Image: testImage, Timeout: time.Nanosecond}, nameGeneratorStub{})
 
 		assert.NoError(t, testCheckup.Setup())
-		assert.ErrorContains(t, testCheckup.Run(), context.DeadlineExceeded.Error())
+		assert.ErrorContains(t, testCheckup.Run(), wait.ErrWaitTimeout.Error())
 		assert.NoError(t, testCheckup.Teardown())
 		assertNoObjectExists(t, testClient)
 	})
 
 	t.Run("Job wont finish on time with complete condition status false", func(t *testing.T) {
 		testClient := newNormalizedFakeClientset()
+		testClient.injectResourceVersionUpdateOnJobCreation()
 		testClient.injectResourceVersionUpdateOnNamespaceCreation()
 		testClient.injectWatchWithNamespaceDeleteEvent()
 
@@ -402,7 +404,7 @@ func TestCheckupRunShouldFailWhen(t *testing.T) {
 		testClient.injectJobWatchEvent(newJobWithCondition(checkupNamespaceName, checkup.JobName, completeFalseJobCondition))
 
 		assert.NoError(t, testCheckup.Setup())
-		assert.ErrorContains(t, testCheckup.Run(), context.DeadlineExceeded.Error())
+		assert.ErrorContains(t, testCheckup.Run(), wait.ErrWaitTimeout.Error())
 		assert.NoError(t, testCheckup.Teardown())
 		assertNoObjectExists(t, testClient)
 	})
@@ -429,8 +431,9 @@ func newTestEnvVars() []corev1.EnvVar {
 func newJobWithCondition(namespace, name string, condition *batchv1.JobCondition) *batchv1.Job {
 	return &batchv1.Job{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      name,
-			Namespace: namespace,
+			Name:            name,
+			Namespace:       namespace,
+			ResourceVersion: "123",
 		},
 		Status: batchv1.JobStatus{
 			Conditions: []batchv1.JobCondition{*condition},
@@ -490,6 +493,10 @@ func (c *testsClient) injectResourceVersionUpdateOnNamespaceCreation() {
 	c.injectResourceVersionUpdate("create", namespaceResource)
 }
 
+func (c *testsClient) injectResourceVersionUpdateOnJobCreation() {
+	c.injectResourceVersionUpdate("create", jobResource)
+}
+
 func (c *testsClient) injectResourceVersionUpdate(verb, resourceName string) {
 	c.PrependReactor(verb, resourceName, func(action clienttesting.Action) (bool, runtime.Object, error) {
 		createAction, ok := action.(clienttesting.CreateAction)
@@ -524,17 +531,10 @@ func (c *testsClient) injectClusterRoleBindingCreateError(clusterRoleBindingName
 	c.PrependReactor(createVerb, clusterRoleBindingResource, reactionFn)
 }
 
-func (c *testsClient) injectJobWatchError(err string) {
-	watchReactionFn := func(action clienttesting.Action) (bool, watch.Interface, error) {
-		return true, nil, errors.New(err)
-	}
-	c.PrependWatchReactor(jobResource, watchReactionFn)
-}
-
 func (c *testsClient) injectJobWatchEvent(job *batchv1.Job) {
 	watchReactionFn := func(action clienttesting.Action) (bool, watch.Interface, error) {
 		watcher := watch.NewRaceFreeFake()
-		watcher.Add(job)
+		watcher.Modify(job)
 		return true, watcher, nil
 	}
 	c.PrependWatchReactor(jobResource, watchReactionFn)
