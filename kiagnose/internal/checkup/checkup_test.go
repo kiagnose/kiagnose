@@ -101,7 +101,7 @@ func TestCheckupWith(t *testing.T) {
 			assertResultsConfigMapCreated(t, c, checkupNamespaceName)
 			assertConfigMapWriterRoleCreated(t, c, checkupNamespaceName)
 			assertConfigMapWriterRoleBindingCreated(t, c, checkupNamespaceName)
-			assertClusterRoleBindingsCreated(t, testsClient{c}, testCase.clusterRole, checkupNamespaceName)
+			assertClusterRoleBindingsCreated(t, testsClient{c}, testCase.clusterRole, checkupNamespaceName, nameGen)
 		})
 	}
 }
@@ -145,11 +145,14 @@ func TestCheckupSetupShould(t *testing.T) {
 		testClient := newNormalizedFakeClientset()
 		expectedErr := fmt.Sprintf("failed to create resource %q object", clusterRoleBindingResource)
 		expectedClusterRoles := newTestClusterRoles()
-		testClient.injectClusterRoleBindingCreateError(expectedClusterRoles[1].Name, expectedErr)
+		nameGen := nameGeneratorStub{}
+		secondClusterRoleBindingName := nameGen.Name(expectedClusterRoles[1].Name)
+		testClient.injectClusterRoleBindingCreateError(secondClusterRoleBindingName, expectedErr)
+
 		testCheckup := checkup.New(
 			testClient,
 			&config.Config{Image: testImage, Timeout: testTimeout, ClusterRoles: expectedClusterRoles},
-			nameGeneratorStub{},
+			nameGen,
 		)
 
 		assert.ErrorContains(t, testCheckup.Setup(), expectedErr)
@@ -631,12 +634,17 @@ func assertConfigMapWriterRoleBindingCreated(t *testing.T, testClient *fake.Clie
 	assert.Equal(t, expectedRoleBinding, actualRoleBinding)
 }
 
-func assertClusterRoleBindingsCreated(t *testing.T, testClient testsClient, clusterRoles []*rbacv1.ClusterRole, nsName string) {
+func assertClusterRoleBindingsCreated(
+	t *testing.T,
+	testClient testsClient,
+	clusterRoles []*rbacv1.ClusterRole,
+	nsName string,
+	nameGen nameGeneratorStub) {
 	actualClusterRoleBindings, err := testClient.listClusterRoleBindings()
 	assert.NoError(t, err)
 
 	var expectedClusterRoleBindings []rbacv1.ClusterRoleBinding
-	for _, clusterRoleBindingPtr := range checkup.NewClusterRoleBindings(clusterRoles, checkup.ServiceAccountName, nsName) {
+	for _, clusterRoleBindingPtr := range checkup.NewClusterRoleBindings(clusterRoles, checkup.ServiceAccountName, nsName, nameGen) {
 		expectedClusterRoleBindings = append(expectedClusterRoleBindings, *clusterRoleBindingPtr)
 	}
 	assert.Subset(t, actualClusterRoleBindings, expectedClusterRoleBindings)
