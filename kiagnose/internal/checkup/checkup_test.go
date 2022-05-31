@@ -143,18 +143,18 @@ func TestCheckupSetupShould(t *testing.T) {
 	})
 }
 
+func TestCheckTeardownShouldSucceed(t *testing.T) {
+	testClient := newNormalizedFakeClientset()
+	testCheckup := checkup.New(testClient, &config.Config{Image: testImage, Timeout: testTimeout})
+
+	testClient.injectResourceVersionUpdateOnNamespaceCreation()
+	testClient.injectWatchWithNamespaceDeleteEvent()
+
+	assert.NoError(t, testCheckup.Setup())
+	assert.NoError(t, testCheckup.Teardown())
+}
+
 func TestCheckupTeardownShould(t *testing.T) {
-	t.Run("perform checkup teardown successfully", func(t *testing.T) {
-		testClient := newNormalizedFakeClientset()
-		testCheckup := checkup.New(testClient, &config.Config{Image: testImage, Timeout: testTimeout})
-
-		testClient.injectResourceVersionUpdateOnNamespaceCreation()
-		testClient.injectWatchWithNamespaceDeleteEvent()
-
-		assert.NoError(t, testCheckup.Setup())
-		assert.NoError(t, testCheckup.Teardown())
-	})
-
 	t.Run("fail when failed to delete ClusterRoleBinding", func(t *testing.T) {
 		testClient := newNormalizedFakeClientset()
 		testCheckup := checkup.New(testClient, &config.Config{Image: testImage, Timeout: testTimeout, ClusterRoles: newTestClusterRoles()})
