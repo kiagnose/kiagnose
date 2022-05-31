@@ -604,10 +604,10 @@ func assertServiceAccountCreated(t *testing.T, testClient *fake.Clientset, nsNam
 
 func assertResultsConfigMapCreated(t *testing.T, testClient *fake.Clientset, nsName string) {
 	gvr := schema.GroupVersionResource{Group: "", Version: "v1", Resource: configMapResource}
-	actualConfingMap, err := testClient.Tracker().Get(gvr, nsName, checkup.ResultsConfigMapName)
+	actualConfigMap, err := testClient.Tracker().Get(gvr, nsName, checkup.ResultsConfigMapName)
 
 	assert.NoError(t, err)
-	assert.Equal(t, checkup.NewConfigMap(checkup.ResultsConfigMapName, nsName), actualConfingMap)
+	assert.Equal(t, checkup.NewConfigMap(checkup.ResultsConfigMapName, nsName), actualConfigMap)
 }
 
 func assertConfigMapWriterRoleCreated(t *testing.T, testClient *fake.Clientset, nsName string) {
