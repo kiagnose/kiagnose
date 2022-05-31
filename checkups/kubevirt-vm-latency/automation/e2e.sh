@@ -127,27 +127,7 @@ if [ -n "${OPT_DEFINE_NAD}" ]; then
     echo
     echo "Define NetworkAttachmentDefinition (with a bridge CNI)..."
     echo
-    cat <<EOF | ${KUBECTL} apply -f -
----
-apiVersion: k8s.cni.cncf.io/v1
-kind: NetworkAttachmentDefinition
-metadata:
-  name: bridge-network
-  namespace: default
-spec:
-  config: |
-    {
-      "cniVersion":"0.3.1",
-      "name": "br10",
-      "plugins": [
-          {
-              "type": "cnv-bridge",
-              "bridge": "br10"
-          }
-      ]
-    }
-EOF
-
+    ${KUBECTL} apply -f ${SCRIPT_PATH}/../manifests/bridge-network-attachment-definition.yaml
 fi
 
 if [ -n "${OPT_DEPLOY_CHECKUP}" ]; then
