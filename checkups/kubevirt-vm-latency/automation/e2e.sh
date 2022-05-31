@@ -89,7 +89,7 @@ if [ -n "${OPT_DEPLOY_KUBEVIRT}" ]; then
       ${KUBECTL} patch kubevirt kubevirt --namespace kubevirt --type=merge --patch '{"spec":{"configuration":{"developerConfiguration":{"useEmulation":true}}}}'
     fi
 
-    ${KUBECTL} wait --for=condition=Available kubevirt kubevirt --namespace=kubevirt --timeout=2m
+    ${KUBECTL} wait --for=condition=Available kubevirt kubevirt --namespace=kubevirt --timeout=5m
 
     echo
     echo "Successfully deployed kubevirt:"
