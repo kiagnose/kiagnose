@@ -647,7 +647,7 @@ func assertClusterRoleBindingsCreated(
 	for _, clusterRoleBindingPtr := range checkup.NewClusterRoleBindings(clusterRoles, checkup.ServiceAccountName, nsName, nameGen) {
 		expectedClusterRoleBindings = append(expectedClusterRoleBindings, *clusterRoleBindingPtr)
 	}
-	assert.Subset(t, actualClusterRoleBindings, expectedClusterRoleBindings)
+	assert.Equal(t, actualClusterRoleBindings, expectedClusterRoleBindings)
 }
 
 // assertNoObjectExists checks that the checkup's Namespace and ClusterRoleBinding's are deleted.
