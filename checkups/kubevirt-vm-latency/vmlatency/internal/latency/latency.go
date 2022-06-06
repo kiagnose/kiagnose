@@ -60,7 +60,7 @@ func (l *Latency) Check(sourceVMI, targetVMI *kvcorev1.VirtualMachineInstance, s
 	const errMessagePrefix = "failed to run check"
 	sourceVMIConsole := console.NewConsole(l.client, sourceVMI)
 
-	if err := sourceVMIConsole.LoginToFedora(); err != nil {
+	if err := sourceVMIConsole.LoginToAlpine(); err != nil {
 		return fmt.Errorf("%s: %v", errMessagePrefix, err)
 	}
 

@@ -29,8 +29,7 @@ import (
 )
 
 func TestParsePingResults(t *testing.T) {
-	const (
-		pingOutput = `
+	const pingOutput = `
 PING 1.1.1.1 (1.1.1.1) 56(84) bytes of data.
 64 bytes from 1.1.1.1: icmp_seq=1 ttl=58 time=2.17 ms
 64 bytes from 1.1.1.1: icmp_seq=2 ttl=58 time=1.98 ms
@@ -42,7 +41,6 @@ PING 1.1.1.1 (1.1.1.1) 56(84) bytes of data.
 5 packets transmitted, 5 received, 0% packet loss, time 4004ms
 rtt min/avg/max/mdev = 1.732/2.074/2.382/0.214 ms
 `
-	)
 	expectedResults := latency.Results{
 		Transmitted: 5,
 		Received:    5,
