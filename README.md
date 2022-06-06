@@ -114,7 +114,7 @@ spec:
 ## Checkup Results Retrieval
 
 The Kiagnose Job waits until the checkup Job is completed or timed-out.
-After the Kiagnose Job had completed, the results the results are made available at the user-supplied ConfigMap object:
+After the Kiagnose Job had completed, the results are made available at the user-supplied ConfigMap object:
 
 ```bash
 kubectl get configmap example-checkup-config -n kiagnose -o yaml
