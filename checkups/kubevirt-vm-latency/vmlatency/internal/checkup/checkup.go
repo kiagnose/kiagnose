@@ -132,7 +132,7 @@ func newLatencyCheckVmi(
 		vmiInterface = vmi.NewInterface(networkName, vmi.WithMacAddress(macAddress), vmi.WithBridgeBinding())
 	}
 
-	return vmi.NewFedora(name,
+	return vmi.NewAlpine(name,
 		vmi.WithNodeSelector(nodeName),
 		vmi.WithMultusNetwork(networkName, netAttachDef.Namespace+"/"+netAttachDef.Name),
 		vmi.WithInterface(vmiInterface),

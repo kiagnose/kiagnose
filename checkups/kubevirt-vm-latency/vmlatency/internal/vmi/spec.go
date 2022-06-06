@@ -203,14 +203,16 @@ func WithBridgeBinding() interfaceOption {
 	}
 }
 
-func NewFedora(name string, opts ...Option) *kvcorev1.VirtualMachineInstance {
+func NewAlpine(name string, opts ...Option) *kvcorev1.VirtualMachineInstance {
 	const (
-		memory                                     = "512Mi"
-		fedoraContainerDiskImage                   = "quay.io/kubevirt/fedora-with-test-tooling-container-disk:v0.53.0"
+		memory                                     = "128Mi"
 		defaultTerminationGracePeriodSeconds int64 = 5
+
+		containerDiskImage = "quay.io/kubevirtci/alpine-with-test-tooling-container-disk" +
+			"@sha256:a40c4a7bb9644098740ad5f8aa64040b0a64bb84cc4e3b42d633bb752ab4b9ce"
 	)
 	latencyCheckOpts := []Option{
-		withContainerDiskImage(fedoraContainerDiskImage),
+		withContainerDiskImage(containerDiskImage),
 		withTerminationGracePeriodSecond(defaultTerminationGracePeriodSeconds),
 		withResourceMemory(memory),
 		withRng(),
