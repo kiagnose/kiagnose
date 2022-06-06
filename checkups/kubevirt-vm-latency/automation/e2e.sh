@@ -123,7 +123,7 @@ spec:
   multus: {}
 EOF
 
-    ${KUBECTL} wait --for condition=Available networkaddonsconfig cluster --timeout=2m
+    ${KUBECTL} wait --for condition=Available networkaddonsconfig cluster --timeout=5m
 
     echo
     echo "Successfully deployed CNAO:"
