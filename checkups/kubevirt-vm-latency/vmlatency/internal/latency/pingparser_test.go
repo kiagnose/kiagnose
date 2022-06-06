@@ -28,9 +28,7 @@ import (
 	"github.com/kiagnose/kiagnose/checkups/kubevirt-vm-latency/vmlatency/internal/latency"
 )
 
-func TestParsePingResults(t *testing.T) {
-	const (
-		pingOutput = `
+const successfulPingOutput = `
 PING 1.1.1.1 (1.1.1.1) 56(84) bytes of data.
 64 bytes from 1.1.1.1: icmp_seq=1 ttl=58 time=2.17 ms
 64 bytes from 1.1.1.1: icmp_seq=2 ttl=58 time=1.98 ms
@@ -42,24 +40,33 @@ PING 1.1.1.1 (1.1.1.1) 56(84) bytes of data.
 5 packets transmitted, 5 received, 0% packet loss, time 4004ms
 rtt min/avg/max/mdev = 1.732/2.074/2.382/0.214 ms
 `
-	)
-	expectedResults := latency.Results{
-		Transmitted: 5,
-		Received:    5,
-	}
-	var err error
-	if expectedResults.Time, err = time.ParseDuration("4004ms"); err != nil {
-		panic(err)
-	}
-	if expectedResults.Min, err = time.ParseDuration("1.732ms"); err != nil {
-		panic(err)
-	}
-	if expectedResults.Average, err = time.ParseDuration("2.074ms"); err != nil {
-		panic(err)
-	}
-	if expectedResults.Max, err = time.ParseDuration("2.382ms"); err != nil {
-		panic(err)
-	}
 
-	assert.Equal(t, latency.ParsePingResults(pingOutput), expectedResults)
+var successfulPingResults = latency.Results{
+	Min:         1732000 * time.Nanosecond,
+	Average:     2074000 * time.Nanosecond,
+	Max:         2382000 * time.Nanosecond,
+	Time:        4004 * time.Millisecond,
+	Transmitted: 5,
+	Received:    5,
+}
+
+type pingParserTestCase struct {
+	description     string
+	pingOutput      string
+	expectedResults latency.Results
+}
+
+func TestParsePingShouldSucceedGiven(t *testing.T) {
+	testCases := []pingParserTestCase{
+		{
+			description:     "successful ping output",
+			pingOutput:      successfulPingOutput,
+			expectedResults: successfulPingResults,
+		},
+	}
+	for _, testCase := range testCases {
+		t.Run(testCase.description, func(t *testing.T) {
+			assert.Equal(t, testCase.expectedResults, latency.ParsePingResults(testCase.pingOutput))
+		})
+	}
 }
