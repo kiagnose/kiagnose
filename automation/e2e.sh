@@ -115,11 +115,45 @@ if [ -n "${OPT_RUN_TEST}" ]; then
 
     echo "Post echo checkup ConfigMap & Job:"
     echo
-    ${KUBECTL} create -f manifests/echo-checkup.yaml
 
     KIAGNOSE_NAMESPACE=kiagnose
     KIAGNOSE_JOB=echo-checkup1
     ECHO_CONFIGMAP=echo-checkup-config
+
+    cat <<EOF | ${KUBECTL} apply -f -
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: ${ECHO_CONFIGMAP}
+  namespace: ${KIAGNOSE_NAMESPACE}
+data:
+  spec.image: quay.io/kiagnose/echo-checkup:main
+  spec.timeout: 1m
+  spec.param.message: "Hi!"
+EOF
+
+  cat <<EOF | ${KUBECTL} apply -f -
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: ${KIAGNOSE_JOB}
+  namespace: ${KIAGNOSE_NAMESPACE}
+spec:
+  backoffLimit: 0
+  template:
+    spec:
+      serviceAccount: kiagnose
+      restartPolicy: Never
+      containers:
+        - name: framework
+          image: quay.io/kiagnose/kiagnose:main
+          imagePullPolicy: Always
+          env:
+            - name: CONFIGMAP_NAMESPACE
+              value: ${KIAGNOSE_NAMESPACE}
+            - name: CONFIGMAP_NAME
+              value: ${ECHO_CONFIGMAP}
+EOF
 
     ${KUBECTL} wait --for=condition=complete --timeout=1m job.batch/${KIAGNOSE_JOB} -n ${KIAGNOSE_NAMESPACE}
 
@@ -131,7 +165,8 @@ if [ -n "${OPT_RUN_TEST}" ]; then
     echo
     echo "Cleanup:"
     echo
-    ${KUBECTL} delete -f manifests/echo-checkup.yaml
+    ${KUBECTL} delete job ${KIAGNOSE_JOB} -n ${KIAGNOSE_NAMESPACE}
+    ${KUBECTL} delete configmap ${ECHO_CONFIGMAP} -n ${KIAGNOSE_NAMESPACE}
 
     cd -
 fi
