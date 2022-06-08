@@ -3,6 +3,7 @@ module github.com/kiagnose/kiagnose/checkups/kubevirt-vm-latency
 go 1.17
 
 require (
+	github.com/containernetworking/cni v1.1.1
 	github.com/google/goexpect v0.0.0-20210430020637-ab937bf7fd6f
 	github.com/k8snetworkplumbingwg/network-attachment-definition-client v0.0.0-20191119172530-79f836b90111
 	github.com/stretchr/testify v1.7.1
