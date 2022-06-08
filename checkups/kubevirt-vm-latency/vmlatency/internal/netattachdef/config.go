@@ -19,7 +19,11 @@
 
 package netattachdef
 
-import "github.com/containernetworking/cni/libcni"
+import (
+	"github.com/containernetworking/cni/libcni"
+
+	netattdefv1 "github.com/k8snetworkplumbingwg/network-attachment-definition-client/pkg/apis/k8s.cni.cncf.io/v1"
+)
 
 func ListCNIPluginTypes(config string) []string {
 	if netConfList, err := libcni.ConfListFromBytes([]byte(config)); err == nil {
@@ -35,4 +39,14 @@ func ListCNIPluginTypes(config string) []string {
 	}
 
 	return nil
+}
+
+func IsSriov(netAttachDef *netattdefv1.NetworkAttachmentDefinition) bool {
+	const sriovCniPluginName = "sriov"
+	for _, plugin := range ListCNIPluginTypes(netAttachDef.Spec.Config) {
+		if plugin == sriovCniPluginName {
+			return true
+		}
+	}
+	return false
 }

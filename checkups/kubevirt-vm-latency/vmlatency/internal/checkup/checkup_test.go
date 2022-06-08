@@ -22,6 +22,7 @@ package checkup_test
 import (
 	"context"
 	"errors"
+	"fmt"
 	"testing"
 	"time"
 
@@ -136,6 +137,53 @@ func TestCheckupTeardownShouldFailWhen(t *testing.T) {
 	})
 }
 
+type checkupSetupCreateVmiTestCase struct {
+	description                string
+	netAttachDef               *netattdefv1.NetworkAttachmentDefinition
+	expectedIfaceBindingMethod kvcorev1.InterfaceBindingMethod
+}
+
+func TestCheckupSetupShouldCreateVMsWith(t *testing.T) {
+	const (
+		bridgeCniPluginName = "bridge"
+		sriovCniPluginName  = "sriov"
+	)
+	testsCases := []checkupSetupCreateVmiTestCase{
+		{
+			"bridge interface when NetAttachDef is not using  SR-IOV CNI",
+			newTestNetAttachDef(bridgeCniPluginName),
+			kvcorev1.InterfaceBindingMethod{Bridge: &kvcorev1.InterfaceBridge{}},
+		},
+		{
+			"SR-IOV interface when NetAttachDef uses SR-IOV CNI",
+			newTestNetAttachDef(sriovCniPluginName),
+			kvcorev1.InterfaceBindingMethod{SRIOV: &kvcorev1.InterfaceSRIOV{}},
+		},
+	}
+	for _, testCase := range testsCases {
+		t.Run(testCase.description, func(t *testing.T) {
+			testClient := &clientStub{
+				returnNetAttachDef: testCase.netAttachDef,
+				returnVmi:          newTestReadyVmi(),
+			}
+			testCheckup := checkup.New(
+				testClient,
+				testNamespace,
+				newTestsCheckupParameters(),
+				&checkerStub{},
+			)
+
+			assert.NoError(t, testCheckup.Preflight())
+			assert.NoError(t, testCheckup.Setup(context.Background()))
+			assert.Len(t, testClient.createdVmis, 2)
+			for _, createVMI := range testClient.createdVmis {
+				assert.Len(t, createVMI.Spec.Domain.Devices.Interfaces, 1)
+				assert.Equal(t, testCase.expectedIfaceBindingMethod, createVMI.Spec.Domain.Devices.Interfaces[0].InterfaceBindingMethod)
+			}
+		})
+	}
+}
+
 func newTestReadyVmi() *kvcorev1.VirtualMachineInstance {
 	return &kvcorev1.VirtualMachineInstance{Status: kvcorev1.VirtualMachineInstanceStatus{
 		Conditions: []kvcorev1.VirtualMachineInstanceCondition{
@@ -145,6 +193,14 @@ func newTestReadyVmi() *kvcorev1.VirtualMachineInstance {
 			},
 		},
 	}}
+}
+
+func newTestNetAttachDef(cniPluginName string) *netattdefv1.NetworkAttachmentDefinition {
+	return &netattdefv1.NetworkAttachmentDefinition{
+		Spec: netattdefv1.NetworkAttachmentDefinitionSpec{
+			Config: fmt.Sprintf("{\"type\": %q}", cniPluginName),
+		},
+	}
 }
 
 func newTestsCheckupParameters() config.CheckupParameters {
@@ -160,6 +216,7 @@ func newTestsCheckupParameters() config.CheckupParameters {
 
 type clientStub struct {
 	returnVmi          *kvcorev1.VirtualMachineInstance
+	createdVmis        []*kvcorev1.VirtualMachineInstance
 	returnNetAttachDef *netattdefv1.NetworkAttachmentDefinition
 
 	failGetNetAttachDef error
@@ -172,8 +229,9 @@ func (c *clientStub) GetVirtualMachineInstance(_, _ string) (*kvcorev1.VirtualMa
 	return c.returnVmi, c.failGetVmi
 }
 
-func (c *clientStub) CreateVirtualMachineInstance(_ string, _ *kvcorev1.VirtualMachineInstance) (*kvcorev1.VirtualMachineInstance, error) {
-	return nil, c.failCreateVmi
+func (c *clientStub) CreateVirtualMachineInstance(_ string, v *kvcorev1.VirtualMachineInstance) (*kvcorev1.VirtualMachineInstance, error) {
+	c.createdVmis = append(c.createdVmis, v)
+	return v, c.failCreateVmi
 }
 
 func (c *clientStub) DeleteVirtualMachineInstance(_, _ string) error {

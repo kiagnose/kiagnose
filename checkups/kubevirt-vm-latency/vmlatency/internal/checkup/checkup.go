@@ -30,6 +30,7 @@ import (
 	netattdefv1 "github.com/k8snetworkplumbingwg/network-attachment-definition-client/pkg/apis/k8s.cni.cncf.io/v1"
 
 	"github.com/kiagnose/kiagnose/checkups/kubevirt-vm-latency/vmlatency/internal/config"
+	"github.com/kiagnose/kiagnose/checkups/kubevirt-vm-latency/vmlatency/internal/netattachdef"
 	"github.com/kiagnose/kiagnose/checkups/kubevirt-vm-latency/vmlatency/internal/status"
 	"github.com/kiagnose/kiagnose/checkups/kubevirt-vm-latency/vmlatency/internal/vmi"
 )
@@ -125,13 +126,12 @@ func newLatencyCheckVmi(
 	)
 
 	var vmiInterface kvcorev1.Interface
-	// This is a temporary hack to support both bridge and SR-IOV.
-	// For a specific NAD name, we will use bridge binding at the VMI, anything else is left as SR-IOV.
-	if netAttachDef.Name == "bridge-network" {
-		vmiInterface = vmi.NewInterface(networkName, vmi.WithMacAddress(macAddress), vmi.WithBridgeBinding())
-	} else {
+	if netattachdef.IsSriov(netAttachDef) {
 		vmiInterface = vmi.NewInterface(networkName, vmi.WithMacAddress(macAddress), vmi.WithSriovBinding())
+	} else {
+		vmiInterface = vmi.NewInterface(networkName, vmi.WithMacAddress(macAddress), vmi.WithBridgeBinding())
 	}
+
 	return vmi.NewFedora(name,
 		vmi.WithNodeSelector(nodeName),
 		vmi.WithMultusNetwork(networkName, netAttachDef.Namespace+"/"+netAttachDef.Name),
