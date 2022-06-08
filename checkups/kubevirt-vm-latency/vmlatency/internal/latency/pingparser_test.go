@@ -41,6 +41,30 @@ PING 1.1.1.1 (1.1.1.1) 56(84) bytes of data.
 rtt min/avg/max/mdev = 1.732/2.074/2.382/0.214 ms
 `
 
+const duplicatePingOutput = `
+PING 1.1.1.1 (1.1.1.1) 56(84) bytes of data.
+64 bytes from 1.1.1.1: icmp_seq=1 ttl=58 time=2.17 ms
+64 bytes from 1.1.1.1: icmp_seq=2 ttl=58 time=1.98 ms
+64 bytes from 1.1.1.1: icmp_seq=3 ttl=58 time=2.38 ms
+64 bytes from 1.1.1.1: icmp_seq=4 ttl=58 time=2.11 ms
+64 bytes from 1.1.1.1: icmp_seq=5 ttl=58 time=1.73 ms
+^C
+--- 1.1.1.1 ping statistics ---
+5 packets transmitted, 5 received, 0% packet loss, time 4004ms
+rtt min/avg/max/mdev = 1.732/2.074/2.382/0.214 ms
+
+PING 1.1.1.1 (1.1.1.1) 56(84) bytes of data.
+64 bytes from 1.1.1.1: icmp_seq=1 ttl=58 time=2.17 ms
+64 bytes from 1.1.1.1: icmp_seq=2 ttl=58 time=1.98 ms
+64 bytes from 1.1.1.1: icmp_seq=3 ttl=58 time=2.38 ms
+64 bytes from 1.1.1.1: icmp_seq=4 ttl=58 time=2.11 ms
+64 bytes from 1.1.1.1: icmp_seq=5 ttl=58 time=1.73 ms
+^C
+--- 1.1.1.1 ping statistics ---
+5 packets transmitted, 5 received, 0% packet loss, time 4004ms
+rtt min/avg/max/mdev = 1.732/2.074/2.382/0.214 ms
+`
+
 var successfulPingResults = latency.Results{
 	Min:         1732000 * time.Nanosecond,
 	Average:     2074000 * time.Nanosecond,
@@ -48,6 +72,34 @@ var successfulPingResults = latency.Results{
 	Time:        4004 * time.Millisecond,
 	Transmitted: 5,
 	Received:    5,
+}
+
+const pingOutputWithoutLatencyInfo = `
+PING 1.1.1.1 (1.1.1.1) 56(84) bytes of data.
+64 bytes from 1.1.1.1: icmp_seq=1 ttl=58 time=2.17 ms
+64 bytes from 1.1.1.1: icmp_seq=2 ttl=58 time=1.98 ms
+64 bytes from 1.1.1.1: icmp_seq=3 ttl=58 time=2.38 ms
+64 bytes from 1.1.1.1: icmp_seq=4 ttl=58 time=2.11 ms
+64 bytes from 1.1.1.1: icmp_seq=5 ttl=58 time=1.73 ms
+^C
+--- 1.1.1.1 ping statistics ---
+5 packets transmitted, 5 received, 0% packet loss, time 4004ms
+`
+
+var pingResultsWithoutLatencyInfo = latency.Results{
+	Transmitted: 5,
+	Received:    5,
+	Time:        time.Millisecond * 4004,
+}
+
+const pingOutputWithoutPacketsInfo = `
+rtt min/avg/max/mdev = 1.732/2.074/2.382/0.214 ms
+`
+
+var pingResultsWithoutLacksPacketsInfo = latency.Results{
+	Min:     time.Nanosecond * 1732000,
+	Average: time.Nanosecond * 2074000,
+	Max:     time.Nanosecond * 2382000,
 }
 
 type pingParserTestCase struct {
@@ -63,7 +115,33 @@ func TestParsePingShouldSucceedGiven(t *testing.T) {
 			pingOutput:      successfulPingOutput,
 			expectedResults: successfulPingResults,
 		},
+		{
+			description:     "empty string",
+			pingOutput:      "",
+			expectedResults: latency.Results{},
+		},
+		{
+			description:     "invalid ping output",
+			pingOutput:      "YmxhaGJsYWhibGFoCg==",
+			expectedResults: latency.Results{},
+		},
+		{
+			description:     "duplicated ping output",
+			pingOutput:      duplicatePingOutput,
+			expectedResults: successfulPingResults,
+		},
+		{
+			description:     "ping output without packets info",
+			pingOutput:      pingOutputWithoutLatencyInfo,
+			expectedResults: pingResultsWithoutLatencyInfo,
+		},
+		{
+			description:     "ping output without latency info",
+			pingOutput:      pingOutputWithoutPacketsInfo,
+			expectedResults: pingResultsWithoutLacksPacketsInfo,
+		},
 	}
+
 	for _, testCase := range testCases {
 		t.Run(testCase.description, func(t *testing.T) {
 			assert.Equal(t, testCase.expectedResults, latency.ParsePingResults(testCase.pingOutput))
