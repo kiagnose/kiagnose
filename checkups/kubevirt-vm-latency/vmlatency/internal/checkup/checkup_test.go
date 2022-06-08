@@ -61,7 +61,7 @@ func TestCheckupSetupShouldFailWhen(t *testing.T) {
 
 	t.Run("failed to create a VM", func(t *testing.T) {
 		expectedError := errors.New("vmi create test error")
-		testClient := clientStub{failCreateVmi: expectedError, returnNetAttachDef: &netattdefv1.NetworkAttachmentDefinition{}}
+		testClient := &clientStub{failCreateVmi: expectedError, returnNetAttachDef: &netattdefv1.NetworkAttachmentDefinition{}}
 		testCheckup := checkup.New(
 			testClient,
 			testNamespace,
@@ -76,7 +76,7 @@ func TestCheckupSetupShouldFailWhen(t *testing.T) {
 	t.Run("VMs were not ready before timeout expiration", func(t *testing.T) {
 		expectedError := errors.New("timed out")
 		testCheckup := checkup.New(
-			clientStub{failGetVmi: expectedError, returnNetAttachDef: &netattdefv1.NetworkAttachmentDefinition{}},
+			&clientStub{failGetVmi: expectedError, returnNetAttachDef: &netattdefv1.NetworkAttachmentDefinition{}},
 			testNamespace,
 			newTestsCheckupParameters(),
 			&checkerStub{},
@@ -168,23 +168,23 @@ type clientStub struct {
 	failDeleteVmi       error
 }
 
-func (c clientStub) GetVirtualMachineInstance(_, _ string) (*kvcorev1.VirtualMachineInstance, error) {
+func (c *clientStub) GetVirtualMachineInstance(_, _ string) (*kvcorev1.VirtualMachineInstance, error) {
 	return c.returnVmi, c.failGetVmi
 }
 
-func (c clientStub) CreateVirtualMachineInstance(_ string, _ *kvcorev1.VirtualMachineInstance) (*kvcorev1.VirtualMachineInstance, error) {
+func (c *clientStub) CreateVirtualMachineInstance(_ string, _ *kvcorev1.VirtualMachineInstance) (*kvcorev1.VirtualMachineInstance, error) {
 	return nil, c.failCreateVmi
 }
 
-func (c clientStub) DeleteVirtualMachineInstance(_, _ string) error {
+func (c *clientStub) DeleteVirtualMachineInstance(_, _ string) error {
 	return c.failDeleteVmi
 }
 
-func (c clientStub) SerialConsole(_, _ string, _ time.Duration) (kubecli.StreamInterface, error) {
+func (c *clientStub) SerialConsole(_, _ string, _ time.Duration) (kubecli.StreamInterface, error) {
 	return nil, nil
 }
 
-func (c clientStub) GetNetworkAttachmentDefinition(_, _ string) (*netattdefv1.NetworkAttachmentDefinition, error) {
+func (c *clientStub) GetNetworkAttachmentDefinition(_, _ string) (*netattdefv1.NetworkAttachmentDefinition, error) {
 	return c.returnNetAttachDef, c.failGetNetAttachDef
 }
 
