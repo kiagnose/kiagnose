@@ -25,9 +25,9 @@ import (
 	"strings"
 	"time"
 
-	"k8s.io/apimachinery/pkg/types"
-
 	kvcorev1 "kubevirt.io/api/core/v1"
+
+	netattdefv1 "github.com/k8snetworkplumbingwg/network-attachment-definition-client/pkg/apis/k8s.cni.cncf.io/v1"
 
 	"github.com/kiagnose/kiagnose/checkups/kubevirt-vm-latency/vmlatency/internal/config"
 	"github.com/kiagnose/kiagnose/checkups/kubevirt-vm-latency/vmlatency/internal/status"
@@ -80,44 +80,27 @@ func (c *checkup) Setup(ctx context.Context) error {
 		targetVmiCidr = "192.168.100.20/24"
 	)
 
-	if _, err := c.client.GetNetworkAttachmentDefinition(
+	netAttachDef, err := c.client.GetNetworkAttachmentDefinition(
 		c.params.NetworkAttachmentDefinitionNamespace,
-		c.params.NetworkAttachmentDefinitionName,
-	); err != nil {
+		c.params.NetworkAttachmentDefinitionName)
+	if err != nil {
 		return fmt.Errorf("%s: %v", errMessagePrefix, err)
 	}
 
-	netAttachDefNamespacedName := types.NamespacedName{
-		Namespace: c.params.NetworkAttachmentDefinitionNamespace,
-		Name:      c.params.NetworkAttachmentDefinitionName,
-	}
+	sourceVmi := newLatencyCheckVmi(sourceVmiName, c.params.SourceNodeName, networkName, netAttachDef, sourceVmiMac, sourceVmiCidr)
+	targetVmi := newLatencyCheckVmi(targetVmiName, c.params.TargetNodeName, networkName, netAttachDef, targetVmiMac, targetVmiCidr)
 
-	sourceVmi := newLatencyCheckVmi(
-		sourceVmiName,
-		c.params.SourceNodeName,
-		networkName, netAttachDefNamespacedName,
-		sourceVmiMac, sourceVmiCidr,
-	)
-
-	targetVmi := newLatencyCheckVmi(
-		targetVmiName,
-		c.params.TargetNodeName,
-		networkName, netAttachDefNamespacedName,
-		targetVmiMac, targetVmiCidr,
-	)
-
-	if err := vmi.Start(c.client, c.namespace, sourceVmi); err != nil {
+	if err = vmi.Start(c.client, c.namespace, sourceVmi); err != nil {
 		return fmt.Errorf("%s: %v", errMessagePrefix, err)
 	}
 
-	if err := vmi.Start(c.client, c.namespace, targetVmi); err != nil {
+	if err = vmi.Start(c.client, c.namespace, targetVmi); err != nil {
 		return fmt.Errorf("%s: %v", errMessagePrefix, err)
 	}
 
 	waitCtx, cancel := context.WithTimeout(ctx, defaultSetupTimeout)
 	defer cancel()
 
-	var err error
 	if c.targetVM, err = vmi.WaitUntilReady(waitCtx, c.client, c.namespace, targetVmi.Name); err != nil {
 		return fmt.Errorf("%s: %v", errMessagePrefix, err)
 	}
@@ -132,7 +115,7 @@ func (c *checkup) Setup(ctx context.Context) error {
 func newLatencyCheckVmi(
 	name,
 	nodeName,
-	networkName string, netAttachDef types.NamespacedName,
+	networkName string, netAttachDef *netattdefv1.NetworkAttachmentDefinition,
 	macAddress, cidr string) *kvcorev1.VirtualMachineInstance {
 	networkData, _ := vmi.NewNetworkData(
 		vmi.WithEthernet(networkName,
@@ -151,7 +134,7 @@ func newLatencyCheckVmi(
 	}
 	return vmi.NewFedora(name,
 		vmi.WithNodeSelector(nodeName),
-		vmi.WithMultusNetwork(networkName, netAttachDef.String()),
+		vmi.WithMultusNetwork(networkName, netAttachDef.Namespace+"/"+netAttachDef.Name),
 		vmi.WithInterface(vmiInterface),
 		vmi.WithCloudInitNoCloudNetworkData(networkData),
 	)
