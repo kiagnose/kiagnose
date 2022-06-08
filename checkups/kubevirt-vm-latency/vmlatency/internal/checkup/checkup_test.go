@@ -45,19 +45,20 @@ const (
 	testTimeout               = time.Nanosecond
 )
 
-func TestCheckupPreflightShouldFailWhenNetAttachDefDoesNotExist(t *testing.T) {
-	expectedError := errors.New("get netAttachDef test error")
-	testCheckup := checkup.New(
-		&clientStub{failGetNetAttachDef: expectedError},
-		testNamespace,
-		newTestsCheckupParameters(),
-		&checkerStub{},
-	)
-
-	assert.ErrorContains(t, testCheckup.Preflight(), expectedError.Error())
-}
-
 func TestCheckupSetupShouldFailWhen(t *testing.T) {
+	t.Run("NetworkAttachmentDefinition does not exist", func(t *testing.T) {
+		expectedError := errors.New("get netAttachDef test error")
+		testCheckup := checkup.New(
+			&clientStub{failGetNetAttachDef: expectedError},
+			testNamespace,
+			newTestsCheckupParameters(),
+			&checkerStub{},
+		)
+
+		assert.NoError(t, testCheckup.Preflight())
+		assert.ErrorContains(t, testCheckup.Setup(context.Background()), expectedError.Error())
+	})
+
 	t.Run("failed to create a VM", func(t *testing.T) {
 		expectedError := errors.New("vmi create test error")
 		testCheckup := checkup.New(

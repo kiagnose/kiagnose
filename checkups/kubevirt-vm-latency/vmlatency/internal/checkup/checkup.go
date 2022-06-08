@@ -62,13 +62,6 @@ func New(c vmi.KubevirtVmisClient, namespace string, params config.CheckupParame
 }
 
 func (c *checkup) Preflight() error {
-	if _, err := c.client.GetNetworkAttachmentDefinition(
-		c.params.NetworkAttachmentDefinitionNamespace,
-		c.params.NetworkAttachmentDefinitionName,
-	); err != nil {
-		return fmt.Errorf("preflight: %v", err)
-	}
-
 	return nil
 }
 
@@ -86,6 +79,13 @@ func (c *checkup) Setup(ctx context.Context) error {
 		targetVmiMac  = "02:00:00:02:00:02"
 		targetVmiCidr = "192.168.100.20/24"
 	)
+
+	if _, err := c.client.GetNetworkAttachmentDefinition(
+		c.params.NetworkAttachmentDefinitionNamespace,
+		c.params.NetworkAttachmentDefinitionName,
+	); err != nil {
+		return fmt.Errorf("%s: %v", errMessagePrefix, err)
+	}
 
 	netAttachDefNamespacedName := types.NamespacedName{
 		Namespace: c.params.NetworkAttachmentDefinitionNamespace,
