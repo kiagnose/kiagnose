@@ -42,8 +42,9 @@ import (
 )
 
 func TestLauncherShouldFail(t *testing.T) {
+	testClient := newFakeClient()
 	testCheckup := checkup.New(
-		newFakeClient(),
+		testClient,
 		k8scorev1.NamespaceDefault,
 		config.CheckupParameters{},
 		&checkerStub{checkFailure: errorCheck},
@@ -54,8 +55,9 @@ func TestLauncherShouldFail(t *testing.T) {
 }
 
 func TestLauncherShouldRunSuccessfully(t *testing.T) {
+	testClient := newFakeClient()
 	testCheckup := checkup.New(
-		newFakeClient(),
+		testClient,
 		k8scorev1.NamespaceDefault,
 		config.CheckupParameters{},
 		&checkerStub{},
@@ -192,14 +194,18 @@ func (r reporterStub) Report(_ status.Status) error {
 }
 
 type fakeClient struct {
-	vmiTracker map[string]*kvcorev1.VirtualMachineInstance
+	vmiTracker         map[string]*kvcorev1.VirtualMachineInstance
+	returnNetAttachDef *netattdefv1.NetworkAttachmentDefinition
 }
 
 // newFakeClient returns fakeClient that tracks VMIs.
 // The VMI tracker acts as the cluster DB and keep records regarding
 // the VMIs that were created or deleted.
 func newFakeClient() *fakeClient {
-	return &fakeClient{vmiTracker: map[string]*kvcorev1.VirtualMachineInstance{}}
+	return &fakeClient{
+		vmiTracker:         map[string]*kvcorev1.VirtualMachineInstance{},
+		returnNetAttachDef: &netattdefv1.NetworkAttachmentDefinition{},
+	}
 }
 
 func (c *fakeClient) GetVirtualMachineInstance(namespace, name string) (*kvcorev1.VirtualMachineInstance, error) {
@@ -235,7 +241,7 @@ func (c *fakeClient) SerialConsole(namespace, vmiName string, timeout time.Durat
 }
 
 func (c *fakeClient) GetNetworkAttachmentDefinition(_, _ string) (*netattdefv1.NetworkAttachmentDefinition, error) {
-	return nil, nil
+	return c.returnNetAttachDef, nil
 }
 
 func vmiKey(namespace, name string) string {

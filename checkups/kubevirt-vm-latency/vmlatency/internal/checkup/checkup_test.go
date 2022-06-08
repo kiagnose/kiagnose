@@ -61,8 +61,9 @@ func TestCheckupSetupShouldFailWhen(t *testing.T) {
 
 	t.Run("failed to create a VM", func(t *testing.T) {
 		expectedError := errors.New("vmi create test error")
+		testClient := clientStub{failCreateVmi: expectedError, returnNetAttachDef: &netattdefv1.NetworkAttachmentDefinition{}}
 		testCheckup := checkup.New(
-			clientStub{failCreateVmi: expectedError},
+			testClient,
 			testNamespace,
 			newTestsCheckupParameters(),
 			&checkerStub{},
@@ -75,7 +76,7 @@ func TestCheckupSetupShouldFailWhen(t *testing.T) {
 	t.Run("VMs were not ready before timeout expiration", func(t *testing.T) {
 		expectedError := errors.New("timed out")
 		testCheckup := checkup.New(
-			clientStub{failGetVmi: expectedError},
+			clientStub{failGetVmi: expectedError, returnNetAttachDef: &netattdefv1.NetworkAttachmentDefinition{}},
 			testNamespace,
 			newTestsCheckupParameters(),
 			&checkerStub{},
@@ -91,7 +92,7 @@ func TestCheckupSetupShouldFailWhen(t *testing.T) {
 
 func TestCheckupTeardownShouldFailWhen(t *testing.T) {
 	t.Run("failed to delete a VM", func(t *testing.T) {
-		testClient := &clientStub{}
+		testClient := &clientStub{returnNetAttachDef: &netattdefv1.NetworkAttachmentDefinition{}}
 		testCheckup := checkup.New(
 			testClient,
 			testNamespace,
@@ -114,7 +115,7 @@ func TestCheckupTeardownShouldFailWhen(t *testing.T) {
 	})
 
 	t.Run("VMs were not disposed before timeout expiration", func(t *testing.T) {
-		testClient := &clientStub{}
+		testClient := &clientStub{returnNetAttachDef: &netattdefv1.NetworkAttachmentDefinition{}}
 		testCheckup := checkup.New(
 			testClient,
 			testNamespace,
@@ -158,7 +159,8 @@ func newTestsCheckupParameters() config.CheckupParameters {
 }
 
 type clientStub struct {
-	returnVmi *kvcorev1.VirtualMachineInstance
+	returnVmi          *kvcorev1.VirtualMachineInstance
+	returnNetAttachDef *netattdefv1.NetworkAttachmentDefinition
 
 	failGetNetAttachDef error
 	failGetVmi          error
@@ -183,7 +185,7 @@ func (c clientStub) SerialConsole(_, _ string, _ time.Duration) (kubecli.StreamI
 }
 
 func (c clientStub) GetNetworkAttachmentDefinition(_, _ string) (*netattdefv1.NetworkAttachmentDefinition, error) {
-	return nil, c.failGetNetAttachDef
+	return c.returnNetAttachDef, c.failGetNetAttachDef
 }
 
 type checkerStub struct {
