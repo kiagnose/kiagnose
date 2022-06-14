@@ -139,9 +139,9 @@ status.failureReason: "MESSAGE environment variable is missing"
 - You have [podman](https://podman.io/) or other container engine capable of building images.
 ### Steps
 ```bash
-$ ./automation/make.sh --build-checkup-image
+./automation/make.sh --build-checkup-image
 # Using Docker to build the image:
-$ CRI=docker ./automation/make.sh --build-checkup-image
+CRI=docker ./automation/make.sh --build-checkup-image
 ```
 
 ## Manual Execution Instructions
@@ -152,15 +152,15 @@ $ CRI=docker ./automation/make.sh --build-checkup-image
 ### Steps
 1. Deploy the checkup manifest using:
 ```bash
-$ kubectl create -f manifests/dev/echo-checkup.yaml
+kubectl create -f manifests/dev/echo-checkup.yaml
 ```
 
 2. To get the checkup results:
 ```bash
-$ kubectl get configmap echo-checkup-results -n echo-checkup-ns -o yaml > results.yaml
+kubectl get configmap echo-checkup-results -n echo-checkup-ns -o yaml > results.yaml
 ```
 
 3. To remove the created objects:
 ```bash
-$ kubectl delete -f manifests/dev/echo-checkup.yaml
+kubectl delete -f manifests/dev/echo-checkup.yaml
 ```
