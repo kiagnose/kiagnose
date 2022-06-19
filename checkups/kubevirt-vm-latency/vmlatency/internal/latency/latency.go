@@ -73,11 +73,17 @@ func (l *Latency) Check(sourceVMI, targetVMI *kvcorev1.VirtualMachineInstance, s
 	}
 
 	const runCommandGracePeriod = time.Minute * 1
+	start := time.Now()
 	res, err := sourceVMIConsole.RunCommand(composePingCommand(targetIPAddress, sampleTime), sampleTime+runCommandGracePeriod)
+	pingTime := time.Since(start)
 	if err != nil {
 		return err
 	}
 	l.results = ParsePingResults(res)
+
+	if l.results.Time == 0 {
+		l.results.Time = pingTime
+	}
 
 	if l.results.Transmitted == 0 || l.results.Received == 0 {
 		return fmt.Errorf("%s: failed due to connectivity issue: %d packets transmitted, %d packets received",
