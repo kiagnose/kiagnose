@@ -46,8 +46,8 @@ func ParsePingResults(pingResult string) Results {
 	var results Results
 	var err error
 
-	statisticsPattern := regexp.MustCompile(`(\d+)\s*\S*packets\s*transmitted,\s*(\d+)\s*received,\s*(\d+)%\s*packet\s*loss,\s*time\s*(\d+)`)
-	statisticsPatternMatches := statisticsPattern.FindAllStringSubmatch(pingResult, -1)
+	p := regexp.MustCompile(`(\d+)\s*\S*packets\s*transmitted,\s*(\d+)\s*(packets )?received,\s*(\d+)%\s*packet\s*loss(, time (\d+))?`)
+	statisticsPatternMatches := p.FindAllStringSubmatch(pingResult, -1)
 	for _, item := range statisticsPatternMatches {
 		if results.Transmitted, err = strconv.Atoi(strings.TrimSpace(item[1])); err != nil {
 			log.Printf("%s: failed to parse 'time': %v", errMessagePrefix, err)
@@ -57,12 +57,12 @@ func ParsePingResults(pingResult string) Results {
 			log.Printf("%s: failed to parse 'time': %v", errMessagePrefix, err)
 		}
 
-		if results.Time, err = time.ParseDuration(fmt.Sprintf("%s%s", strings.TrimSpace(item[4]), millisecondsPrefix)); err != nil {
+		if results.Time, err = time.ParseDuration(fmt.Sprintf("%s%s", strings.TrimSpace(item[6]), millisecondsPrefix)); err != nil {
 			log.Printf("%s: failed to parse 'time': %v", errMessagePrefix, err)
 		}
 	}
 
-	latencyPattern := regexp.MustCompile(`(round-trip|rtt)\s+\S+\s*=\s*([0-9.]+)/([0-9.]+)/([0-9.]+)/([0-9.]+)\s*ms`)
+	latencyPattern := regexp.MustCompile(`(round-trip|rtt)\s+\S+\s*=\s*([0-9.]+)/([0-9.]+)/([0-9.]+)(/[0-9.]+)?\s*ms`)
 	latencyPatternMatches := latencyPattern.FindAllStringSubmatch(pingResult, -1)
 	for _, item := range latencyPatternMatches {
 		if results.Min, err = time.ParseDuration(fmt.Sprintf("%s%s", strings.TrimSpace(item[2]), millisecondsPrefix)); err != nil {
