@@ -1,4 +1,4 @@
-FROM registry.access.redhat.com/ubi8/ubi-minimal:8.5-240.1648458092
+FROM registry.access.redhat.com/ubi8/ubi-minimal:8.6-751.1655117800
 
 RUN curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl" &&\
     chmod 744 kubectl &&\
