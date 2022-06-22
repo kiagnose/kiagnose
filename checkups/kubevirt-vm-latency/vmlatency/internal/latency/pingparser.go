@@ -20,6 +20,7 @@
 package latency
 
 import (
+	"errors"
 	"fmt"
 	"log"
 	"regexp"
@@ -37,46 +38,156 @@ type Results struct {
 	Received    int
 }
 
-func ParsePingResults(pingResult string) Results {
+func ParsePingResults(rawPingOutput string) Results {
+	statistics, err := parseStatistics(rawPingOutput)
+	if err != nil {
+		log.Printf("ping-parser: failed to parse ping statistics: %v\n%s\n", err, rawPingOutput)
+	}
+
+	latencyResults, err := parseLatencyResults(rawPingOutput)
+	if err != nil {
+		log.Printf("ping-parser: failed to parse ping pingParser results: %v\n%s\n", err, rawPingOutput)
+	}
+
+	return Results{
+		Min:         latencyResults.min,
+		Max:         latencyResults.max,
+		Average:     latencyResults.average,
+		Time:        statistics.time,
+		Transmitted: statistics.transmitted,
+		Received:    statistics.received,
+	}
+}
+
+const millisecondsUnit = "ms"
+
+type pingLatencyResults struct {
+	min     time.Duration
+	max     time.Duration
+	average time.Duration
+}
+
+func parseLatencyResults(rawPingOutput string) (pingLatencyResults, error) {
 	const (
-		errMessagePrefix = "ping parser"
-
-		millisecondsPrefix = "ms"
+		minCaptureGroup = "min"
+		avgCaptureGroup = "avg"
+		maxCaptureGroup = "max"
 	)
-	var results Results
-	var err error
+	var pattern = `(round-trip|rtt)\s+min/avg/max(/mdev)?\s+=\s+` +
+		fmt.Sprintf(`(?P<%s>[\d.]+)/`, minCaptureGroup) +
+		fmt.Sprintf(`(?P<%s>[\d.]+)/`, avgCaptureGroup) +
+		fmt.Sprintf(`(?P<%s>[\d.]+)`, maxCaptureGroup) +
+		`(/[\d.]+)?` +
+		`\s+ms`
 
-	statisticsPattern := regexp.MustCompile(`(\d+)\s*\S*packets\s*transmitted,\s*(\d+)\s*received,\s*(\d+)%\s*packet\s*loss,\s*time\s*(\d+)`)
-	statisticsPatternMatches := statisticsPattern.FindAllStringSubmatch(pingResult, -1)
-	for _, item := range statisticsPatternMatches {
-		if results.Transmitted, err = strconv.Atoi(strings.TrimSpace(item[1])); err != nil {
-			log.Printf("%s: failed to parse 'time': %v", errMessagePrefix, err)
-		}
-
-		if results.Received, err = strconv.Atoi(strings.TrimSpace(item[2])); err != nil {
-			log.Printf("%s: failed to parse 'time': %v", errMessagePrefix, err)
-		}
-
-		if results.Time, err = time.ParseDuration(fmt.Sprintf("%s%s", strings.TrimSpace(item[4]), millisecondsPrefix)); err != nil {
-			log.Printf("%s: failed to parse 'time': %v", errMessagePrefix, err)
-		}
+	matchesByCaptureGroup, err := findStringByNamedCaptureGroup(rawPingOutput, pattern)
+	if err != nil {
+		return pingLatencyResults{}, err
 	}
 
-	latencyPattern := regexp.MustCompile(`(round-trip|rtt)\s+\S+\s*=\s*([0-9.]+)/([0-9.]+)/([0-9.]+)/([0-9.]+)\s*ms`)
-	latencyPatternMatches := latencyPattern.FindAllStringSubmatch(pingResult, -1)
-	for _, item := range latencyPatternMatches {
-		if results.Min, err = time.ParseDuration(fmt.Sprintf("%s%s", strings.TrimSpace(item[2]), millisecondsPrefix)); err != nil {
-			log.Printf("%s: failed to parse 'min': %v", errMessagePrefix, err)
-		}
-
-		if results.Average, err = time.ParseDuration(fmt.Sprintf("%s%s", strings.TrimSpace(item[3]), millisecondsPrefix)); err != nil {
-			log.Printf("%s: failed to parse 'avg': %v", errMessagePrefix, err)
-		}
-
-		if results.Max, err = time.ParseDuration(fmt.Sprintf("%s%s", strings.TrimSpace(item[4]), millisecondsPrefix)); err != nil {
-			log.Printf("%s: failed to parse 'max': %v", errMessagePrefix, err)
-		}
+	var pingLatency pingLatencyResults
+	min, exists := matchesByCaptureGroup[minCaptureGroup]
+	if !exists {
+		return pingLatencyResults{}, errors.New("failed to parse 'min': not match found")
+	}
+	if pingLatency.min, err = time.ParseDuration(strings.TrimSpace(min) + millisecondsUnit); err != nil {
+		return pingLatencyResults{}, fmt.Errorf("failed to parse 'min':%v", err)
 	}
 
-	return results
+	average, exists := matchesByCaptureGroup[avgCaptureGroup]
+	if !exists {
+		return pingLatencyResults{}, errors.New("failed to parse 'avg': not match found")
+	}
+	if pingLatency.average, err = time.ParseDuration(strings.TrimSpace(average) + millisecondsUnit); err != nil {
+		return pingLatencyResults{}, fmt.Errorf("failed to parse 'avg':%v", err)
+	}
+
+	max, exists := matchesByCaptureGroup[maxCaptureGroup]
+	if !exists {
+		return pingLatencyResults{}, errors.New("failed to parse 'max': not match found")
+	}
+	if pingLatency.max, err = time.ParseDuration(strings.TrimSpace(max) + millisecondsUnit); err != nil {
+		return pingLatencyResults{}, fmt.Errorf("failed to parse 'max':%v", err)
+	}
+
+	return pingLatency, nil
+}
+
+type pingStatistics struct {
+	transmitted int
+	received    int
+	time        time.Duration
+}
+
+func parseStatistics(rawPingOutput string) (pingStatistics, error) {
+	const (
+		transmittedCaptureGroup = "transmitted"
+		receivedCaptureGroup    = "received"
+		timeCaptureGroup        = "time"
+	)
+
+	var pattern = fmt.Sprintf(`(?P<%s>\d+) packets transmitted,\s+`, transmittedCaptureGroup) +
+		fmt.Sprintf(`(?P<%s>\d+) received,\s+`, receivedCaptureGroup) +
+		`(\+\d+ errors,\s+)?` +
+		`\d+% packet loss,\s+` +
+		fmt.Sprintf(`time (?P<%s>\d+)`, timeCaptureGroup)
+
+	matchesByCaptureGroup, err := findStringByNamedCaptureGroup(rawPingOutput, pattern)
+	if err != nil {
+		return pingStatistics{}, err
+	}
+
+	var pingStats pingStatistics
+	transmitted, exists := matchesByCaptureGroup[transmittedCaptureGroup]
+	if !exists {
+		return pingStatistics{}, errors.New("failed to parse 'packets transmitted': not match found")
+	}
+	if pingStats.transmitted, err = strconv.Atoi(strings.TrimSpace(transmitted)); err != nil {
+		return pingStatistics{}, fmt.Errorf("failed to parse 'packets transmitted': %v", err)
+	}
+
+	received, exists := matchesByCaptureGroup[receivedCaptureGroup]
+	if !exists {
+		return pingStatistics{}, errors.New("failed to parse 'packets received': not match found")
+	}
+	if pingStats.received, err = strconv.Atoi(strings.TrimSpace(received)); err != nil {
+		return pingStatistics{}, fmt.Errorf("failed to parse 'packets received': %v", err)
+	}
+
+	if pingDuration, exists := matchesByCaptureGroup[timeCaptureGroup]; exists {
+		pingStats.time, _ = time.ParseDuration(strings.TrimSpace(pingDuration) + millisecondsUnit)
+	}
+
+	return pingStats, nil
+}
+
+// findStringByNamedCaptureGroup expects input string and a regular-expression with named capture groups.
+// It returns a map with the matched strings (value) by each capture group name (key).
+// In case no match found it returns an error.
+//
+// Example
+//
+// Code:
+//   matches, err := findStringByNamedCaptureGroup( "blah world blah",  "blah (?P<hello>[a-z]+) blah")
+//   fmt.Printf("%v\n", matches["hello"])
+// Output:
+//   "world"
+func findStringByNamedCaptureGroup(rawPingOutput, pattern string) (map[string]string, error) {
+	r, err := regexp.Compile(pattern)
+	if err != nil {
+		return nil, err
+	}
+
+	matches := r.FindStringSubmatch(rawPingOutput)
+	if len(matches) < 1 {
+		return nil, errors.New("no match found")
+	}
+	names := r.SubexpNames()
+
+	lookupMatchByGroupName := make(map[string]string, len(matches))
+	for i, match := range matches {
+		lookupMatchByGroupName[names[i]] = match
+	}
+
+	return lookupMatchByGroupName, nil
 }
