@@ -46,7 +46,7 @@ spec:
   backoffLimit: 0
   template:
     spec:
-      serviceAccount: kiagnose
+      ServiceAccountName: kiagnose
       restartPolicy: Never
       containers:
         - name: framework
