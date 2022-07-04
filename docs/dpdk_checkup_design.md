@@ -16,7 +16,14 @@ Using this checkup, The administrator gains a powerful debugging tool, that help
 
 ## Goals
 
+* Validate DPDK communication going through a VMI, on a predefined network.
+* Measure latency of traffic going through a VMI, on a predefined network.
+* Report results (and logs) with the cluster administrator.
+
 ## Non-Goals
+
+* Define or configure the network under test.
+* Define or configure the DPDK related configurations on the node.
 
 # Proposal
 
