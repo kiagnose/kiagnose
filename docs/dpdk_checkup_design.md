@@ -28,6 +28,11 @@ Using this checkup, The administrator gains a powerful debugging tool, that help
 # Proposal
 
 ## Definition of Users
+* Kubernetes Cluster Administrators
 
 ## User Stories
 
+As a Kubernetes Cluster Administrator I would like to:
+1. Check that the cluster network is DPDK-ready by running the DPDK-checkup.
+2. Optionally provide the maximum accepted latency, such that beyond this value, the check will fail.
+3. Get a report/log if the DPDK-checkup fails, so that I could further debug my cluster.
