@@ -57,7 +57,6 @@ type Checkup struct {
 const (
 	NamespaceName                  = "kiagnose-checkup"
 	ServiceAccountName             = "checkup-sa"
-	ResultsConfigMapName           = "checkup-results"
 	ResultsConfigMapWriterRoleName = "results-configmap-writer"
 	JobName                        = "checkup-job"
 
@@ -69,9 +68,11 @@ type namer interface {
 	Name(string) string
 }
 
-func New(c kubernetes.Interface, checkupConfig *config.Config, namer namer) *Checkup {
+func New(c kubernetes.Interface, name string, checkupConfig *config.Config, namer namer) *Checkup {
 	nsName := namer.Name(NamespaceName)
-	checkupRoles := []*rbacv1.Role{NewConfigMapWriterRole(ResultsConfigMapWriterRoleName, nsName, ResultsConfigMapName)}
+
+	resultsConfigMapName := NameResultsConfigMap(name)
+	checkupRoles := []*rbacv1.Role{NewConfigMapWriterRole(ResultsConfigMapWriterRoleName, nsName, resultsConfigMapName)}
 
 	subject := newServiceAccountSubject(ServiceAccountName, nsName)
 	var checkupRoleBindings []*rbacv1.RoleBinding
@@ -80,7 +81,7 @@ func New(c kubernetes.Interface, checkupConfig *config.Config, namer namer) *Che
 	}
 
 	checkupEnvVars := []corev1.EnvVar{
-		{Name: ResultsConfigMapNameEnvVarName, Value: ResultsConfigMapName},
+		{Name: ResultsConfigMapNameEnvVarName, Value: resultsConfigMapName},
 		{Name: ResultsConfigMapNameEnvVarNamespace, Value: nsName},
 	}
 	checkupEnvVars = append(checkupEnvVars, checkupConfig.EnvVars...)
@@ -91,7 +92,7 @@ func New(c kubernetes.Interface, checkupConfig *config.Config, namer namer) *Che
 		teardownTimeout:     defaultTeardownTimeout,
 		namespace:           NewNamespace(nsName),
 		serviceAccount:      NewServiceAccount(ServiceAccountName, nsName),
-		resultConfigMap:     NewConfigMap(ResultsConfigMapName, nsName),
+		resultConfigMap:     NewConfigMap(resultsConfigMapName, nsName),
 		roles:               checkupRoles,
 		roleBindings:        checkupRoleBindings,
 		jobTimeout:          checkupConfig.Timeout,
@@ -301,4 +302,8 @@ func concentrateErrors(errs []error) error {
 	}
 
 	return errors.New(sb.String())
+}
+
+func NameResultsConfigMap(checkupName string) string {
+	return checkupName + "-results"
 }
