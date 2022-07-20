@@ -58,8 +58,9 @@ const (
 	configMapResource          = "configmaps"
 	jobResource                = "jobs"
 
-	testImage   = "framework:v1"
-	testTimeout = time.Minute
+	testCheckupName = "checkup1"
+	testImage       = "framework:v1"
+	testTimeout     = time.Minute
 )
 
 type checkupSetupTestCase struct {
@@ -83,6 +84,7 @@ func TestCheckupWith(t *testing.T) {
 			nameGen := nameGeneratorStub{}
 			testCheckup := checkup.New(
 				c,
+				testCheckupName,
 				&config.Config{
 					Image:        testImage,
 					Timeout:      testTimeout,
@@ -94,12 +96,13 @@ func TestCheckupWith(t *testing.T) {
 			)
 
 			checkupNamespaceName := nameGen.Name(checkup.NamespaceName)
+			resultsConfigMapName := checkup.NameResultsConfigMap(testCheckupName)
 
 			assert.NoError(t, testCheckup.Setup())
 			assertNamespaceCreated(t, c, checkupNamespaceName)
 			assertServiceAccountCreated(t, c, checkupNamespaceName)
-			assertResultsConfigMapCreated(t, c, checkupNamespaceName)
-			assertConfigMapWriterRoleCreated(t, c, checkupNamespaceName)
+			assertResultsConfigMapCreated(t, c, checkupNamespaceName, resultsConfigMapName)
+			assertConfigMapWriterRoleCreated(t, c, checkupNamespaceName, resultsConfigMapName)
 			assertConfigMapWriterRoleBindingCreated(t, c, checkupNamespaceName)
 			assertClusterRoleBindingsCreated(t, testsClient{c}, testCase.clusterRole, checkupNamespaceName, nameGen)
 		})
@@ -123,6 +126,7 @@ func TestCheckupSetupShouldFailWhen(t *testing.T) {
 			testClient.injectCreateErrorForResource(testCase.resource, expectedErr)
 			testCheckup := checkup.New(
 				testClient,
+				testCheckupName,
 				&config.Config{
 					Image:        testImage,
 					Timeout:      testTimeout,
@@ -149,7 +153,10 @@ func TestCheckupSetupShould(t *testing.T) {
 		secondClusterRoleBindingName := nameGen.Name(expectedClusterRoles[1].Name)
 		testClient.injectClusterRoleBindingCreateError(secondClusterRoleBindingName, expectedErr)
 		testClient.injectResourceVersionUpdateOnJobCreation()
-		testCheckup := checkup.New(testClient, &config.Config{Image: testImage, Timeout: testTimeout, ClusterRoles: expectedClusterRoles},
+		testCheckup := checkup.New(
+			testClient,
+			testCheckupName,
+			&config.Config{Image: testImage, Timeout: testTimeout, ClusterRoles: expectedClusterRoles},
 			nameGen,
 		)
 
@@ -161,7 +168,7 @@ func TestCheckupSetupShould(t *testing.T) {
 
 func TestCheckTeardownShouldSucceed(t *testing.T) {
 	testClient := newNormalizedFakeClientset()
-	testCheckup := checkup.New(testClient, &config.Config{Image: testImage, Timeout: testTimeout}, nameGeneratorStub{})
+	testCheckup := checkup.New(testClient, testCheckupName, &config.Config{Image: testImage, Timeout: testTimeout}, nameGeneratorStub{})
 
 	testClient.injectResourceVersionUpdateOnNamespaceCreation()
 	testClient.injectWatchWithNamespaceDeleteEvent()
@@ -175,6 +182,7 @@ func TestCheckupTeardownShould(t *testing.T) {
 		testClient := newNormalizedFakeClientset()
 		testCheckup := checkup.New(
 			testClient,
+			testCheckupName,
 			&config.Config{Image: testImage, Timeout: testTimeout, ClusterRoles: newTestClusterRoles()},
 			nameGeneratorStub{},
 		)
@@ -193,7 +201,7 @@ func TestCheckupTeardownShould(t *testing.T) {
 
 	t.Run("fail when failed to delete Namespace", func(t *testing.T) {
 		testClient := newNormalizedFakeClientset()
-		testCheckup := checkup.New(testClient, &config.Config{Image: testImage, Timeout: testTimeout}, nameGeneratorStub{})
+		testCheckup := checkup.New(testClient, testCheckupName, &config.Config{Image: testImage, Timeout: testTimeout}, nameGeneratorStub{})
 
 		testClient.injectResourceVersionUpdateOnNamespaceCreation()
 
@@ -208,7 +216,7 @@ func TestCheckupTeardownShould(t *testing.T) {
 
 	t.Run("fail when Namespace wont dispose on time", func(t *testing.T) {
 		testClient := newNormalizedFakeClientset()
-		testCheckup := checkup.New(testClient, &config.Config{Image: testImage, Timeout: testTimeout}, nameGeneratorStub{})
+		testCheckup := checkup.New(testClient, testCheckupName, &config.Config{Image: testImage, Timeout: testTimeout}, nameGeneratorStub{})
 
 		testCheckup.SetTeardownTimeout(time.Nanosecond)
 
@@ -226,6 +234,7 @@ func TestCheckupTeardownShould(t *testing.T) {
 		testClient := newNormalizedFakeClientset()
 		testCheckup := checkup.New(
 			testClient,
+			testCheckupName,
 			&config.Config{Image: testImage, Timeout: testTimeout, ClusterRoles: newTestClusterRoles()},
 			nameGeneratorStub{},
 		)
@@ -248,6 +257,7 @@ func TestCheckupTeardownShould(t *testing.T) {
 		testClient := newNormalizedFakeClientset()
 		testCheckup := checkup.New(
 			testClient,
+			testCheckupName,
 			&config.Config{Image: testImage, Timeout: testTimeout, ClusterRoles: newTestClusterRoles()},
 			nameGeneratorStub{},
 		)
@@ -290,6 +300,7 @@ func TestCheckupRunShouldCreateAJob(t *testing.T) {
 			nameGen := nameGeneratorStub{}
 			testCheckup := checkup.New(
 				testClient,
+				testCheckupName,
 				&config.Config{Image: testImage, Timeout: testTimeout, EnvVars: testCase.envVars},
 				nameGen,
 			)
@@ -301,8 +312,9 @@ func TestCheckupRunShouldCreateAJob(t *testing.T) {
 			assert.NoError(t, testCheckup.Setup())
 			assert.NoError(t, testCheckup.Run())
 
+			expectedResultsConfigMapName := checkup.NameResultsConfigMap(testCheckupName)
 			expectedEnvVars := []corev1.EnvVar{
-				{Name: checkup.ResultsConfigMapNameEnvVarName, Value: checkup.ResultsConfigMapName},
+				{Name: checkup.ResultsConfigMapNameEnvVarName, Value: expectedResultsConfigMapName},
 				{Name: checkup.ResultsConfigMapNameEnvVarNamespace, Value: checkupNamespaceName},
 			}
 			expectedEnvVars = append(expectedEnvVars, testCase.envVars...)
@@ -333,7 +345,7 @@ func TestCheckupRunShouldSucceed(t *testing.T) {
 			testClient.injectWatchWithNamespaceDeleteEvent()
 
 			nameGen := nameGeneratorStub{}
-			testCheckup := checkup.New(testClient, &config.Config{Image: testImage, Timeout: testTimeout}, nameGen)
+			testCheckup := checkup.New(testClient, testCheckupName, &config.Config{Image: testImage, Timeout: testTimeout}, nameGen)
 
 			checkupNamespaceName := nameGen.Name(checkup.NamespaceName)
 			testClient.injectJobWatchEvent(newJobWithCondition(checkupNamespaceName, checkup.JobName, testCase.jobCondition))
@@ -355,7 +367,7 @@ func TestCheckupRunShouldFailWhen(t *testing.T) {
 		testClient.injectResourceVersionUpdateOnNamespaceCreation()
 		testClient.injectWatchWithNamespaceDeleteEvent()
 
-		testCheckup := checkup.New(testClient, &config.Config{Image: testImage, Timeout: testTimeout}, nameGeneratorStub{})
+		testCheckup := checkup.New(testClient, testCheckupName, &config.Config{Image: testImage, Timeout: testTimeout}, nameGeneratorStub{})
 
 		assert.NoError(t, testCheckup.Setup())
 		assert.ErrorContains(t, testCheckup.Run(), expectedErr)
@@ -368,7 +380,7 @@ func TestCheckupRunShouldFailWhen(t *testing.T) {
 		testClient.injectResourceVersionUpdateOnNamespaceCreation()
 		testClient.injectWatchWithNamespaceDeleteEvent()
 
-		testCheckup := checkup.New(testClient, &config.Config{Image: testImage, Timeout: testTimeout}, nameGeneratorStub{})
+		testCheckup := checkup.New(testClient, testCheckupName, &config.Config{Image: testImage, Timeout: testTimeout}, nameGeneratorStub{})
 
 		assert.NoError(t, testCheckup.Setup())
 		assert.ErrorContains(t, testCheckup.Run(), "initial RV \"\" is not supported")
@@ -382,7 +394,7 @@ func TestCheckupRunShouldFailWhen(t *testing.T) {
 		testClient.injectResourceVersionUpdateOnNamespaceCreation()
 		testClient.injectWatchWithNamespaceDeleteEvent()
 
-		testCheckup := checkup.New(testClient, &config.Config{Image: testImage, Timeout: time.Nanosecond}, nameGeneratorStub{})
+		testCheckup := checkup.New(testClient, testCheckupName, &config.Config{Image: testImage, Timeout: time.Nanosecond}, nameGeneratorStub{})
 
 		assert.NoError(t, testCheckup.Setup())
 		assert.ErrorContains(t, testCheckup.Run(), wait.ErrWaitTimeout.Error())
@@ -397,7 +409,7 @@ func TestCheckupRunShouldFailWhen(t *testing.T) {
 		testClient.injectWatchWithNamespaceDeleteEvent()
 
 		nameGen := nameGeneratorStub{}
-		testCheckup := checkup.New(testClient, &config.Config{Image: testImage, Timeout: time.Second}, nameGen)
+		testCheckup := checkup.New(testClient, testCheckupName, &config.Config{Image: testImage, Timeout: time.Second}, nameGen)
 
 		checkupNamespaceName := nameGen.Name(checkup.NamespaceName)
 		completeFalseJobCondition := &batchv1.JobCondition{Type: batchv1.JobComplete, Status: corev1.ConditionFalse}
@@ -602,22 +614,22 @@ func assertServiceAccountCreated(t *testing.T, testClient *fake.Clientset, nsNam
 	assert.Equal(t, checkup.NewServiceAccount(checkup.ServiceAccountName, nsName), actualServiceAccount)
 }
 
-func assertResultsConfigMapCreated(t *testing.T, testClient *fake.Clientset, nsName string) {
+func assertResultsConfigMapCreated(t *testing.T, testClient *fake.Clientset, nsName, expectedConfigMapName string) {
 	gvr := schema.GroupVersionResource{Group: "", Version: "v1", Resource: configMapResource}
-	actualConfigMap, err := testClient.Tracker().Get(gvr, nsName, checkup.ResultsConfigMapName)
+	actualConfigMap, err := testClient.Tracker().Get(gvr, nsName, expectedConfigMapName)
 
 	assert.NoError(t, err)
-	assert.Equal(t, checkup.NewConfigMap(checkup.ResultsConfigMapName, nsName), actualConfigMap)
+	assert.Equal(t, checkup.NewConfigMap(expectedConfigMapName, nsName), actualConfigMap)
 }
 
-func assertConfigMapWriterRoleCreated(t *testing.T, testClient *fake.Clientset, nsName string) {
+func assertConfigMapWriterRoleCreated(t *testing.T, testClient *fake.Clientset, nsName, configMapName string) {
 	gvr := schema.GroupVersionResource{Group: rbacv1.GroupName, Version: "v1", Resource: rolesResource}
 	actualRole, err := testClient.Tracker().Get(gvr, nsName, checkup.ResultsConfigMapWriterRoleName)
 
 	assert.NoError(t, err)
 
 	expectedRole := checkup.NewConfigMapWriterRole(
-		checkup.ResultsConfigMapWriterRoleName, nsName, checkup.ResultsConfigMapName)
+		checkup.ResultsConfigMapWriterRoleName, nsName, configMapName)
 
 	assert.Equal(t, expectedRole, actualRole)
 }
