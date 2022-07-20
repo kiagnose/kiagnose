@@ -97,13 +97,14 @@ func TestCheckupWith(t *testing.T) {
 
 			checkupNamespaceName := nameGen.Name(checkup.NamespaceName)
 			resultsConfigMapName := checkup.NameResultsConfigMap(testCheckupName)
+			resultsConfigMapWriterRoleName := checkup.NameResultsConfigMapWriterRole(testCheckupName)
 
 			assert.NoError(t, testCheckup.Setup())
 			assertNamespaceCreated(t, c, checkupNamespaceName)
 			assertServiceAccountCreated(t, c, checkupNamespaceName)
 			assertResultsConfigMapCreated(t, c, checkupNamespaceName, resultsConfigMapName)
-			assertConfigMapWriterRoleCreated(t, c, checkupNamespaceName, resultsConfigMapName)
-			assertConfigMapWriterRoleBindingCreated(t, c, checkupNamespaceName)
+			assertConfigMapWriterRoleCreated(t, c, checkupNamespaceName, resultsConfigMapName, resultsConfigMapWriterRoleName)
+			assertConfigMapWriterRoleBindingCreated(t, c, checkupNamespaceName, resultsConfigMapWriterRoleName)
 			assertClusterRoleBindingsCreated(t, testsClient{c}, testCase.clusterRole, checkupNamespaceName, nameGen)
 		})
 	}
@@ -622,26 +623,25 @@ func assertResultsConfigMapCreated(t *testing.T, testClient *fake.Clientset, nsN
 	assert.Equal(t, checkup.NewConfigMap(expectedConfigMapName, nsName), actualConfigMap)
 }
 
-func assertConfigMapWriterRoleCreated(t *testing.T, testClient *fake.Clientset, nsName, configMapName string) {
+func assertConfigMapWriterRoleCreated(t *testing.T, testClient *fake.Clientset, nsName, configMapName, roleName string) {
 	gvr := schema.GroupVersionResource{Group: rbacv1.GroupName, Version: "v1", Resource: rolesResource}
-	actualRole, err := testClient.Tracker().Get(gvr, nsName, checkup.ResultsConfigMapWriterRoleName)
+	actualRole, err := testClient.Tracker().Get(gvr, nsName, roleName)
 
 	assert.NoError(t, err)
 
-	expectedRole := checkup.NewConfigMapWriterRole(
-		checkup.ResultsConfigMapWriterRoleName, nsName, configMapName)
+	expectedRole := checkup.NewConfigMapWriterRole(roleName, nsName, configMapName)
 
 	assert.Equal(t, expectedRole, actualRole)
 }
 
-func assertConfigMapWriterRoleBindingCreated(t *testing.T, testClient *fake.Clientset, nsName string) {
+func assertConfigMapWriterRoleBindingCreated(t *testing.T, testClient *fake.Clientset, nsName, roleName string) {
 	gvr := schema.GroupVersionResource{Group: rbacv1.GroupName, Version: "v1", Resource: rolesBindingResource}
-	actualRoleBinding, err := testClient.Tracker().Get(gvr, nsName, checkup.ResultsConfigMapWriterRoleName)
+	actualRoleBinding, err := testClient.Tracker().Get(gvr, nsName, roleName)
 
 	assert.NoError(t, err)
 
 	subject := rbacv1.Subject{Kind: rbacv1.ServiceAccountKind, Name: checkup.ServiceAccountName, Namespace: nsName}
-	expectedRoleBinding := checkup.NewRoleBinding(checkup.ResultsConfigMapWriterRoleName, nsName, subject)
+	expectedRoleBinding := checkup.NewRoleBinding(roleName, nsName, subject)
 
 	assert.Equal(t, expectedRoleBinding, actualRoleBinding)
 }
