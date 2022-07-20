@@ -55,10 +55,9 @@ type Checkup struct {
 }
 
 const (
-	NamespaceName                  = "kiagnose-checkup"
-	ServiceAccountName             = "checkup-sa"
-	ResultsConfigMapWriterRoleName = "results-configmap-writer"
-	JobName                        = "checkup-job"
+	NamespaceName      = "kiagnose-checkup"
+	ServiceAccountName = "checkup-sa"
+	JobName            = "checkup-job"
 
 	ResultsConfigMapNameEnvVarName      = "RESULT_CONFIGMAP_NAME"
 	ResultsConfigMapNameEnvVarNamespace = "RESULT_CONFIGMAP_NAMESPACE"
@@ -72,7 +71,8 @@ func New(c kubernetes.Interface, name string, checkupConfig *config.Config, name
 	nsName := namer.Name(NamespaceName)
 
 	resultsConfigMapName := NameResultsConfigMap(name)
-	checkupRoles := []*rbacv1.Role{NewConfigMapWriterRole(ResultsConfigMapWriterRoleName, nsName, resultsConfigMapName)}
+	resultsConfigMapWriterRoleName := NameResultsConfigMapWriterRole(name)
+	checkupRoles := []*rbacv1.Role{NewConfigMapWriterRole(resultsConfigMapWriterRoleName, nsName, resultsConfigMapName)}
 
 	subject := newServiceAccountSubject(ServiceAccountName, nsName)
 	var checkupRoleBindings []*rbacv1.RoleBinding
@@ -306,4 +306,8 @@ func concentrateErrors(errs []error) error {
 
 func NameResultsConfigMap(checkupName string) string {
 	return checkupName + "-results"
+}
+
+func NameResultsConfigMapWriterRole(checkupName string) string {
+	return checkupName + "-results-cm-writer"
 }
