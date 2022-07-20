@@ -98,14 +98,15 @@ func TestCheckupWith(t *testing.T) {
 			checkupNamespaceName := nameGen.Name(checkup.NamespaceName)
 			resultsConfigMapName := checkup.NameResultsConfigMap(testCheckupName)
 			resultsConfigMapWriterRoleName := checkup.NameResultsConfigMapWriterRole(testCheckupName)
+			serviceAccountName := checkup.NameServiceAccount(testCheckupName)
 
 			assert.NoError(t, testCheckup.Setup())
 			assertNamespaceCreated(t, c, checkupNamespaceName)
-			assertServiceAccountCreated(t, c, checkupNamespaceName)
+			assertServiceAccountCreated(t, c, checkupNamespaceName, serviceAccountName)
 			assertResultsConfigMapCreated(t, c, checkupNamespaceName, resultsConfigMapName)
 			assertConfigMapWriterRoleCreated(t, c, checkupNamespaceName, resultsConfigMapName, resultsConfigMapWriterRoleName)
-			assertConfigMapWriterRoleBindingCreated(t, c, checkupNamespaceName, resultsConfigMapWriterRoleName)
-			assertClusterRoleBindingsCreated(t, testsClient{c}, testCase.clusterRole, checkupNamespaceName, nameGen)
+			assertConfigMapWriterRoleBindingCreated(t, c, checkupNamespaceName, resultsConfigMapWriterRoleName, serviceAccountName)
+			assertClusterRoleBindingsCreated(t, testsClient{c}, testCase.clusterRole, checkupNamespaceName, serviceAccountName, nameGen)
 		})
 	}
 }
@@ -319,8 +320,10 @@ func TestCheckupRunShouldCreateAJob(t *testing.T) {
 				{Name: checkup.ResultsConfigMapNameEnvVarNamespace, Value: checkupNamespaceName},
 			}
 			expectedEnvVars = append(expectedEnvVars, testCase.envVars...)
+
+			serviceAccountName := checkup.NameServiceAccount(testCheckupName)
 			expectedJob := checkup.NewCheckupJob(
-				checkup.JobName, checkupNamespaceName, checkup.ServiceAccountName, testImage, int64(testTimeout.Seconds()), expectedEnvVars)
+				checkup.JobName, checkupNamespaceName, serviceAccountName, testImage, int64(testTimeout.Seconds()), expectedEnvVars)
 			actualJob, err := testClient.BatchV1().Jobs(checkupNamespaceName).Get(context.Background(), checkup.JobName, metav1.GetOptions{})
 			assert.NoError(t, err)
 
@@ -607,12 +610,12 @@ func assertNamespaceCreated(t *testing.T, testClient *fake.Clientset, nsName str
 	assert.Equal(t, checkup.NewNamespace(nsName), actualNs)
 }
 
-func assertServiceAccountCreated(t *testing.T, testClient *fake.Clientset, nsName string) {
+func assertServiceAccountCreated(t *testing.T, testClient *fake.Clientset, nsName, serviceAccountName string) {
 	gvr := schema.GroupVersionResource{Group: "", Version: "v1", Resource: serviceAccountResource}
-	actualServiceAccount, err := testClient.Tracker().Get(gvr, nsName, checkup.ServiceAccountName)
+	actualServiceAccount, err := testClient.Tracker().Get(gvr, nsName, serviceAccountName)
 
 	assert.NoError(t, err)
-	assert.Equal(t, checkup.NewServiceAccount(checkup.ServiceAccountName, nsName), actualServiceAccount)
+	assert.Equal(t, checkup.NewServiceAccount(serviceAccountName, nsName), actualServiceAccount)
 }
 
 func assertResultsConfigMapCreated(t *testing.T, testClient *fake.Clientset, nsName, expectedConfigMapName string) {
@@ -634,13 +637,13 @@ func assertConfigMapWriterRoleCreated(t *testing.T, testClient *fake.Clientset, 
 	assert.Equal(t, expectedRole, actualRole)
 }
 
-func assertConfigMapWriterRoleBindingCreated(t *testing.T, testClient *fake.Clientset, nsName, roleName string) {
+func assertConfigMapWriterRoleBindingCreated(t *testing.T, testClient *fake.Clientset, nsName, roleName, serviceAccountName string) {
 	gvr := schema.GroupVersionResource{Group: rbacv1.GroupName, Version: "v1", Resource: rolesBindingResource}
 	actualRoleBinding, err := testClient.Tracker().Get(gvr, nsName, roleName)
 
 	assert.NoError(t, err)
 
-	subject := rbacv1.Subject{Kind: rbacv1.ServiceAccountKind, Name: checkup.ServiceAccountName, Namespace: nsName}
+	subject := rbacv1.Subject{Kind: rbacv1.ServiceAccountKind, Name: serviceAccountName, Namespace: nsName}
 	expectedRoleBinding := checkup.NewRoleBinding(roleName, nsName, subject)
 
 	assert.Equal(t, expectedRoleBinding, actualRoleBinding)
@@ -650,13 +653,14 @@ func assertClusterRoleBindingsCreated(
 	t *testing.T,
 	testClient testsClient,
 	clusterRoles []*rbacv1.ClusterRole,
-	nsName string,
+	nsName,
+	serviceAccountName string,
 	nameGen nameGeneratorStub) {
 	actualClusterRoleBindings, err := testClient.listClusterRoleBindings()
 	assert.NoError(t, err)
 
 	var expectedClusterRoleBindings []rbacv1.ClusterRoleBinding
-	for _, clusterRoleBindingPtr := range checkup.NewClusterRoleBindings(clusterRoles, checkup.ServiceAccountName, nsName, nameGen) {
+	for _, clusterRoleBindingPtr := range checkup.NewClusterRoleBindings(clusterRoles, serviceAccountName, nsName, nameGen) {
 		expectedClusterRoleBindings = append(expectedClusterRoleBindings, *clusterRoleBindingPtr)
 	}
 	assert.Equal(t, actualClusterRoleBindings, expectedClusterRoleBindings)
