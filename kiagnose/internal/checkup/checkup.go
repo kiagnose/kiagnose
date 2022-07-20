@@ -55,11 +55,8 @@ type Checkup struct {
 }
 
 const (
-	NamespaceName                  = "kiagnose-checkup"
-	ServiceAccountName             = "checkup-sa"
-	ResultsConfigMapName           = "checkup-results"
-	ResultsConfigMapWriterRoleName = "results-configmap-writer"
-	JobName                        = "checkup-job"
+	NamespaceName = "kiagnose-checkup"
+	JobName       = "checkup-job"
 
 	ResultsConfigMapNameEnvVarName      = "RESULT_CONFIGMAP_NAME"
 	ResultsConfigMapNameEnvVarNamespace = "RESULT_CONFIGMAP_NAMESPACE"
@@ -69,18 +66,22 @@ type namer interface {
 	Name(string) string
 }
 
-func New(c kubernetes.Interface, checkupConfig *config.Config, namer namer) *Checkup {
+func New(c kubernetes.Interface, name string, checkupConfig *config.Config, namer namer) *Checkup {
 	nsName := namer.Name(NamespaceName)
-	checkupRoles := []*rbacv1.Role{NewConfigMapWriterRole(ResultsConfigMapWriterRoleName, nsName, ResultsConfigMapName)}
 
-	subject := newServiceAccountSubject(ServiceAccountName, nsName)
+	resultsConfigMapName := NameResultsConfigMap(name)
+	resultsConfigMapWriterRoleName := NameResultsConfigMapWriterRole(name)
+	serviceAccountName := NameServiceAccount(name)
+	checkupRoles := []*rbacv1.Role{NewConfigMapWriterRole(resultsConfigMapWriterRoleName, nsName, resultsConfigMapName)}
+
+	subject := newServiceAccountSubject(serviceAccountName, nsName)
 	var checkupRoleBindings []*rbacv1.RoleBinding
 	for _, role := range checkupRoles {
 		checkupRoleBindings = append(checkupRoleBindings, NewRoleBinding(role.Name, nsName, subject))
 	}
 
 	checkupEnvVars := []corev1.EnvVar{
-		{Name: ResultsConfigMapNameEnvVarName, Value: ResultsConfigMapName},
+		{Name: ResultsConfigMapNameEnvVarName, Value: resultsConfigMapName},
 		{Name: ResultsConfigMapNameEnvVarNamespace, Value: nsName},
 	}
 	checkupEnvVars = append(checkupEnvVars, checkupConfig.EnvVars...)
@@ -90,16 +91,16 @@ func New(c kubernetes.Interface, checkupConfig *config.Config, namer namer) *Che
 		client:              c,
 		teardownTimeout:     defaultTeardownTimeout,
 		namespace:           NewNamespace(nsName),
-		serviceAccount:      NewServiceAccount(ServiceAccountName, nsName),
-		resultConfigMap:     NewConfigMap(ResultsConfigMapName, nsName),
+		serviceAccount:      NewServiceAccount(serviceAccountName, nsName),
+		resultConfigMap:     NewConfigMap(resultsConfigMapName, nsName),
 		roles:               checkupRoles,
 		roleBindings:        checkupRoleBindings,
 		jobTimeout:          checkupConfig.Timeout,
-		clusterRoleBindings: NewClusterRoleBindings(checkupConfig.ClusterRoles, ServiceAccountName, nsName, namer),
+		clusterRoleBindings: NewClusterRoleBindings(checkupConfig.ClusterRoles, serviceAccountName, nsName, namer),
 		job: NewCheckupJob(
 			JobName,
 			nsName,
-			ServiceAccountName,
+			serviceAccountName,
 			checkupConfig.Image,
 			int64(checkupConfig.Timeout.Seconds()),
 			checkupEnvVars,
@@ -301,4 +302,16 @@ func concentrateErrors(errs []error) error {
 	}
 
 	return errors.New(sb.String())
+}
+
+func NameResultsConfigMap(checkupName string) string {
+	return checkupName + "-results"
+}
+
+func NameResultsConfigMapWriterRole(checkupName string) string {
+	return checkupName + "-results-cm-writer"
+}
+
+func NameServiceAccount(checkupName string) string {
+	return checkupName + "-sa"
 }
