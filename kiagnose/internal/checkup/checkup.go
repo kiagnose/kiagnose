@@ -55,9 +55,8 @@ type Checkup struct {
 }
 
 const (
-	NamespaceName      = "kiagnose-checkup"
-	ServiceAccountName = "checkup-sa"
-	JobName            = "checkup-job"
+	NamespaceName = "kiagnose-checkup"
+	JobName       = "checkup-job"
 
 	ResultsConfigMapNameEnvVarName      = "RESULT_CONFIGMAP_NAME"
 	ResultsConfigMapNameEnvVarNamespace = "RESULT_CONFIGMAP_NAMESPACE"
@@ -72,9 +71,10 @@ func New(c kubernetes.Interface, name string, checkupConfig *config.Config, name
 
 	resultsConfigMapName := NameResultsConfigMap(name)
 	resultsConfigMapWriterRoleName := NameResultsConfigMapWriterRole(name)
+	serviceAccountName := NameServiceAccount(name)
 	checkupRoles := []*rbacv1.Role{NewConfigMapWriterRole(resultsConfigMapWriterRoleName, nsName, resultsConfigMapName)}
 
-	subject := newServiceAccountSubject(ServiceAccountName, nsName)
+	subject := newServiceAccountSubject(serviceAccountName, nsName)
 	var checkupRoleBindings []*rbacv1.RoleBinding
 	for _, role := range checkupRoles {
 		checkupRoleBindings = append(checkupRoleBindings, NewRoleBinding(role.Name, nsName, subject))
@@ -91,16 +91,16 @@ func New(c kubernetes.Interface, name string, checkupConfig *config.Config, name
 		client:              c,
 		teardownTimeout:     defaultTeardownTimeout,
 		namespace:           NewNamespace(nsName),
-		serviceAccount:      NewServiceAccount(ServiceAccountName, nsName),
+		serviceAccount:      NewServiceAccount(serviceAccountName, nsName),
 		resultConfigMap:     NewConfigMap(resultsConfigMapName, nsName),
 		roles:               checkupRoles,
 		roleBindings:        checkupRoleBindings,
 		jobTimeout:          checkupConfig.Timeout,
-		clusterRoleBindings: NewClusterRoleBindings(checkupConfig.ClusterRoles, ServiceAccountName, nsName, namer),
+		clusterRoleBindings: NewClusterRoleBindings(checkupConfig.ClusterRoles, serviceAccountName, nsName, namer),
 		job: NewCheckupJob(
 			JobName,
 			nsName,
-			ServiceAccountName,
+			serviceAccountName,
 			checkupConfig.Image,
 			int64(checkupConfig.Timeout.Seconds()),
 			checkupEnvVars,
@@ -310,4 +310,8 @@ func NameResultsConfigMap(checkupName string) string {
 
 func NameResultsConfigMapWriterRole(checkupName string) string {
 	return checkupName + "-results-cm-writer"
+}
+
+func NameServiceAccount(checkupName string) string {
+	return checkupName + "-sa"
 }
