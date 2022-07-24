@@ -308,8 +308,9 @@ func TestCheckupRunShouldCreateAJob(t *testing.T) {
 			)
 
 			checkupNamespaceName := nameGen.Name(checkup.NamespaceName)
+			checkupJobName := checkup.NameJob(testCheckupName)
 			completeTrueJobCondition := &batchv1.JobCondition{Type: batchv1.JobComplete, Status: corev1.ConditionTrue}
-			testClient.injectJobWatchEvent(newJobWithCondition(checkupNamespaceName, checkup.JobName, completeTrueJobCondition))
+			testClient.injectJobWatchEvent(newJobWithCondition(checkupNamespaceName, checkupJobName, completeTrueJobCondition))
 
 			assert.NoError(t, testCheckup.Setup())
 			assert.NoError(t, testCheckup.Run())
@@ -323,8 +324,8 @@ func TestCheckupRunShouldCreateAJob(t *testing.T) {
 
 			serviceAccountName := checkup.NameServiceAccount(testCheckupName)
 			expectedJob := checkup.NewCheckupJob(
-				checkup.JobName, checkupNamespaceName, serviceAccountName, testImage, int64(testTimeout.Seconds()), expectedEnvVars)
-			actualJob, err := testClient.BatchV1().Jobs(checkupNamespaceName).Get(context.Background(), checkup.JobName, metav1.GetOptions{})
+				checkupJobName, checkupNamespaceName, serviceAccountName, testImage, int64(testTimeout.Seconds()), expectedEnvVars)
+			actualJob, err := testClient.BatchV1().Jobs(checkupNamespaceName).Get(context.Background(), checkupJobName, metav1.GetOptions{})
 			assert.NoError(t, err)
 
 			actualJob.ResourceVersion = ""
@@ -352,7 +353,8 @@ func TestCheckupRunShouldSucceed(t *testing.T) {
 			testCheckup := checkup.New(testClient, testCheckupName, &config.Config{Image: testImage, Timeout: testTimeout}, nameGen)
 
 			checkupNamespaceName := nameGen.Name(checkup.NamespaceName)
-			testClient.injectJobWatchEvent(newJobWithCondition(checkupNamespaceName, checkup.JobName, testCase.jobCondition))
+			checkupJobName := checkup.NameJob(testCheckupName)
+			testClient.injectJobWatchEvent(newJobWithCondition(checkupNamespaceName, checkupJobName, testCase.jobCondition))
 
 			assert.NoError(t, testCheckup.Setup())
 			assert.NoError(t, testCheckup.Run())
@@ -416,8 +418,9 @@ func TestCheckupRunShouldFailWhen(t *testing.T) {
 		testCheckup := checkup.New(testClient, testCheckupName, &config.Config{Image: testImage, Timeout: time.Second}, nameGen)
 
 		checkupNamespaceName := nameGen.Name(checkup.NamespaceName)
+		checkupJobName := checkup.NameJob(testCheckupName)
 		completeFalseJobCondition := &batchv1.JobCondition{Type: batchv1.JobComplete, Status: corev1.ConditionFalse}
-		testClient.injectJobWatchEvent(newJobWithCondition(checkupNamespaceName, checkup.JobName, completeFalseJobCondition))
+		testClient.injectJobWatchEvent(newJobWithCondition(checkupNamespaceName, checkupJobName, completeFalseJobCondition))
 
 		assert.NoError(t, testCheckup.Setup())
 		assert.ErrorContains(t, testCheckup.Run(), wait.ErrWaitTimeout.Error())
