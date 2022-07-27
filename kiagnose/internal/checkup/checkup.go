@@ -107,6 +107,88 @@ func New(c kubernetes.Interface, checkupConfig *config.Config, namer namer) *Che
 	}
 }
 
+// Setup creates each of the checkup objects inside the cluster.
+// In case of failure, an attempt to clean up the objects that already been created is made,
+// by deleting the Namespace and eventually all the objects inside it
+// https://kubernetes.io/docs/concepts/architecture/garbage-collection/#background-deletion
+func (c *Checkup) Setup() error {
+	const errPrefix = "setup"
+	var err error
+
+	if c.namespace, err = namespace.Create(c.client, c.namespace); err != nil {
+		return fmt.Errorf("%s: %v", errPrefix, err)
+	}
+	defer func() {
+		if err != nil {
+			_ = namespace.DeleteAndWait(c.client, c.namespace, c.teardownTimeout)
+		}
+	}()
+
+	if c.serviceAccount, err = serviceaccount.Create(c.client, c.serviceAccount); err != nil {
+		return fmt.Errorf("%s: %v", errPrefix, err)
+	}
+
+	if c.resultConfigMap, err = configmap.Create(c.client, c.resultConfigMap); err != nil {
+		return fmt.Errorf("%s: %v", errPrefix, err)
+	}
+
+	if c.roles, err = rbac.CreateRoles(c.client, c.roles); err != nil {
+		return fmt.Errorf("%s: %v", errPrefix, err)
+	}
+
+	if c.roleBindings, err = rbac.CreateRoleBindings(c.client, c.roleBindings); err != nil {
+		return fmt.Errorf("%s: %v", errPrefix, err)
+	}
+
+	if c.clusterRoleBindings, err = rbac.CreateClusterRoleBindings(c.client, c.clusterRoleBindings, c.teardownTimeout); err != nil {
+		return fmt.Errorf("%s: %v", errPrefix, err)
+	}
+
+	return nil
+}
+
+func (c *Checkup) Run() error {
+	const errPrefix = "run"
+	var err error
+
+	if c.job, err = job.Create(c.client, c.job); err != nil {
+		return fmt.Errorf("%s: %v", errPrefix, err)
+	}
+
+	if c.job, err = job.WaitForJobToFinish(c.client, c.job, c.jobTimeout); err != nil {
+		return fmt.Errorf("%s: %v", errPrefix, err)
+	}
+
+	return nil
+}
+
+func (c *Checkup) Results() (results.Results, error) {
+	return results.ReadFromConfigMap(c.client, c.resultConfigMap.Namespace, c.resultConfigMap.Name)
+}
+
+func (c *Checkup) SetTeardownTimeout(duration time.Duration) {
+	c.teardownTimeout = duration
+}
+
+func (c *Checkup) Teardown() error {
+	const errPrefix = "teardown"
+	var errs []error
+
+	if err := rbac.DeleteClusterRoleBindings(c.client, c.clusterRoleBindings, c.teardownTimeout); err != nil {
+		errs = append(errs, err)
+	}
+
+	if err := namespace.DeleteAndWait(c.client, c.namespace, c.teardownTimeout); err != nil {
+		errs = append(errs, err)
+	}
+
+	if len(errs) > 0 {
+		return fmt.Errorf("%s: %v", errPrefix, concentrateErrors(errs))
+	}
+
+	return nil
+}
+
 func NewNamespace(name string) *corev1.Namespace {
 	return &corev1.Namespace{
 		ObjectMeta: metav1.ObjectMeta{Name: name},
@@ -209,88 +291,6 @@ func NewCheckupJob(name, namespaceName, serviceAccountName, image string, active
 			Template:              checkupPodSpec,
 		},
 	}
-}
-
-// Setup creates each of the checkup objects inside the cluster.
-// In case of failure, an attempt to clean up the objects that already been created is made,
-// by deleting the Namespace and eventually all the objects inside it
-// https://kubernetes.io/docs/concepts/architecture/garbage-collection/#background-deletion
-func (c *Checkup) Setup() error {
-	const errPrefix = "setup"
-	var err error
-
-	if c.namespace, err = namespace.Create(c.client, c.namespace); err != nil {
-		return fmt.Errorf("%s: %v", errPrefix, err)
-	}
-	defer func() {
-		if err != nil {
-			_ = namespace.DeleteAndWait(c.client, c.namespace, c.teardownTimeout)
-		}
-	}()
-
-	if c.serviceAccount, err = serviceaccount.Create(c.client, c.serviceAccount); err != nil {
-		return fmt.Errorf("%s: %v", errPrefix, err)
-	}
-
-	if c.resultConfigMap, err = configmap.Create(c.client, c.resultConfigMap); err != nil {
-		return fmt.Errorf("%s: %v", errPrefix, err)
-	}
-
-	if c.roles, err = rbac.CreateRoles(c.client, c.roles); err != nil {
-		return fmt.Errorf("%s: %v", errPrefix, err)
-	}
-
-	if c.roleBindings, err = rbac.CreateRoleBindings(c.client, c.roleBindings); err != nil {
-		return fmt.Errorf("%s: %v", errPrefix, err)
-	}
-
-	if c.clusterRoleBindings, err = rbac.CreateClusterRoleBindings(c.client, c.clusterRoleBindings, c.teardownTimeout); err != nil {
-		return fmt.Errorf("%s: %v", errPrefix, err)
-	}
-
-	return nil
-}
-
-func (c *Checkup) Run() error {
-	const errPrefix = "run"
-	var err error
-
-	if c.job, err = job.Create(c.client, c.job); err != nil {
-		return fmt.Errorf("%s: %v", errPrefix, err)
-	}
-
-	if c.job, err = job.WaitForJobToFinish(c.client, c.job, c.jobTimeout); err != nil {
-		return fmt.Errorf("%s: %v", errPrefix, err)
-	}
-
-	return nil
-}
-
-func (c *Checkup) Results() (results.Results, error) {
-	return results.ReadFromConfigMap(c.client, c.resultConfigMap.Namespace, c.resultConfigMap.Name)
-}
-
-func (c *Checkup) SetTeardownTimeout(duration time.Duration) {
-	c.teardownTimeout = duration
-}
-
-func (c *Checkup) Teardown() error {
-	const errPrefix = "teardown"
-	var errs []error
-
-	if err := rbac.DeleteClusterRoleBindings(c.client, c.clusterRoleBindings, c.teardownTimeout); err != nil {
-		errs = append(errs, err)
-	}
-
-	if err := namespace.DeleteAndWait(c.client, c.namespace, c.teardownTimeout); err != nil {
-		errs = append(errs, err)
-	}
-
-	if len(errs) > 0 {
-		return fmt.Errorf("%s: %v", errPrefix, concentrateErrors(errs))
-	}
-
-	return nil
 }
 
 func concentrateErrors(errs []error) error {
