@@ -166,10 +166,6 @@ func (c *Checkup) Results() (results.Results, error) {
 	return results.ReadFromConfigMap(c.client, c.resultConfigMap.Namespace, c.resultConfigMap.Name)
 }
 
-func (c *Checkup) SetTeardownTimeout(duration time.Duration) {
-	c.teardownTimeout = duration
-}
-
 func (c *Checkup) Teardown() error {
 	const errPrefix = "teardown"
 	var errs []error
@@ -187,6 +183,10 @@ func (c *Checkup) Teardown() error {
 	}
 
 	return nil
+}
+
+func (c *Checkup) SetTeardownTimeout(duration time.Duration) {
+	c.teardownTimeout = duration
 }
 
 func NewNamespace(name string) *corev1.Namespace {
