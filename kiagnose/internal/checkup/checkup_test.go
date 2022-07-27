@@ -627,8 +627,8 @@ func assertConfigMapWriterRoleBindingCreated(t *testing.T, testClient *fake.Clie
 
 	assert.NoError(t, err)
 
-	subject := rbacv1.Subject{Kind: rbacv1.ServiceAccountKind, Name: checkup.ServiceAccountName, Namespace: nsName}
-	expectedRoleBinding := checkup.NewRoleBinding(nsName, checkup.ResultsConfigMapWriterRoleName, subject)
+	serviceAccountSubject := checkup.NewServiceAccountSubject(nsName, checkup.ServiceAccountName)
+	expectedRoleBinding := checkup.NewRoleBinding(nsName, checkup.ResultsConfigMapWriterRoleName, serviceAccountSubject)
 
 	assert.Equal(t, expectedRoleBinding, actualRoleBinding)
 }
