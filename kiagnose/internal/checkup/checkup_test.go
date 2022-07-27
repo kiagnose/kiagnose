@@ -307,7 +307,7 @@ func TestCheckupRunShouldCreateAJob(t *testing.T) {
 			}
 			expectedEnvVars = append(expectedEnvVars, testCase.envVars...)
 			expectedJob := checkup.NewCheckupJob(
-				checkup.JobName, checkupNamespaceName, checkup.ServiceAccountName, testImage, int64(testTimeout.Seconds()), expectedEnvVars)
+				checkupNamespaceName, checkup.JobName, checkup.ServiceAccountName, testImage, int64(testTimeout.Seconds()), expectedEnvVars)
 			actualJob, err := testClient.BatchV1().Jobs(checkupNamespaceName).Get(context.Background(), checkup.JobName, metav1.GetOptions{})
 			assert.NoError(t, err)
 
