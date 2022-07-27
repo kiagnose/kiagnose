@@ -71,7 +71,7 @@ type namer interface {
 
 func New(c kubernetes.Interface, checkupConfig *config.Config, namer namer) *Checkup {
 	nsName := namer.Name(NamespaceName)
-	checkupRoles := []*rbacv1.Role{NewConfigMapWriterRole(ResultsConfigMapWriterRoleName, nsName, ResultsConfigMapName)}
+	checkupRoles := []*rbacv1.Role{NewConfigMapWriterRole(nsName, ResultsConfigMapWriterRoleName, ResultsConfigMapName)}
 
 	subject := newServiceAccountSubject(nsName, ServiceAccountName)
 	var checkupRoleBindings []*rbacv1.RoleBinding
@@ -215,7 +215,7 @@ func NewConfigMap(namespaceName, name string) *corev1.ConfigMap {
 	}
 }
 
-func NewConfigMapWriterRole(name, namespaceName, configMapName string) *rbacv1.Role {
+func NewConfigMapWriterRole(namespaceName, name, configMapName string) *rbacv1.Role {
 	return &rbacv1.Role{
 		TypeMeta:   metav1.TypeMeta{Kind: "Role", APIVersion: rbacv1.GroupName},
 		ObjectMeta: metav1.ObjectMeta{Name: name, Namespace: namespaceName},

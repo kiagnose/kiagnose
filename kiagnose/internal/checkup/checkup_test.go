@@ -616,8 +616,7 @@ func assertConfigMapWriterRoleCreated(t *testing.T, testClient *fake.Clientset, 
 
 	assert.NoError(t, err)
 
-	expectedRole := checkup.NewConfigMapWriterRole(
-		checkup.ResultsConfigMapWriterRoleName, nsName, checkup.ResultsConfigMapName)
+	expectedRole := checkup.NewConfigMapWriterRole(nsName, checkup.ResultsConfigMapWriterRoleName, checkup.ResultsConfigMapName)
 
 	assert.Equal(t, expectedRole, actualRole)
 }
