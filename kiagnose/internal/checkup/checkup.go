@@ -73,10 +73,10 @@ func New(c kubernetes.Interface, checkupConfig *config.Config, namer namer) *Che
 	nsName := namer.Name(NamespaceName)
 	checkupRoles := []*rbacv1.Role{NewConfigMapWriterRole(nsName, ResultsConfigMapWriterRoleName, ResultsConfigMapName)}
 
-	subject := newServiceAccountSubject(nsName, ServiceAccountName)
+	serviceAccountSubject := NewServiceAccountSubject(nsName, ServiceAccountName)
 	var checkupRoleBindings []*rbacv1.RoleBinding
 	for _, role := range checkupRoles {
-		checkupRoleBindings = append(checkupRoleBindings, NewRoleBinding(nsName, role.Name, subject))
+		checkupRoleBindings = append(checkupRoleBindings, NewRoleBinding(nsName, role.Name, serviceAccountSubject))
 	}
 
 	checkupEnvVars := []corev1.EnvVar{
@@ -95,7 +95,7 @@ func New(c kubernetes.Interface, checkupConfig *config.Config, namer namer) *Che
 		roles:               checkupRoles,
 		roleBindings:        checkupRoleBindings,
 		jobTimeout:          checkupConfig.Timeout,
-		clusterRoleBindings: NewClusterRoleBindings(checkupConfig.ClusterRoles, nsName, ServiceAccountName, namer),
+		clusterRoleBindings: NewClusterRoleBindings(checkupConfig.ClusterRoles, serviceAccountSubject, namer),
 		job: NewCheckupJob(
 			nsName,
 			JobName,
@@ -201,7 +201,7 @@ func NewServiceAccount(namespaceName, name string) *corev1.ServiceAccount {
 	}
 }
 
-func newServiceAccountSubject(serviceAccountNamespace, serviceAccountName string) rbacv1.Subject {
+func NewServiceAccountSubject(serviceAccountNamespace, serviceAccountName string) rbacv1.Subject {
 	return rbacv1.Subject{
 		Kind:      rbacv1.ServiceAccountKind,
 		Name:      serviceAccountName,
@@ -243,10 +243,8 @@ func NewRoleBinding(namespaceName, roleName string, subject rbacv1.Subject) *rba
 
 func NewClusterRoleBindings(
 	clusterRoles []*rbacv1.ClusterRole,
-	serviceAccountNs,
-	serviceAccountName string,
+	subject rbacv1.Subject,
 	namer namer) []*rbacv1.ClusterRoleBinding {
-	subject := newServiceAccountSubject(serviceAccountNs, serviceAccountName)
 	var clusterRoleBindings []*rbacv1.ClusterRoleBinding
 	for _, clusterRole := range clusterRoles {
 		clusterRoleBindingName := namer.Name(clusterRole.Name)
