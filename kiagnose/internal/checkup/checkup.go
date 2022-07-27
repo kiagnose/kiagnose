@@ -76,7 +76,7 @@ func New(c kubernetes.Interface, checkupConfig *config.Config, namer namer) *Che
 	subject := newServiceAccountSubject(nsName, ServiceAccountName)
 	var checkupRoleBindings []*rbacv1.RoleBinding
 	for _, role := range checkupRoles {
-		checkupRoleBindings = append(checkupRoleBindings, NewRoleBinding(role.Name, nsName, subject))
+		checkupRoleBindings = append(checkupRoleBindings, NewRoleBinding(nsName, role.Name, subject))
 	}
 
 	checkupEnvVars := []corev1.EnvVar{
@@ -232,7 +232,7 @@ func newConfigMapWriterPolicyRule(cmName string) rbacv1.PolicyRule {
 	}
 }
 
-func NewRoleBinding(roleName, namespaceName string, subject rbacv1.Subject) *rbacv1.RoleBinding {
+func NewRoleBinding(namespaceName, roleName string, subject rbacv1.Subject) *rbacv1.RoleBinding {
 	return &rbacv1.RoleBinding{
 		TypeMeta:   metav1.TypeMeta{Kind: "RoleBinding", APIVersion: rbacv1.GroupName},
 		ObjectMeta: metav1.ObjectMeta{Name: roleName, Namespace: namespaceName},
