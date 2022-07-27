@@ -643,7 +643,7 @@ func assertClusterRoleBindingsCreated(
 	assert.NoError(t, err)
 
 	var expectedClusterRoleBindings []rbacv1.ClusterRoleBinding
-	for _, clusterRoleBindingPtr := range checkup.NewClusterRoleBindings(clusterRoles, checkup.ServiceAccountName, nsName, nameGen) {
+	for _, clusterRoleBindingPtr := range checkup.NewClusterRoleBindings(clusterRoles, nsName, checkup.ServiceAccountName, nameGen) {
 		expectedClusterRoleBindings = append(expectedClusterRoleBindings, *clusterRoleBindingPtr)
 	}
 	assert.Equal(t, actualClusterRoleBindings, expectedClusterRoleBindings)
