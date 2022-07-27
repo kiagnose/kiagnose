@@ -599,7 +599,7 @@ func assertServiceAccountCreated(t *testing.T, testClient *fake.Clientset, nsNam
 	actualServiceAccount, err := testClient.Tracker().Get(gvr, nsName, checkup.ServiceAccountName)
 
 	assert.NoError(t, err)
-	assert.Equal(t, checkup.NewServiceAccount(checkup.ServiceAccountName, nsName), actualServiceAccount)
+	assert.Equal(t, checkup.NewServiceAccount(nsName, checkup.ServiceAccountName), actualServiceAccount)
 }
 
 func assertResultsConfigMapCreated(t *testing.T, testClient *fake.Clientset, nsName string) {

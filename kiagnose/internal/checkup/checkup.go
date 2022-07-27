@@ -90,7 +90,7 @@ func New(c kubernetes.Interface, checkupConfig *config.Config, namer namer) *Che
 		client:              c,
 		teardownTimeout:     defaultTeardownTimeout,
 		namespace:           NewNamespace(nsName),
-		serviceAccount:      NewServiceAccount(ServiceAccountName, nsName),
+		serviceAccount:      NewServiceAccount(nsName, ServiceAccountName),
 		resultConfigMap:     NewConfigMap(ResultsConfigMapName, nsName),
 		roles:               checkupRoles,
 		roleBindings:        checkupRoleBindings,
@@ -195,7 +195,7 @@ func NewNamespace(name string) *corev1.Namespace {
 	}
 }
 
-func NewServiceAccount(name, namespaceName string) *corev1.ServiceAccount {
+func NewServiceAccount(namespaceName, name string) *corev1.ServiceAccount {
 	return &corev1.ServiceAccount{
 		ObjectMeta: metav1.ObjectMeta{Name: name, Namespace: namespaceName},
 	}
