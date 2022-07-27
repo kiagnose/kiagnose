@@ -201,6 +201,14 @@ func NewServiceAccount(name, namespaceName string) *corev1.ServiceAccount {
 	}
 }
 
+func newServiceAccountSubject(serviceAccountName, serviceAccountNamespace string) rbacv1.Subject {
+	return rbacv1.Subject{
+		Kind:      rbacv1.ServiceAccountKind,
+		Name:      serviceAccountName,
+		Namespace: serviceAccountNamespace,
+	}
+}
+
 func NewConfigMap(name, namespaceName string) *corev1.ConfigMap {
 	return &corev1.ConfigMap{
 		ObjectMeta: metav1.ObjectMeta{Name: name, Namespace: namespaceName},
@@ -245,14 +253,6 @@ func NewClusterRoleBindings(
 		clusterRoleBindings = append(clusterRoleBindings, newClusterRoleBinding(clusterRoleBindingName, clusterRole.Name, subject))
 	}
 	return clusterRoleBindings
-}
-
-func newServiceAccountSubject(serviceAccountName, serviceAccountNamespace string) rbacv1.Subject {
-	return rbacv1.Subject{
-		Kind:      rbacv1.ServiceAccountKind,
-		Name:      serviceAccountName,
-		Namespace: serviceAccountNamespace,
-	}
 }
 
 func newClusterRoleBinding(name, clusterRoleName string, subject rbacv1.Subject) *rbacv1.ClusterRoleBinding {
