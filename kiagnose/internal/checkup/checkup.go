@@ -74,7 +74,7 @@ func New(c kubernetes.Interface, name string, checkupConfig *config.Config, name
 	jobName := NameJob(name)
 	checkupRoles := []*rbacv1.Role{NewConfigMapWriterRole(nsName, resultsConfigMapWriterRoleName, resultsConfigMapName)}
 
-	subject := newServiceAccountSubject(serviceAccountName, nsName)
+	subject := newServiceAccountSubject(nsName, serviceAccountName)
 	var checkupRoleBindings []*rbacv1.RoleBinding
 	for _, role := range checkupRoles {
 		checkupRoleBindings = append(checkupRoleBindings, NewRoleBinding(nsName, role.Name, subject))
@@ -157,7 +157,7 @@ func NewClusterRoleBindings(
 	serviceAccountNs,
 	serviceAccountName string,
 	namer namer) []*rbacv1.ClusterRoleBinding {
-	subject := newServiceAccountSubject(serviceAccountName, serviceAccountNs)
+	subject := newServiceAccountSubject(serviceAccountNs, serviceAccountName)
 	var clusterRoleBindings []*rbacv1.ClusterRoleBinding
 	for _, clusterRole := range clusterRoles {
 		clusterRoleBindingName := namer.Name(clusterRole.Name)
@@ -166,7 +166,7 @@ func NewClusterRoleBindings(
 	return clusterRoleBindings
 }
 
-func newServiceAccountSubject(serviceAccountName, serviceAccountNamespace string) rbacv1.Subject {
+func newServiceAccountSubject(serviceAccountNamespace, serviceAccountName string) rbacv1.Subject {
 	return rbacv1.Subject{
 		Kind:      rbacv1.ServiceAccountKind,
 		Name:      serviceAccountName,
