@@ -98,8 +98,8 @@ func New(c kubernetes.Interface, name string, checkupConfig *config.Config, name
 		jobTimeout:          checkupConfig.Timeout,
 		clusterRoleBindings: NewClusterRoleBindings(checkupConfig.ClusterRoles, nsName, serviceAccountName, namer),
 		job: NewCheckupJob(
-			jobName,
 			nsName,
+			jobName,
 			serviceAccountName,
 			checkupConfig.Image,
 			int64(checkupConfig.Timeout.Seconds()),
@@ -187,7 +187,7 @@ func newClusterRoleBinding(name, clusterRoleName string, subject rbacv1.Subject)
 	}
 }
 
-func NewCheckupJob(name, namespaceName, serviceAccountName, image string, activeDeadlineSeconds int64, envs []corev1.EnvVar) *batchv1.Job {
+func NewCheckupJob(namespaceName, name, serviceAccountName, image string, activeDeadlineSeconds int64, envs []corev1.EnvVar) *batchv1.Job {
 	const containerName = "checkup"
 
 	checkupContainer := corev1.Container{Name: containerName, Image: image, Env: envs}
