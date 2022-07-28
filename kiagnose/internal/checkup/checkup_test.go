@@ -626,7 +626,7 @@ func assertResultsConfigMapCreated(t *testing.T, testClient *fake.Clientset, nsN
 	actualConfigMap, err := testClient.Tracker().Get(gvr, nsName, expectedConfigMapName)
 
 	assert.NoError(t, err)
-	assert.Equal(t, checkup.NewConfigMap(expectedConfigMapName, nsName), actualConfigMap)
+	assert.Equal(t, checkup.NewConfigMap(nsName, expectedConfigMapName), actualConfigMap)
 }
 
 func assertConfigMapWriterRoleCreated(t *testing.T, testClient *fake.Clientset, nsName, configMapName, roleName string) {

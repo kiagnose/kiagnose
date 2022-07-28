@@ -92,7 +92,7 @@ func New(c kubernetes.Interface, name string, checkupConfig *config.Config, name
 		teardownTimeout:     defaultTeardownTimeout,
 		namespace:           NewNamespace(nsName),
 		serviceAccount:      NewServiceAccount(nsName, serviceAccountName),
-		resultConfigMap:     NewConfigMap(resultsConfigMapName, nsName),
+		resultConfigMap:     NewConfigMap(nsName, resultsConfigMapName),
 		roles:               checkupRoles,
 		roleBindings:        checkupRoleBindings,
 		jobTimeout:          checkupConfig.Timeout,
@@ -120,7 +120,7 @@ func NewServiceAccount(namespaceName, name string) *corev1.ServiceAccount {
 	}
 }
 
-func NewConfigMap(name, namespaceName string) *corev1.ConfigMap {
+func NewConfigMap(namespaceName, name string) *corev1.ConfigMap {
 	return &corev1.ConfigMap{
 		ObjectMeta: metav1.ObjectMeta{Name: name, Namespace: namespaceName},
 	}
