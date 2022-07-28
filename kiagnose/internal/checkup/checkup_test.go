@@ -324,7 +324,7 @@ func TestCheckupRunShouldCreateAJob(t *testing.T) {
 
 			serviceAccountName := checkup.NameServiceAccount(testCheckupName)
 			expectedJob := checkup.NewCheckupJob(
-				checkupJobName, checkupNamespaceName, serviceAccountName, testImage, int64(testTimeout.Seconds()), expectedEnvVars)
+				checkupNamespaceName, checkupJobName, serviceAccountName, testImage, int64(testTimeout.Seconds()), expectedEnvVars)
 			actualJob, err := testClient.BatchV1().Jobs(checkupNamespaceName).Get(context.Background(), checkupJobName, metav1.GetOptions{})
 			assert.NoError(t, err)
 
