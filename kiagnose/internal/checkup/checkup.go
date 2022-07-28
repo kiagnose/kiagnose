@@ -72,7 +72,7 @@ func New(c kubernetes.Interface, name string, checkupConfig *config.Config, name
 	resultsConfigMapWriterRoleName := NameResultsConfigMapWriterRole(name)
 	serviceAccountName := NameServiceAccount(name)
 	jobName := NameJob(name)
-	checkupRoles := []*rbacv1.Role{NewConfigMapWriterRole(resultsConfigMapWriterRoleName, nsName, resultsConfigMapName)}
+	checkupRoles := []*rbacv1.Role{NewConfigMapWriterRole(nsName, resultsConfigMapWriterRoleName, resultsConfigMapName)}
 
 	subject := newServiceAccountSubject(serviceAccountName, nsName)
 	var checkupRoleBindings []*rbacv1.RoleBinding
@@ -126,7 +126,7 @@ func NewConfigMap(namespaceName, name string) *corev1.ConfigMap {
 	}
 }
 
-func NewConfigMapWriterRole(name, namespaceName, configMapName string) *rbacv1.Role {
+func NewConfigMapWriterRole(namespaceName, name, configMapName string) *rbacv1.Role {
 	return &rbacv1.Role{
 		TypeMeta:   metav1.TypeMeta{Kind: "Role", APIVersion: rbacv1.GroupName},
 		ObjectMeta: metav1.ObjectMeta{Name: name, Namespace: namespaceName},
