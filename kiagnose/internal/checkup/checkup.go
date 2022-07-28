@@ -74,10 +74,10 @@ func New(c kubernetes.Interface, name string, checkupConfig *config.Config, name
 	jobName := NameJob(name)
 	checkupRoles := []*rbacv1.Role{NewConfigMapWriterRole(nsName, resultsConfigMapWriterRoleName, resultsConfigMapName)}
 
-	subject := newServiceAccountSubject(nsName, serviceAccountName)
+	serviceAccountSubject := NewServiceAccountSubject(nsName, serviceAccountName)
 	var checkupRoleBindings []*rbacv1.RoleBinding
 	for _, role := range checkupRoles {
-		checkupRoleBindings = append(checkupRoleBindings, NewRoleBinding(nsName, role.Name, subject))
+		checkupRoleBindings = append(checkupRoleBindings, NewRoleBinding(nsName, role.Name, serviceAccountSubject))
 	}
 
 	checkupEnvVars := []corev1.EnvVar{
@@ -96,7 +96,7 @@ func New(c kubernetes.Interface, name string, checkupConfig *config.Config, name
 		roles:               checkupRoles,
 		roleBindings:        checkupRoleBindings,
 		jobTimeout:          checkupConfig.Timeout,
-		clusterRoleBindings: NewClusterRoleBindings(checkupConfig.ClusterRoles, nsName, serviceAccountName, namer),
+		clusterRoleBindings: NewClusterRoleBindings(checkupConfig.ClusterRoles, serviceAccountSubject, namer),
 		job: NewCheckupJob(
 			nsName,
 			jobName,
@@ -154,10 +154,8 @@ func NewRoleBinding(namespaceName, roleName string, subject rbacv1.Subject) *rba
 
 func NewClusterRoleBindings(
 	clusterRoles []*rbacv1.ClusterRole,
-	serviceAccountNs,
-	serviceAccountName string,
+	subject rbacv1.Subject,
 	namer namer) []*rbacv1.ClusterRoleBinding {
-	subject := newServiceAccountSubject(serviceAccountNs, serviceAccountName)
 	var clusterRoleBindings []*rbacv1.ClusterRoleBinding
 	for _, clusterRole := range clusterRoles {
 		clusterRoleBindingName := namer.Name(clusterRole.Name)
@@ -166,7 +164,7 @@ func NewClusterRoleBindings(
 	return clusterRoleBindings
 }
 
-func newServiceAccountSubject(serviceAccountNamespace, serviceAccountName string) rbacv1.Subject {
+func NewServiceAccountSubject(serviceAccountNamespace, serviceAccountName string) rbacv1.Subject {
 	return rbacv1.Subject{
 		Kind:      rbacv1.ServiceAccountKind,
 		Name:      serviceAccountName,
