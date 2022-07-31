@@ -365,13 +365,20 @@ func TestCheckupRunShouldSucceed(t *testing.T) {
 }
 
 func TestCheckupRunShouldFailWhen(t *testing.T) {
-	t.Run("failed to create Job", func(t *testing.T) {
-		const expectedErr = "failed to create Job"
-		testClient := newNormalizedFakeClientset()
-		testClient.injectCreateErrorForResource(jobResource, expectedErr)
-		testClient.injectResourceVersionUpdateOnJobCreation()
+	var testClient *testsClient
+
+	setup := func() {
+		testClient = newNormalizedFakeClientset()
 		testClient.injectResourceVersionUpdateOnNamespaceCreation()
 		testClient.injectWatchWithNamespaceDeleteEvent()
+	}
+
+	t.Run("failed to create Job", func(t *testing.T) {
+		const expectedErr = "failed to create Job"
+
+		setup()
+		testClient.injectCreateErrorForResource(jobResource, expectedErr)
+		testClient.injectResourceVersionUpdateOnJobCreation()
 
 		testCheckup := checkup.New(testClient, testCheckupName, &config.Config{Image: testImage, Timeout: testTimeout}, nameGeneratorStub{})
 
@@ -382,9 +389,7 @@ func TestCheckupRunShouldFailWhen(t *testing.T) {
 	})
 
 	t.Run("fail to watch Job", func(t *testing.T) {
-		testClient := newNormalizedFakeClientset()
-		testClient.injectResourceVersionUpdateOnNamespaceCreation()
-		testClient.injectWatchWithNamespaceDeleteEvent()
+		setup()
 
 		testCheckup := checkup.New(testClient, testCheckupName, &config.Config{Image: testImage, Timeout: testTimeout}, nameGeneratorStub{})
 
@@ -395,10 +400,8 @@ func TestCheckupRunShouldFailWhen(t *testing.T) {
 	})
 
 	t.Run("Job wont finish on time", func(t *testing.T) {
-		testClient := newNormalizedFakeClientset()
+		setup()
 		testClient.injectResourceVersionUpdateOnJobCreation()
-		testClient.injectResourceVersionUpdateOnNamespaceCreation()
-		testClient.injectWatchWithNamespaceDeleteEvent()
 
 		testCheckup := checkup.New(testClient, testCheckupName, &config.Config{Image: testImage, Timeout: time.Nanosecond}, nameGeneratorStub{})
 
@@ -409,10 +412,8 @@ func TestCheckupRunShouldFailWhen(t *testing.T) {
 	})
 
 	t.Run("Job wont finish on time with complete condition status false", func(t *testing.T) {
-		testClient := newNormalizedFakeClientset()
+		setup()
 		testClient.injectResourceVersionUpdateOnJobCreation()
-		testClient.injectResourceVersionUpdateOnNamespaceCreation()
-		testClient.injectWatchWithNamespaceDeleteEvent()
 
 		nameGen := nameGeneratorStub{}
 		testCheckup := checkup.New(testClient, testCheckupName, &config.Config{Image: testImage, Timeout: time.Second}, nameGen)
