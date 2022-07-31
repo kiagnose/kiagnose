@@ -366,6 +366,7 @@ func TestCheckupRunShouldSucceed(t *testing.T) {
 
 func TestCheckupRunShouldFailWhen(t *testing.T) {
 	var testClient *testsClient
+	var nameGen nameGeneratorStub
 
 	setup := func() {
 		testClient = newNormalizedFakeClientset()
@@ -380,7 +381,7 @@ func TestCheckupRunShouldFailWhen(t *testing.T) {
 		testClient.injectCreateErrorForResource(jobResource, expectedErr)
 		testClient.injectResourceVersionUpdateOnJobCreation()
 
-		testCheckup := checkup.New(testClient, testCheckupName, &config.Config{Image: testImage, Timeout: testTimeout}, nameGeneratorStub{})
+		testCheckup := checkup.New(testClient, testCheckupName, &config.Config{Image: testImage, Timeout: testTimeout}, nameGen)
 
 		assert.NoError(t, testCheckup.Setup())
 		assert.ErrorContains(t, testCheckup.Run(), expectedErr)
@@ -391,7 +392,7 @@ func TestCheckupRunShouldFailWhen(t *testing.T) {
 	t.Run("fail to watch Job", func(t *testing.T) {
 		setup()
 
-		testCheckup := checkup.New(testClient, testCheckupName, &config.Config{Image: testImage, Timeout: testTimeout}, nameGeneratorStub{})
+		testCheckup := checkup.New(testClient, testCheckupName, &config.Config{Image: testImage, Timeout: testTimeout}, nameGen)
 
 		assert.NoError(t, testCheckup.Setup())
 		assert.ErrorContains(t, testCheckup.Run(), "initial RV \"\" is not supported")
@@ -403,7 +404,7 @@ func TestCheckupRunShouldFailWhen(t *testing.T) {
 		setup()
 		testClient.injectResourceVersionUpdateOnJobCreation()
 
-		testCheckup := checkup.New(testClient, testCheckupName, &config.Config{Image: testImage, Timeout: time.Nanosecond}, nameGeneratorStub{})
+		testCheckup := checkup.New(testClient, testCheckupName, &config.Config{Image: testImage, Timeout: time.Nanosecond}, nameGen)
 
 		assert.NoError(t, testCheckup.Setup())
 		assert.ErrorContains(t, testCheckup.Run(), wait.ErrWaitTimeout.Error())
@@ -415,7 +416,6 @@ func TestCheckupRunShouldFailWhen(t *testing.T) {
 		setup()
 		testClient.injectResourceVersionUpdateOnJobCreation()
 
-		nameGen := nameGeneratorStub{}
 		testCheckup := checkup.New(testClient, testCheckupName, &config.Config{Image: testImage, Timeout: time.Second}, nameGen)
 
 		checkupNamespaceName := nameGen.Name(checkup.EphemeralNamespacePrefix)
