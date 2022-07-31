@@ -95,7 +95,7 @@ func TestCheckupWith(t *testing.T) {
 				nameGen,
 			)
 
-			checkupNamespaceName := nameGen.Name(checkup.NamespaceName)
+			checkupNamespaceName := nameGen.Name(checkup.EphemeralNamespacePrefix)
 			resultsConfigMapName := checkup.NameResultsConfigMap(testCheckupName)
 			resultsConfigMapWriterRoleName := checkup.NameResultsConfigMapWriterRole(testCheckupName)
 			serviceAccountName := checkup.NameServiceAccount(testCheckupName)
@@ -307,7 +307,7 @@ func TestCheckupRunShouldCreateAJob(t *testing.T) {
 				nameGen,
 			)
 
-			checkupNamespaceName := nameGen.Name(checkup.NamespaceName)
+			checkupNamespaceName := nameGen.Name(checkup.EphemeralNamespacePrefix)
 			checkupJobName := checkup.NameJob(testCheckupName)
 			completeTrueJobCondition := &batchv1.JobCondition{Type: batchv1.JobComplete, Status: corev1.ConditionTrue}
 			testClient.injectJobWatchEvent(newJobWithCondition(checkupNamespaceName, checkupJobName, completeTrueJobCondition))
@@ -352,7 +352,7 @@ func TestCheckupRunShouldSucceed(t *testing.T) {
 			nameGen := nameGeneratorStub{}
 			testCheckup := checkup.New(testClient, testCheckupName, &config.Config{Image: testImage, Timeout: testTimeout}, nameGen)
 
-			checkupNamespaceName := nameGen.Name(checkup.NamespaceName)
+			checkupNamespaceName := nameGen.Name(checkup.EphemeralNamespacePrefix)
 			checkupJobName := checkup.NameJob(testCheckupName)
 			testClient.injectJobWatchEvent(newJobWithCondition(checkupNamespaceName, checkupJobName, testCase.jobCondition))
 
@@ -417,7 +417,7 @@ func TestCheckupRunShouldFailWhen(t *testing.T) {
 		nameGen := nameGeneratorStub{}
 		testCheckup := checkup.New(testClient, testCheckupName, &config.Config{Image: testImage, Timeout: time.Second}, nameGen)
 
-		checkupNamespaceName := nameGen.Name(checkup.NamespaceName)
+		checkupNamespaceName := nameGen.Name(checkup.EphemeralNamespacePrefix)
 		checkupJobName := checkup.NameJob(testCheckupName)
 		completeFalseJobCondition := &batchv1.JobCondition{Type: batchv1.JobComplete, Status: corev1.ConditionFalse}
 		testClient.injectJobWatchEvent(newJobWithCondition(checkupNamespaceName, checkupJobName, completeFalseJobCondition))
@@ -437,8 +437,8 @@ func newTestClusterRoles() []*rbacv1.ClusterRole {
 
 func newTestRoles() []*rbacv1.Role {
 	return []*rbacv1.Role{
-		{TypeMeta: metav1.TypeMeta{Kind: "Role"}, ObjectMeta: metav1.ObjectMeta{Name: "role1", Namespace: checkup.NamespaceName}},
-		{TypeMeta: metav1.TypeMeta{Kind: "Role"}, ObjectMeta: metav1.ObjectMeta{Name: "role2", Namespace: checkup.NamespaceName}}}
+		{TypeMeta: metav1.TypeMeta{Kind: "Role"}, ObjectMeta: metav1.ObjectMeta{Name: "role1", Namespace: checkup.EphemeralNamespacePrefix}},
+		{TypeMeta: metav1.TypeMeta{Kind: "Role"}, ObjectMeta: metav1.ObjectMeta{Name: "role2", Namespace: checkup.EphemeralNamespacePrefix}}}
 }
 
 func newTestEnvVars() []corev1.EnvVar {
@@ -577,8 +577,8 @@ func (c *testsClient) injectWatchWithNamespaceDeleteEvent() {
 		watcher.Delete(
 			&corev1.Namespace{
 				ObjectMeta: metav1.ObjectMeta{
-					Name:            checkup.NamespaceName,
-					Labels:          k8slabels.Set{corev1.LabelMetadataName: checkup.NamespaceName},
+					Name:            checkup.EphemeralNamespacePrefix,
+					Labels:          k8slabels.Set{corev1.LabelMetadataName: checkup.EphemeralNamespacePrefix},
 					ResourceVersion: "123",
 				},
 			},

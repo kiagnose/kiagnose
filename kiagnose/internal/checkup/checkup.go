@@ -55,7 +55,7 @@ type Checkup struct {
 }
 
 const (
-	NamespaceName = "kiagnose-checkup"
+	EphemeralNamespacePrefix = "kiagnose-checkup"
 
 	ResultsConfigMapNameEnvVarName      = "RESULT_CONFIGMAP_NAME"
 	ResultsConfigMapNameEnvVarNamespace = "RESULT_CONFIGMAP_NAMESPACE"
@@ -66,7 +66,7 @@ type namer interface {
 }
 
 func New(c kubernetes.Interface, name string, checkupConfig *config.Config, namer namer) *Checkup {
-	nsName := namer.Name(NamespaceName)
+	nsName := namer.Name(EphemeralNamespacePrefix)
 
 	resultsConfigMapName := NameResultsConfigMap(name)
 	resultsConfigMapWriterRoleName := NameResultsConfigMapWriterRole(name)
