@@ -182,27 +182,7 @@ func TestCheckTeardownShouldSucceed(t *testing.T) {
 func TestCheckupTeardownShouldFail(t *testing.T) {
 	testTeardownShouldFailWhenNamespaceDeletionFails(t)
 	testTeardownShouldFailWhenNamespaceDeletionTimeoutExpires(t)
-
-	t.Run("fail when failed to delete ClusterRoleBinding", func(t *testing.T) {
-		testClient := newNormalizedFakeClientset()
-		testCheckup := checkup.New(
-			testClient,
-			testCheckupName,
-			&config.Config{Image: testImage, Timeout: testTimeout, ClusterRoles: newTestClusterRoles()},
-			nameGeneratorStub{},
-		)
-
-		testClient.injectResourceVersionUpdateOnNamespaceCreation()
-		testClient.injectWatchWithNamespaceDeleteEvent()
-
-		assert.NoError(t, testCheckup.Setup())
-
-		const expectedErr = "failed to delete ClusterRoleBinding"
-		testClient.injectDeleteErrorForResource(clusterRoleBindingResource, expectedErr)
-
-		assert.ErrorContains(t, testCheckup.Teardown(), expectedErr)
-		assertNoNamespaceExists(t, testClient)
-	})
+	testTeardownShouldFailWhenClusterRoleBindingsDeletionFails(t)
 
 	t.Run("fail when ClusterRoleBinding wont dispose on time", func(t *testing.T) {
 		testClient := newNormalizedFakeClientset()
@@ -282,6 +262,27 @@ func testTeardownShouldFailWhenNamespaceDeletionTimeoutExpires(t *testing.T) {
 
 	assert.ErrorContains(t, testCheckup.Teardown(), wait.ErrWaitTimeout.Error())
 	assertNoClusterRoleBindingExists(t, testClient)
+}
+
+func testTeardownShouldFailWhenClusterRoleBindingsDeletionFails(t *testing.T) {
+	testClient := newNormalizedFakeClientset()
+	testCheckup := checkup.New(
+		testClient,
+		testCheckupName,
+		&config.Config{Image: testImage, Timeout: testTimeout, ClusterRoles: newTestClusterRoles()},
+		nameGeneratorStub{},
+	)
+
+	testClient.injectResourceVersionUpdateOnNamespaceCreation()
+	testClient.injectWatchWithNamespaceDeleteEvent()
+
+	assert.NoError(t, testCheckup.Setup())
+
+	const expectedErr = "failed to delete ClusterRoleBinding"
+	testClient.injectDeleteErrorForResource(clusterRoleBindingResource, expectedErr)
+
+	assert.ErrorContains(t, testCheckup.Teardown(), expectedErr)
+	assertNoNamespaceExists(t, testClient)
 }
 
 type checkupRunTestCase struct {
