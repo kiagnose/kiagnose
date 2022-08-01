@@ -274,6 +274,10 @@ func (c *Checkup) SetTeardownTimeout(duration time.Duration) {
 }
 
 func (c *Checkup) Teardown() error {
+	return c.teardownWithEphemeralNamespace()
+}
+
+func (c *Checkup) teardownWithEphemeralNamespace() error {
 	const errPrefix = "teardown"
 	var errs []error
 
