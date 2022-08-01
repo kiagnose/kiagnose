@@ -181,6 +181,7 @@ func TestCheckTeardownShouldSucceed(t *testing.T) {
 
 func TestCheckupTeardownShouldFail(t *testing.T) {
 	testTeardownShouldFailWhenNamespaceDeletionFails(t)
+	testTeardownShouldFailWhenNamespaceDeletionTimeoutExpires(t)
 
 	t.Run("fail when failed to delete ClusterRoleBinding", func(t *testing.T) {
 		testClient := newNormalizedFakeClientset()
@@ -201,22 +202,6 @@ func TestCheckupTeardownShouldFail(t *testing.T) {
 
 		assert.ErrorContains(t, testCheckup.Teardown(), expectedErr)
 		assertNoNamespaceExists(t, testClient)
-	})
-
-	t.Run("fail when Namespace wont dispose on time", func(t *testing.T) {
-		testClient := newNormalizedFakeClientset()
-		testCheckup := checkup.New(testClient, testCheckupName, &config.Config{Image: testImage, Timeout: testTimeout}, nameGeneratorStub{})
-
-		testCheckup.SetTeardownTimeout(time.Nanosecond)
-
-		testClient.injectResourceVersionUpdateOnNamespaceCreation()
-
-		assert.NoError(t, testCheckup.Setup())
-
-		testClient.injectIgnoreOperation("delete", namespaceResource)
-
-		assert.ErrorContains(t, testCheckup.Teardown(), wait.ErrWaitTimeout.Error())
-		assertNoClusterRoleBindingExists(t, testClient)
 	})
 
 	t.Run("fail when ClusterRoleBinding wont dispose on time", func(t *testing.T) {
@@ -280,6 +265,22 @@ func testTeardownShouldFailWhenNamespaceDeletionFails(t *testing.T) {
 	testClient.injectDeleteErrorForResource(namespaceResource, expectedErr)
 
 	assert.ErrorContains(t, testCheckup.Teardown(), expectedErr)
+	assertNoClusterRoleBindingExists(t, testClient)
+}
+
+func testTeardownShouldFailWhenNamespaceDeletionTimeoutExpires(t *testing.T) {
+	testClient := newNormalizedFakeClientset()
+	testCheckup := checkup.New(testClient, testCheckupName, &config.Config{Image: testImage, Timeout: testTimeout}, nameGeneratorStub{})
+
+	testCheckup.SetTeardownTimeout(time.Nanosecond)
+
+	testClient.injectResourceVersionUpdateOnNamespaceCreation()
+
+	assert.NoError(t, testCheckup.Setup())
+
+	testClient.injectIgnoreOperation("delete", namespaceResource)
+
+	assert.ErrorContains(t, testCheckup.Teardown(), wait.ErrWaitTimeout.Error())
 	assertNoClusterRoleBindingExists(t, testClient)
 }
 
