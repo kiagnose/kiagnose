@@ -45,7 +45,7 @@ func Run(env map[string]string) error {
 	}
 
 	l := launcher.New(
-		checkup.New(c, configMapName, checkupConfig, namegenerator.NameGenerator{}),
+		checkup.New(c, configMapNamespace, configMapName, checkupConfig, namegenerator.NameGenerator{}),
 		reporter.New(c, configMapNamespace, configMapName),
 	)
 
