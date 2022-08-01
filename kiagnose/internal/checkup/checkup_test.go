@@ -184,31 +184,7 @@ func TestCheckupTeardownShouldFail(t *testing.T) {
 	testTeardownShouldFailWhenNamespaceDeletionTimeoutExpires(t)
 	testTeardownShouldFailWhenClusterRoleBindingsDeletionFails(t)
 	testTeardownShouldFailWhenClusterRoleBindingsDeletionTimeoutExpires(t)
-
-	t.Run("fail when failed to delete both Namespace and ClusterRoleBindings", func(t *testing.T) {
-		testClient := newNormalizedFakeClientset()
-		testCheckup := checkup.New(
-			testClient,
-			testCheckupName,
-			&config.Config{Image: testImage, Timeout: testTimeout, ClusterRoles: newTestClusterRoles()},
-			nameGeneratorStub{},
-		)
-
-		testClient.injectResourceVersionUpdateOnNamespaceCreation()
-
-		assert.NoError(t, testCheckup.Setup())
-
-		const (
-			deleteNamespaceError          = "failed to delete Namespace"
-			deleteClusterRoleBindingError = "failed to delete ClusterRoleBindings"
-		)
-		testClient.injectDeleteErrorForResource(namespaceResource, deleteNamespaceError)
-		testClient.injectDeleteErrorForResource(clusterRoleBindingResource, deleteClusterRoleBindingError)
-
-		err := testCheckup.Teardown()
-		assert.ErrorContains(t, err, deleteNamespaceError)
-		assert.ErrorContains(t, err, deleteClusterRoleBindingError)
-	})
+	testTeardownShouldFailWhenNamespaceAndClusterRoleBindingsDeletionFails(t)
 }
 
 func testTeardownShouldFailWhenNamespaceDeletionFails(t *testing.T) {
@@ -284,6 +260,31 @@ func testTeardownShouldFailWhenClusterRoleBindingsDeletionTimeoutExpires(t *test
 
 	assert.ErrorContains(t, testCheckup.Teardown(), expectedErrMatch)
 	assertNoNamespaceExists(t, testClient)
+}
+
+func testTeardownShouldFailWhenNamespaceAndClusterRoleBindingsDeletionFails(t *testing.T) {
+	testClient := newNormalizedFakeClientset()
+	testCheckup := checkup.New(
+		testClient,
+		testCheckupName,
+		&config.Config{Image: testImage, Timeout: testTimeout, ClusterRoles: newTestClusterRoles()},
+		nameGeneratorStub{},
+	)
+
+	testClient.injectResourceVersionUpdateOnNamespaceCreation()
+
+	assert.NoError(t, testCheckup.Setup())
+
+	const (
+		deleteNamespaceError          = "failed to delete Namespace"
+		deleteClusterRoleBindingError = "failed to delete ClusterRoleBindings"
+	)
+	testClient.injectDeleteErrorForResource(namespaceResource, deleteNamespaceError)
+	testClient.injectDeleteErrorForResource(clusterRoleBindingResource, deleteClusterRoleBindingError)
+
+	err := testCheckup.Teardown()
+	assert.ErrorContains(t, err, deleteNamespaceError)
+	assert.ErrorContains(t, err, deleteClusterRoleBindingError)
 }
 
 type checkupRunTestCase struct {
