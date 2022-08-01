@@ -183,29 +183,7 @@ func TestCheckupTeardownShouldFail(t *testing.T) {
 	testTeardownShouldFailWhenNamespaceDeletionFails(t)
 	testTeardownShouldFailWhenNamespaceDeletionTimeoutExpires(t)
 	testTeardownShouldFailWhenClusterRoleBindingsDeletionFails(t)
-
-	t.Run("fail when ClusterRoleBinding wont dispose on time", func(t *testing.T) {
-		testClient := newNormalizedFakeClientset()
-		testCheckup := checkup.New(
-			testClient,
-			testCheckupName,
-			&config.Config{Image: testImage, Timeout: testTimeout, ClusterRoles: newTestClusterRoles()},
-			nameGeneratorStub{},
-		)
-
-		testCheckup.SetTeardownTimeout(time.Nanosecond)
-
-		assert.NoError(t, testCheckup.Setup())
-
-		const (
-			getClusterRoleBindingsError = "failed to get ClusterRoleBinding"
-			expectedErrMatch            = "timed out"
-		)
-		testClient.injectGetErrorForResource(clusterRoleBindingResource, getClusterRoleBindingsError)
-
-		assert.ErrorContains(t, testCheckup.Teardown(), expectedErrMatch)
-		assertNoNamespaceExists(t, testClient)
-	})
+	testTeardownShouldFailWhenClusterRoleBindingsDeletionTimeoutExpires(t)
 
 	t.Run("fail when failed to delete both Namespace and ClusterRoleBindings", func(t *testing.T) {
 		testClient := newNormalizedFakeClientset()
@@ -282,6 +260,29 @@ func testTeardownShouldFailWhenClusterRoleBindingsDeletionFails(t *testing.T) {
 	testClient.injectDeleteErrorForResource(clusterRoleBindingResource, expectedErr)
 
 	assert.ErrorContains(t, testCheckup.Teardown(), expectedErr)
+	assertNoNamespaceExists(t, testClient)
+}
+
+func testTeardownShouldFailWhenClusterRoleBindingsDeletionTimeoutExpires(t *testing.T) {
+	testClient := newNormalizedFakeClientset()
+	testCheckup := checkup.New(
+		testClient,
+		testCheckupName,
+		&config.Config{Image: testImage, Timeout: testTimeout, ClusterRoles: newTestClusterRoles()},
+		nameGeneratorStub{},
+	)
+
+	testCheckup.SetTeardownTimeout(time.Nanosecond)
+
+	assert.NoError(t, testCheckup.Setup())
+
+	const (
+		getClusterRoleBindingsError = "failed to get ClusterRoleBinding"
+		expectedErrMatch            = "timed out"
+	)
+	testClient.injectGetErrorForResource(clusterRoleBindingResource, getClusterRoleBindingsError)
+
+	assert.ErrorContains(t, testCheckup.Teardown(), expectedErrMatch)
 	assertNoNamespaceExists(t, testClient)
 }
 
