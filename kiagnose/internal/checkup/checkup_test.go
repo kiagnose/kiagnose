@@ -179,7 +179,9 @@ func TestCheckTeardownShouldSucceed(t *testing.T) {
 	assert.NoError(t, testCheckup.Teardown())
 }
 
-func TestCheckupTeardownShould(t *testing.T) {
+func TestCheckupTeardownShouldFail(t *testing.T) {
+	testTeardownShouldFailWhenNamespaceDeletionFails(t)
+
 	t.Run("fail when failed to delete ClusterRoleBinding", func(t *testing.T) {
 		testClient := newNormalizedFakeClientset()
 		testCheckup := checkup.New(
@@ -199,21 +201,6 @@ func TestCheckupTeardownShould(t *testing.T) {
 
 		assert.ErrorContains(t, testCheckup.Teardown(), expectedErr)
 		assertNoNamespaceExists(t, testClient)
-	})
-
-	t.Run("fail when failed to delete Namespace", func(t *testing.T) {
-		testClient := newNormalizedFakeClientset()
-		testCheckup := checkup.New(testClient, testCheckupName, &config.Config{Image: testImage, Timeout: testTimeout}, nameGeneratorStub{})
-
-		testClient.injectResourceVersionUpdateOnNamespaceCreation()
-
-		assert.NoError(t, testCheckup.Setup())
-
-		const expectedErr = "failed to delete ClusterRoleBinding"
-		testClient.injectDeleteErrorForResource(namespaceResource, expectedErr)
-
-		assert.ErrorContains(t, testCheckup.Teardown(), expectedErr)
-		assertNoClusterRoleBindingExists(t, testClient)
 	})
 
 	t.Run("fail when Namespace wont dispose on time", func(t *testing.T) {
@@ -279,6 +266,21 @@ func TestCheckupTeardownShould(t *testing.T) {
 		assert.ErrorContains(t, err, deleteNamespaceError)
 		assert.ErrorContains(t, err, deleteClusterRoleBindingError)
 	})
+}
+
+func testTeardownShouldFailWhenNamespaceDeletionFails(t *testing.T) {
+	testClient := newNormalizedFakeClientset()
+	testCheckup := checkup.New(testClient, testCheckupName, &config.Config{Image: testImage, Timeout: testTimeout}, nameGeneratorStub{})
+
+	testClient.injectResourceVersionUpdateOnNamespaceCreation()
+
+	assert.NoError(t, testCheckup.Setup())
+
+	const expectedErr = "failed to delete ClusterRoleBinding"
+	testClient.injectDeleteErrorForResource(namespaceResource, expectedErr)
+
+	assert.ErrorContains(t, testCheckup.Teardown(), expectedErr)
+	assertNoClusterRoleBindingExists(t, testClient)
 }
 
 type checkupRunTestCase struct {
