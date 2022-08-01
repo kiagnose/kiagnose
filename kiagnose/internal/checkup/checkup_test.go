@@ -58,6 +58,7 @@ const (
 	configMapResource          = "configmaps"
 	jobResource                = "jobs"
 
+	testTargetNs    = "target-ns"
 	testCheckupName = "checkup1"
 	testImage       = "framework:v1"
 	testTimeout     = time.Minute
@@ -84,6 +85,7 @@ func TestCheckupWith(t *testing.T) {
 			nameGen := nameGeneratorStub{}
 			testCheckup := checkup.New(
 				c,
+				checkup.KiagnoseNamespace,
 				testCheckupName,
 				&config.Config{
 					Image:        testImage,
@@ -128,6 +130,7 @@ func TestCheckupSetupShouldFailWhen(t *testing.T) {
 			testClient.injectCreateErrorForResource(testCase.resource, expectedErr)
 			testCheckup := checkup.New(
 				testClient,
+				checkup.KiagnoseNamespace,
 				testCheckupName,
 				&config.Config{
 					Image:        testImage,
@@ -157,6 +160,7 @@ func TestCheckupSetupShould(t *testing.T) {
 		testClient.injectResourceVersionUpdateOnJobCreation()
 		testCheckup := checkup.New(
 			testClient,
+			checkup.KiagnoseNamespace,
 			testCheckupName,
 			&config.Config{Image: testImage, Timeout: testTimeout, ClusterRoles: expectedClusterRoles},
 			nameGen,
@@ -168,15 +172,107 @@ func TestCheckupSetupShould(t *testing.T) {
 	})
 }
 
+func TestSetupInTargetNamespaceShouldSucceedWith(t *testing.T) {
+	checkupCreateTestCases := []checkupSetupTestCase{
+		{description: "no arguments"},
+		{description: "ClusterRoles", clusterRole: newTestClusterRoles()},
+		{description: "Roles", roles: newTestRoles()},
+		{description: "env vars", envVars: newTestEnvVars()},
+	}
+
+	for _, testCase := range checkupCreateTestCases {
+		t.Run(testCase.description, func(t *testing.T) {
+			c := fake.NewSimpleClientset()
+
+			targetNs := &corev1.Namespace{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: testTargetNs,
+				},
+			}
+
+			_, err := c.CoreV1().Namespaces().Create(context.Background(), targetNs, metav1.CreateOptions{})
+			assert.NoError(t, err)
+
+			nameGen := nameGeneratorStub{}
+
+			testCheckup := checkup.New(
+				c,
+				testTargetNs,
+				testCheckupName,
+				&config.Config{
+					Image:        testImage,
+					Timeout:      testTimeout,
+					EnvVars:      testCase.envVars,
+					ClusterRoles: testCase.clusterRole,
+					Roles:        testCase.roles,
+				},
+				nameGen,
+			)
+
+			assert.NoError(t, testCheckup.Setup())
+
+			resultsConfigMapName := checkup.NameResultsConfigMap(testCheckupName)
+			resultsConfigMapWriterRoleName := checkup.NameResultsConfigMapWriterRole(testCheckupName)
+			serviceAccountName := checkup.NameServiceAccount(testCheckupName)
+
+			expectedEphemeralNamespaceName := nameGen.Name(checkup.EphemeralNamespacePrefix)
+			assertNamespaceDoesntExists(t, c, expectedEphemeralNamespaceName)
+
+			assertServiceAccountCreated(t, c, testTargetNs, serviceAccountName)
+			assertResultsConfigMapCreated(t, c, testTargetNs, resultsConfigMapName)
+			assertConfigMapWriterRoleCreated(t, c, testTargetNs, resultsConfigMapName, resultsConfigMapWriterRoleName)
+			assertConfigMapWriterRoleBindingCreated(t, c, testTargetNs, resultsConfigMapWriterRoleName, serviceAccountName)
+			assertClusterRoleBindingsCreated(t, testsClient{c}, testCase.clusterRole, testTargetNs, serviceAccountName, nameGen)
+		})
+	}
+}
+
 func TestCheckTeardownShouldSucceed(t *testing.T) {
 	testClient := newNormalizedFakeClientset()
-	testCheckup := checkup.New(testClient, testCheckupName, &config.Config{Image: testImage, Timeout: testTimeout}, nameGeneratorStub{})
+	testCheckup := checkup.New(
+		testClient,
+		checkup.KiagnoseNamespace,
+		testCheckupName,
+		&config.Config{Image: testImage, Timeout: testTimeout},
+		nameGeneratorStub{},
+	)
 
 	testClient.injectResourceVersionUpdateOnNamespaceCreation()
 	testClient.injectWatchWithNamespaceDeleteEvent()
 
 	assert.NoError(t, testCheckup.Setup())
 	assert.NoError(t, testCheckup.Teardown())
+}
+
+func TestTeardownInTargetNamespaceShouldSucceed(t *testing.T) {
+	testClient := newNormalizedFakeClientset()
+
+	targetNs := &corev1.Namespace{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: testTargetNs,
+		},
+	}
+
+	_, err := testClient.CoreV1().Namespaces().Create(context.Background(), targetNs, metav1.CreateOptions{})
+	assert.NoError(t, err)
+
+	nameGen := nameGeneratorStub{}
+	testCheckup := checkup.New(
+		testClient,
+		testTargetNs,
+		testCheckupName,
+		&config.Config{Image: testImage, Timeout: testTimeout},
+		nameGen,
+	)
+
+	assert.NoError(t, testCheckup.Setup())
+
+	expectedEphemeralNamespaceName := nameGen.Name(checkup.EphemeralNamespacePrefix)
+	assertNamespaceDoesntExists(t, testClient.Clientset, expectedEphemeralNamespaceName)
+
+	assert.NoError(t, testCheckup.Teardown())
+
+	assertNamespaceExists(t, testClient.Clientset, testTargetNs)
 }
 
 func TestCheckupTeardownShouldFail(t *testing.T) {
@@ -189,7 +285,13 @@ func TestCheckupTeardownShouldFail(t *testing.T) {
 
 func testTeardownShouldFailWhenNamespaceDeletionFails(t *testing.T) {
 	testClient := newNormalizedFakeClientset()
-	testCheckup := checkup.New(testClient, testCheckupName, &config.Config{Image: testImage, Timeout: testTimeout}, nameGeneratorStub{})
+	testCheckup := checkup.New(
+		testClient,
+		checkup.KiagnoseNamespace,
+		testCheckupName,
+		&config.Config{Image: testImage, Timeout: testTimeout},
+		nameGeneratorStub{},
+	)
 
 	testClient.injectResourceVersionUpdateOnNamespaceCreation()
 
@@ -204,7 +306,13 @@ func testTeardownShouldFailWhenNamespaceDeletionFails(t *testing.T) {
 
 func testTeardownShouldFailWhenNamespaceDeletionTimeoutExpires(t *testing.T) {
 	testClient := newNormalizedFakeClientset()
-	testCheckup := checkup.New(testClient, testCheckupName, &config.Config{Image: testImage, Timeout: testTimeout}, nameGeneratorStub{})
+	testCheckup := checkup.New(
+		testClient,
+		checkup.KiagnoseNamespace,
+		testCheckupName,
+		&config.Config{Image: testImage, Timeout: testTimeout},
+		nameGeneratorStub{},
+	)
 
 	testCheckup.SetTeardownTimeout(time.Nanosecond)
 
@@ -222,6 +330,7 @@ func testTeardownShouldFailWhenClusterRoleBindingsDeletionFails(t *testing.T) {
 	testClient := newNormalizedFakeClientset()
 	testCheckup := checkup.New(
 		testClient,
+		checkup.KiagnoseNamespace,
 		testCheckupName,
 		&config.Config{Image: testImage, Timeout: testTimeout, ClusterRoles: newTestClusterRoles()},
 		nameGeneratorStub{},
@@ -243,6 +352,7 @@ func testTeardownShouldFailWhenClusterRoleBindingsDeletionTimeoutExpires(t *test
 	testClient := newNormalizedFakeClientset()
 	testCheckup := checkup.New(
 		testClient,
+		checkup.KiagnoseNamespace,
 		testCheckupName,
 		&config.Config{Image: testImage, Timeout: testTimeout, ClusterRoles: newTestClusterRoles()},
 		nameGeneratorStub{},
@@ -266,6 +376,7 @@ func testTeardownShouldFailWhenNamespaceAndClusterRoleBindingsDeletionFails(t *t
 	testClient := newNormalizedFakeClientset()
 	testCheckup := checkup.New(
 		testClient,
+		checkup.KiagnoseNamespace,
 		testCheckupName,
 		&config.Config{Image: testImage, Timeout: testTimeout, ClusterRoles: newTestClusterRoles()},
 		nameGeneratorStub{},
@@ -308,6 +419,7 @@ func TestCheckupRunShouldCreateAJob(t *testing.T) {
 			nameGen := nameGeneratorStub{}
 			testCheckup := checkup.New(
 				testClient,
+				checkup.KiagnoseNamespace,
 				testCheckupName,
 				&config.Config{Image: testImage, Timeout: testTimeout, EnvVars: testCase.envVars},
 				nameGen,
@@ -356,7 +468,12 @@ func TestCheckupRunShouldSucceed(t *testing.T) {
 			testClient.injectWatchWithNamespaceDeleteEvent()
 
 			nameGen := nameGeneratorStub{}
-			testCheckup := checkup.New(testClient, testCheckupName, &config.Config{Image: testImage, Timeout: testTimeout}, nameGen)
+			testCheckup := checkup.New(
+				testClient,
+				checkup.KiagnoseNamespace,
+				testCheckupName,
+				&config.Config{Image: testImage, Timeout: testTimeout},
+				nameGen)
 
 			checkupNamespaceName := nameGen.Name(checkup.EphemeralNamespacePrefix)
 			checkupJobName := checkup.NameJob(testCheckupName)
@@ -387,7 +504,13 @@ func TestCheckupRunShouldFailWhen(t *testing.T) {
 		testClient.injectCreateErrorForResource(jobResource, expectedErr)
 		testClient.injectResourceVersionUpdateOnJobCreation()
 
-		testCheckup := checkup.New(testClient, testCheckupName, &config.Config{Image: testImage, Timeout: testTimeout}, nameGen)
+		testCheckup := checkup.New(
+			testClient,
+			checkup.KiagnoseNamespace,
+			testCheckupName,
+			&config.Config{Image: testImage, Timeout: testTimeout},
+			nameGen,
+		)
 
 		assert.NoError(t, testCheckup.Setup())
 		assert.ErrorContains(t, testCheckup.Run(), expectedErr)
@@ -398,7 +521,13 @@ func TestCheckupRunShouldFailWhen(t *testing.T) {
 	t.Run("fail to watch Job", func(t *testing.T) {
 		setup()
 
-		testCheckup := checkup.New(testClient, testCheckupName, &config.Config{Image: testImage, Timeout: testTimeout}, nameGen)
+		testCheckup := checkup.New(
+			testClient,
+			checkup.KiagnoseNamespace,
+			testCheckupName,
+			&config.Config{Image: testImage, Timeout: testTimeout},
+			nameGen,
+		)
 
 		assert.NoError(t, testCheckup.Setup())
 		assert.ErrorContains(t, testCheckup.Run(), "initial RV \"\" is not supported")
@@ -410,7 +539,13 @@ func TestCheckupRunShouldFailWhen(t *testing.T) {
 		setup()
 		testClient.injectResourceVersionUpdateOnJobCreation()
 
-		testCheckup := checkup.New(testClient, testCheckupName, &config.Config{Image: testImage, Timeout: time.Nanosecond}, nameGen)
+		testCheckup := checkup.New(
+			testClient,
+			checkup.KiagnoseNamespace,
+			testCheckupName,
+			&config.Config{Image: testImage, Timeout: time.Nanosecond},
+			nameGen,
+		)
 
 		assert.NoError(t, testCheckup.Setup())
 		assert.ErrorContains(t, testCheckup.Run(), wait.ErrWaitTimeout.Error())
@@ -422,7 +557,13 @@ func TestCheckupRunShouldFailWhen(t *testing.T) {
 		setup()
 		testClient.injectResourceVersionUpdateOnJobCreation()
 
-		testCheckup := checkup.New(testClient, testCheckupName, &config.Config{Image: testImage, Timeout: time.Second}, nameGen)
+		testCheckup := checkup.New(
+			testClient,
+			checkup.KiagnoseNamespace,
+			testCheckupName,
+			&config.Config{Image: testImage, Timeout: time.Second},
+			nameGen,
+		)
 
 		checkupNamespaceName := nameGen.Name(checkup.EphemeralNamespacePrefix)
 		checkupJobName := checkup.NameJob(testCheckupName)
@@ -618,6 +759,20 @@ func assertNamespaceCreated(t *testing.T, testClient *fake.Clientset, nsName str
 
 	assert.NoError(t, err)
 	assert.Equal(t, checkup.NewNamespace(nsName), actualNs)
+}
+
+func assertNamespaceExists(t *testing.T, testClient *fake.Clientset, nsName string) {
+	gvr := schema.GroupVersionResource{Group: "", Version: "v1", Resource: namespaceResource}
+	_, err := testClient.Tracker().Get(gvr, "", nsName)
+
+	assert.NoError(t, err)
+}
+
+func assertNamespaceDoesntExists(t *testing.T, testClient *fake.Clientset, nsName string) {
+	gvr := schema.GroupVersionResource{Group: "", Version: "v1", Resource: namespaceResource}
+	_, err := testClient.Tracker().Get(gvr, "", nsName)
+
+	assert.ErrorContains(t, err, "not found")
 }
 
 func assertServiceAccountCreated(t *testing.T, testClient *fake.Clientset, nsName, serviceAccountName string) {
