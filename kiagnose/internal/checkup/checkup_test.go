@@ -287,6 +287,9 @@ func TestTeardownInTargetNamespaceShouldSucceed(t *testing.T) {
 
 	configMapWriterRoleName := checkup.NameResultsConfigMapWriterRole(testCheckupName)
 	assertConfigMapWriterRoleDoesntExists(t, testClient.Clientset, testTargetNs, configMapWriterRoleName)
+
+	resultsConfigMapName := checkup.NameResultsConfigMap(testCheckupName)
+	assertConfigMapDoesntExists(t, testClient.Clientset, testTargetNs, resultsConfigMapName)
 }
 
 func TestCheckupTeardownShouldFail(t *testing.T) {
@@ -838,6 +841,13 @@ func assertResultsConfigMapCreated(t *testing.T, testClient *fake.Clientset, nsN
 
 	assert.NoError(t, err)
 	assert.Equal(t, checkup.NewConfigMap(nsName, expectedConfigMapName), actualConfigMap)
+}
+
+func assertConfigMapDoesntExists(t *testing.T, testClient *fake.Clientset, nsName, expectedConfigMapName string) {
+	gvr := schema.GroupVersionResource{Group: "", Version: "v1", Resource: configMapResource}
+	_, err := testClient.Tracker().Get(gvr, nsName, expectedConfigMapName)
+
+	assert.ErrorContains(t, err, "not found")
 }
 
 func assertConfigMapWriterRoleCreated(t *testing.T, testClient *fake.Clientset, nsName, configMapName, roleName string) {
