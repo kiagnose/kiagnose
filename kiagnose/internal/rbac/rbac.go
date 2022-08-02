@@ -229,3 +229,33 @@ func createRoleBinding(client kubernetes.Interface, crb *rbacv1.RoleBinding) (*r
 
 	return createdRb, nil
 }
+
+func DeleteRoleBindings(client kubernetes.Interface, roleBindings []*rbacv1.RoleBinding) error {
+	var errs []error
+
+	for _, roleBinding := range roleBindings {
+		if err := deleteRoleBinding(client, roleBinding.Namespace, roleBinding.Name); err != nil {
+			errs = append(errs, err)
+		}
+	}
+
+	if len(errs) > 0 {
+		return fmt.Errorf("%v", concentrateErrors(errs))
+	}
+
+	return nil
+}
+
+func deleteRoleBinding(client kubernetes.Interface, namespace, name string) error {
+	return client.RbacV1().RoleBindings(namespace).Delete(context.Background(), name, metav1.DeleteOptions{})
+}
+
+func concentrateErrors(errs []error) error {
+	sb := strings.Builder{}
+	for _, err := range errs {
+		sb.WriteString(err.Error())
+		sb.WriteString("\n")
+	}
+
+	return errors.New(sb.String())
+}

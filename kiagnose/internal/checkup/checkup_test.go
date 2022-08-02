@@ -54,6 +54,7 @@ const (
 	clusterRoleBindingKind     = "ClusterRoleBinding"
 	rolesResource              = "roles"
 	rolesBindingResource       = "rolebindings"
+	roleBindingKind            = "RoleBinding"
 	serviceAccountResource     = "serviceaccounts"
 	configMapResource          = "configmaps"
 	jobResource                = "jobs"
@@ -279,6 +280,7 @@ func TestTeardownInTargetNamespaceShouldSucceed(t *testing.T) {
 	assertNamespaceExists(t, testClient.Clientset, testTargetNs)
 	assertCheckupJobDoesntExists(t, testClient, testTargetNs, checkupJobName)
 	assertNoClusterRoleBindingExists(t, testClient)
+	assertNoRoleBindingExists(t, testClient)
 }
 
 func TestCheckupTeardownShouldFail(t *testing.T) {
@@ -769,6 +771,18 @@ func (c *testsClient) listClusterRoleBindings() ([]rbacv1.ClusterRoleBinding, er
 	return nil, nil
 }
 
+func (c *testsClient) listRoleBindings() ([]rbacv1.RoleBinding, error) {
+	objects, err := c.listObjectsByKind(rbacv1.GroupName, rolesBindingResource, roleBindingKind)
+	if err != nil {
+		return nil, err
+	}
+	if objects != nil {
+		roleBindingsList := objects.(*rbacv1.RoleBindingList)
+		return roleBindingsList.Items, nil
+	}
+	return nil, nil
+}
+
 func (c *testsClient) listObjectsByKind(group, resourceName, resourceKind string) (runtime.Object, error) {
 	gvr := schema.GroupVersionResource{Group: group, Version: "v1", Resource: resourceName}
 	gvk := schema.GroupVersionKind{Group: group, Version: "v1", Kind: resourceKind}
@@ -880,6 +894,12 @@ func assertNoClusterRoleBindingExists(t *testing.T, testClient *testsClient) {
 func assertCheckupJobDoesntExists(t *testing.T, testClient *testsClient, namespace, name string) {
 	_, err := testClient.BatchV1().Jobs(namespace).Get(context.Background(), name, metav1.GetOptions{})
 	assert.ErrorContains(t, err, "not found")
+}
+
+func assertNoRoleBindingExists(t *testing.T, testClient *testsClient) {
+	roleBindings, err := testClient.listRoleBindings()
+	assert.NoError(t, err)
+	assert.Empty(t, roleBindings)
 }
 
 type nameGeneratorStub struct{}
