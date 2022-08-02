@@ -111,17 +111,27 @@ main() {
   fi
 
   if [ -n "${OPT_RUN_TEST}" ]; then
-      # kiagnose sanity e2e test uses the echo-checkup
-      cd checkups/echo
+    echo_checkup_in_ephemeral_ns
+  fi
 
-      echo "Post echo checkup ConfigMap & Job:"
-      echo
+  if [ -n "${OPT_DELETE_CLUSTER}" ]; then
+      ${KIND} delete cluster
+  fi
+}
 
-      KIAGNOSE_NAMESPACE=kiagnose
-      KIAGNOSE_JOB=echo-checkup1
-      ECHO_CONFIGMAP=echo-checkup-config
+echo_checkup_in_ephemeral_ns()
+{
+  # kiagnose sanity e2e test uses the echo-checkup
+  cd checkups/echo
 
-      cat <<EOF | ${KUBECTL} apply -f -
+  echo "Post echo checkup ConfigMap & Job:"
+  echo
+
+  KIAGNOSE_NAMESPACE=kiagnose
+  KIAGNOSE_JOB=echo-checkup1
+  ECHO_CONFIGMAP=echo-checkup-config
+
+  cat <<EOF | ${KUBECTL} apply -f -
 apiVersion: v1
 kind: ConfigMap
 metadata:
@@ -133,7 +143,7 @@ data:
   spec.param.message: "Hi!"
 EOF
 
-    cat <<EOF | ${KUBECTL} apply -f -
+  cat <<EOF | ${KUBECTL} apply -f -
 apiVersion: batch/v1
 kind: Job
 metadata:
@@ -156,25 +166,20 @@ spec:
               value: ${ECHO_CONFIGMAP}
 EOF
 
-      ${KUBECTL} wait --for=condition=complete --timeout=1m job.batch/${KIAGNOSE_JOB} -n ${KIAGNOSE_NAMESPACE}
+  ${KUBECTL} wait --for=condition=complete --timeout=1m job.batch/${KIAGNOSE_JOB} -n ${KIAGNOSE_NAMESPACE}
 
-      echo
-      echo "Result:"
-      echo
-      ${KUBECTL} get configmap ${ECHO_CONFIGMAP} -n ${KIAGNOSE_NAMESPACE} -o yaml
-      ${KUBECTL} get configmap ${ECHO_CONFIGMAP} -n ${KIAGNOSE_NAMESPACE} -o yaml | grep -q "status.result.echo: Hi!"
-      echo
-      echo "Cleanup:"
-      echo
-      ${KUBECTL} delete job ${KIAGNOSE_JOB} -n ${KIAGNOSE_NAMESPACE}
-      ${KUBECTL} delete configmap ${ECHO_CONFIGMAP} -n ${KIAGNOSE_NAMESPACE}
+  echo
+  echo "Result:"
+  echo
+  ${KUBECTL} get configmap ${ECHO_CONFIGMAP} -n ${KIAGNOSE_NAMESPACE} -o yaml
+  ${KUBECTL} get configmap ${ECHO_CONFIGMAP} -n ${KIAGNOSE_NAMESPACE} -o yaml | grep -q "status.result.echo: Hi!"
+  echo
+  echo "Cleanup:"
+  echo
+  ${KUBECTL} delete job ${KIAGNOSE_JOB} -n ${KIAGNOSE_NAMESPACE}
+  ${KUBECTL} delete configmap ${ECHO_CONFIGMAP} -n ${KIAGNOSE_NAMESPACE}
 
-      cd -
-  fi
-
-  if [ -n "${OPT_DELETE_CLUSTER}" ]; then
-      ${KIND} delete cluster
-  fi
+  cd -
 }
 
 main "$@"
