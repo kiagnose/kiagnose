@@ -310,9 +310,19 @@ func (c *Checkup) teardownWithEphemeralNamespace() error {
 }
 
 func (c *Checkup) teardownWithTargetNamespace() error {
+	var errs []error
+
 	if err := job.DeleteAndWait(c.client, c.job, c.teardownTimeout); err != nil {
+		errs = append(errs, err)
+	}
+
+	if err := rbac.DeleteClusterRoleBindings(c.client, c.clusterRoleBindings, c.teardownTimeout); err != nil {
+		errs = append(errs, err)
+	}
+
+	if len(errs) > 0 {
 		const errPrefix = "teardown"
-		return fmt.Errorf("%s: %v", errPrefix, err)
+		return fmt.Errorf("%s: %v", errPrefix, concentrateErrors(errs))
 	}
 
 	return nil
