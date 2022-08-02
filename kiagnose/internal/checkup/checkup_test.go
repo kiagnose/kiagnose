@@ -262,7 +262,7 @@ func TestTeardownInTargetNamespaceShouldSucceed(t *testing.T) {
 		testClient,
 		testTargetNs,
 		testCheckupName,
-		&config.Config{Image: testImage, Timeout: testTimeout},
+		&config.Config{Image: testImage, Timeout: testTimeout, ClusterRoles: newTestClusterRoles()},
 		nameGen,
 	)
 
@@ -278,6 +278,7 @@ func TestTeardownInTargetNamespaceShouldSucceed(t *testing.T) {
 
 	assertNamespaceExists(t, testClient.Clientset, testTargetNs)
 	assertCheckupJobDoesntExists(t, testClient, testTargetNs, checkupJobName)
+	assertNoClusterRoleBindingExists(t, testClient)
 }
 
 func TestCheckupTeardownShouldFail(t *testing.T) {
