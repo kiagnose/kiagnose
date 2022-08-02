@@ -324,6 +324,10 @@ func (c *Checkup) teardownWithTargetNamespace() error {
 		errs = append(errs, err)
 	}
 
+	if err := serviceaccount.Delete(c.client, c.serviceAccount.Namespace, c.serviceAccount.Name); err != nil {
+		errs = append(errs, err)
+	}
+
 	if len(errs) > 0 {
 		const errPrefix = "teardown"
 		return fmt.Errorf("%s: %v", errPrefix, concentrateErrors(errs))
