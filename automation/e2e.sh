@@ -111,8 +111,6 @@ fi
 
 if [ -n "${OPT_RUN_TEST}" ]; then
     # kiagnose sanity e2e test uses the echo-checkup
-    cd checkups/echo
-
     echo "Post echo checkup ConfigMap & Job:"
     echo
 
@@ -167,8 +165,6 @@ EOF
     echo
     ${KUBECTL} delete job ${KIAGNOSE_JOB} -n ${KIAGNOSE_NAMESPACE}
     ${KUBECTL} delete configmap ${ECHO_CONFIGMAP} -n ${KIAGNOSE_NAMESPACE}
-
-    cd -
 fi
 
 if [ -n "${OPT_DELETE_CLUSTER}" ]; then
