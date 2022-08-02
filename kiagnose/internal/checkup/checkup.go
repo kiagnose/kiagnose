@@ -332,6 +332,10 @@ func (c *Checkup) teardownWithTargetNamespace() error {
 		errs = append(errs, err)
 	}
 
+	if err := configmap.Delete(c.client, c.resultConfigMap.Namespace, c.resultConfigMap.Name); err != nil {
+		errs = append(errs, err)
+	}
+
 	if len(errs) > 0 {
 		const errPrefix = "teardown"
 		return fmt.Errorf("%s: %v", errPrefix, concentrateErrors(errs))

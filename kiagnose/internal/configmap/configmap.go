@@ -44,3 +44,7 @@ func Get(client kubernetes.Interface, namespace, name string) (*corev1.ConfigMap
 func Update(client kubernetes.Interface, configMap *corev1.ConfigMap) (*corev1.ConfigMap, error) {
 	return client.CoreV1().ConfigMaps(configMap.Namespace).Update(context.Background(), configMap, metav1.UpdateOptions{})
 }
+
+func Delete(client kubernetes.Interface, namespace, name string) error {
+	return client.CoreV1().ConfigMaps(namespace).Delete(context.Background(), name, metav1.DeleteOptions{})
+}
