@@ -284,6 +284,9 @@ func TestTeardownInTargetNamespaceShouldSucceed(t *testing.T) {
 
 	serviceAccountName := checkup.NameServiceAccount(testCheckupName)
 	assertServiceAccountDoesntExists(t, testClient.Clientset, testTargetNs, serviceAccountName)
+
+	configMapWriterRoleName := checkup.NameResultsConfigMapWriterRole(testCheckupName)
+	assertConfigMapWriterRoleDoesntExists(t, testClient.Clientset, testTargetNs, configMapWriterRoleName)
 }
 
 func TestCheckupTeardownShouldFail(t *testing.T) {
@@ -846,6 +849,13 @@ func assertConfigMapWriterRoleCreated(t *testing.T, testClient *fake.Clientset, 
 	expectedRole := checkup.NewConfigMapWriterRole(nsName, roleName, configMapName)
 
 	assert.Equal(t, expectedRole, actualRole)
+}
+
+func assertConfigMapWriterRoleDoesntExists(t *testing.T, testClient *fake.Clientset, nsName, roleName string) {
+	gvr := schema.GroupVersionResource{Group: rbacv1.GroupName, Version: "v1", Resource: rolesResource}
+	_, err := testClient.Tracker().Get(gvr, nsName, roleName)
+
+	assert.ErrorContains(t, err, "not found")
 }
 
 func assertConfigMapWriterRoleBindingCreated(t *testing.T, testClient *fake.Clientset, nsName, roleName, serviceAccountName string) {
