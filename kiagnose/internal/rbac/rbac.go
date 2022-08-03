@@ -187,11 +187,11 @@ func waitForClusterRoleBindingDeletion(client kubernetes.Interface, name string,
 func CreateRoles(client kubernetes.Interface, roles []*rbacv1.Role) ([]*rbacv1.Role, error) {
 	var createdRoles []*rbacv1.Role
 	for _, role := range roles {
-		createRole, err := createRole(client, role)
+		createdRole, err := createRole(client, role)
 		if err != nil {
 			return nil, err
 		}
-		createdRoles = append(createdRoles, createRole)
+		createdRoles = append(createdRoles, createdRole)
 	}
 
 	return createdRoles, nil
