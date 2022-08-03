@@ -39,6 +39,8 @@ KIAGNOSE_NAMESPACE=kiagnose
 KIAGNOSE_JOB=kubevirt-vm-latency-checkup
 VM_LATENCY_CONFIGMAP=kubevirt-vm-latency-checkup
 
+TARGET_NAMESPACE="target-ns"
+
 options=$(getopt --options "" \
     --long deploy-kubevirt,deploy-cnao,deploy-checkup,define-nad,run-tests,clean-run,help\
     -- "${@}")
@@ -131,6 +133,7 @@ EOF
 fi
 
 if [ -n "${OPT_DEFINE_NAD}" ]; then
+  ${KUBECTL} create namespace ${TARGET_NAMESPACE}
     echo
     echo "Define NetworkAttachmentDefinition (with a bridge CNI)..."
     echo
@@ -140,7 +143,7 @@ apiVersion: k8s.cni.cncf.io/v1
 kind: NetworkAttachmentDefinition
 metadata:
   name: bridge-network
-  namespace: default
+  namespace: ${TARGET_NAMESPACE}
 spec:
   config: |
     {
@@ -176,13 +179,13 @@ apiVersion: v1
 kind: ConfigMap
 metadata:
   name: ${VM_LATENCY_CONFIGMAP}
-  namespace: ${KIAGNOSE_NAMESPACE}
+  namespace: ${TARGET_NAMESPACE}
 data:
   spec.image: ${CHECKUP_IMAGE}
   spec.timeout: 10m
   spec.clusterRoles: |
     kubevirt-vm-latency-checker
-  spec.param.network_attachment_definition_namespace: "default"
+  spec.param.network_attachment_definition_namespace: "${TARGET_NAMESPACE}"
   spec.param.network_attachment_definition_name: "bridge-network"
   spec.param.max_desired_latency_milliseconds: "500"
   spec.param.sample_duration_seconds: "5"
@@ -209,7 +212,7 @@ spec:
           image: ${FRAMEWORK_IMAGE}
           env:
             - name: CONFIGMAP_NAMESPACE
-              value: ${KIAGNOSE_NAMESPACE}
+              value: ${TARGET_NAMESPACE}
             - name: CONFIGMAP_NAME
               value: ${VM_LATENCY_CONFIGMAP}
 EOF
@@ -219,7 +222,7 @@ EOF
     echo
     echo "Result:"
     echo
-    results=$(${KUBECTL} get configmap ${VM_LATENCY_CONFIGMAP} -n ${KIAGNOSE_NAMESPACE} -o yaml)
+    results=$(${KUBECTL} get configmap ${VM_LATENCY_CONFIGMAP} -n ${TARGET_NAMESPACE} -o yaml)
     echo "${results}"
 
     if echo "${results}" | grep 'status.succeeded: "false"'; then
@@ -231,5 +234,5 @@ fi
 
 if [ -n "${OPT_CLEAN_RUN}" ];then
   ${KUBECTL} delete job ${KIAGNOSE_JOB} -n ${KIAGNOSE_NAMESPACE} --ignore-not-found
-  ${KUBECTL} delete configmap ${VM_LATENCY_CONFIGMAP} -n ${KIAGNOSE_NAMESPACE} --ignore-not-found
+  ${KUBECTL} delete configmap ${VM_LATENCY_CONFIGMAP} -n ${TARGET_NAMESPACE} --ignore-not-found
 fi
