@@ -195,7 +195,7 @@ func testTeardownShouldFailWhenNamespaceDeletionFails(t *testing.T) {
 
 	assert.NoError(t, testCheckup.Setup())
 
-	const expectedErr = "failed to delete ClusterRoleBinding"
+	const expectedErr = "failed to delete Namespace"
 	testClient.injectDeleteErrorForResource(namespaceResource, expectedErr)
 
 	assert.ErrorContains(t, testCheckup.Teardown(), expectedErr)
