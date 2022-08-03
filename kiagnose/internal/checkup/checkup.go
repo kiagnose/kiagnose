@@ -328,6 +328,10 @@ func (c *Checkup) teardownWithTargetNamespace() error {
 		errs = append(errs, err)
 	}
 
+	if err := rbac.DeleteRoles(c.client, c.roles); err != nil {
+		errs = append(errs, err)
+	}
+
 	if len(errs) > 0 {
 		const errPrefix = "teardown"
 		return fmt.Errorf("%s: %v", errPrefix, concentrateErrors(errs))
