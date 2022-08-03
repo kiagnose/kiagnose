@@ -287,7 +287,7 @@ func (c *Checkup) Teardown() error {
 		return c.teardownWithEphemeralNamespace()
 	}
 
-	return nil
+	return c.teardownWithTargetNamespace()
 }
 
 func (c *Checkup) teardownWithEphemeralNamespace() error {
@@ -304,6 +304,15 @@ func (c *Checkup) teardownWithEphemeralNamespace() error {
 
 	if len(errs) > 0 {
 		return fmt.Errorf("%s: %v", errPrefix, concentrateErrors(errs))
+	}
+
+	return nil
+}
+
+func (c *Checkup) teardownWithTargetNamespace() error {
+	if err := job.DeleteAndWait(c.client, c.job, c.teardownTimeout); err != nil {
+		const errPrefix = "teardown"
+		return fmt.Errorf("%s: %v", errPrefix, err)
 	}
 
 	return nil

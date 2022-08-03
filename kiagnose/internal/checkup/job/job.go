@@ -76,6 +76,43 @@ func WaitForJobToFinish(client kubernetes.Interface, job *batchv1.Job, timeout t
 	return updatedJob, nil
 }
 
+func DeleteAndWait(client kubernetes.Interface, job *batchv1.Job, timeout time.Duration) error {
+	ctx, cancel := context.WithTimeout(context.Background(), timeout)
+	defer cancel()
+
+	deletePolicy := metav1.DeletePropagationForeground
+	if err := client.BatchV1().Jobs(job.Namespace).Delete(ctx, job.Name, metav1.DeleteOptions{PropagationPolicy: &deletePolicy}); err != nil {
+		return err
+	}
+	log.Printf("delete job %q request sent", job.Name)
+
+	const JobNameLabel = "job-name"
+	jobLabel := k8slabels.Set{JobNameLabel: job.Name}
+	w := &cache.ListWatch{
+		WatchFunc: func(options metav1.ListOptions) (k8swatch.Interface, error) {
+			if options.LabelSelector != "" {
+				options.LabelSelector = "," + jobLabel.String()
+			} else {
+				options.LabelSelector = jobLabel.String()
+			}
+			return client.BatchV1().Jobs(job.Namespace).Watch(ctx, options)
+		},
+	}
+
+	_, err := k8swatchtools.Until(ctx, job.ResourceVersion, w, func(event k8swatch.Event) (bool, error) {
+		if event.Type != k8swatch.Deleted {
+			return false, nil
+		}
+		_, ok := event.Object.(*batchv1.Job)
+		return ok, nil
+	})
+
+	if err == nil {
+		log.Printf("Job %q deleted", job.Name)
+	}
+	return err
+}
+
 func batchJobFinished(event k8swatch.Event) (bool, error) {
 	j, ok := event.Object.(*batchv1.Job)
 	if !ok {
