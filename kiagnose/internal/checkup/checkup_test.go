@@ -246,6 +246,7 @@ func TestCheckTeardownShouldSucceed(t *testing.T) {
 
 func TestTeardownInTargetNamespaceShouldSucceed(t *testing.T) {
 	testClient := newNormalizedFakeClientset()
+	testClient.injectResourceVersionUpdateOnJobCreation()
 
 	targetNs := &corev1.Namespace{
 		ObjectMeta: metav1.ObjectMeta{
@@ -267,12 +268,16 @@ func TestTeardownInTargetNamespaceShouldSucceed(t *testing.T) {
 
 	assert.NoError(t, testCheckup.Setup())
 
-	expectedEphemeralNamespaceName := nameGen.Name(checkup.EphemeralNamespacePrefix)
-	assertNamespaceDoesntExists(t, testClient.Clientset, expectedEphemeralNamespaceName)
+	checkupJobName := checkup.NameJob(testCheckupName)
+	completeTrueJobCondition := &batchv1.JobCondition{Type: batchv1.JobComplete, Status: corev1.ConditionTrue}
+	testClient.injectJobWatchEvent(newJobWithCondition(testTargetNs, checkupJobName, completeTrueJobCondition))
+	assert.NoError(t, testCheckup.Run())
 
+	testClient.injectWatchWithJobDeleteEvent(testTargetNs, checkupJobName)
 	assert.NoError(t, testCheckup.Teardown())
 
 	assertNamespaceExists(t, testClient.Clientset, testTargetNs)
+	assertCheckupJobDoesntExists(t, testClient, testTargetNs, checkupJobName)
 }
 
 func TestCheckupTeardownShouldFail(t *testing.T) {
@@ -707,6 +712,22 @@ func (c *testsClient) injectJobWatchEvent(job *batchv1.Job) {
 	c.PrependWatchReactor(jobResource, watchReactionFn)
 }
 
+func (c *testsClient) injectWatchWithJobDeleteEvent(namespace, name string) {
+	watchReactionFn := func(action clienttesting.Action) (bool, watch.Interface, error) {
+		watcher := watch.NewRaceFreeFake()
+		watcher.Delete(&batchv1.Job{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:            name,
+				Namespace:       namespace,
+				ResourceVersion: "123",
+			},
+		})
+
+		return true, watcher, nil
+	}
+	c.PrependWatchReactor(jobResource, watchReactionFn)
+}
+
 func (c *testsClient) listNamespaces() ([]corev1.Namespace, error) {
 	objects, err := c.listObjectsByKind("", namespaceResource, namespaceKind)
 	if err != nil {
@@ -853,6 +874,11 @@ func assertNoClusterRoleBindingExists(t *testing.T, testClient *testsClient) {
 	clusterRoleBindings, err := testClient.listClusterRoleBindings()
 	assert.NoError(t, err)
 	assert.Empty(t, clusterRoleBindings)
+}
+
+func assertCheckupJobDoesntExists(t *testing.T, testClient *testsClient, namespace, name string) {
+	_, err := testClient.BatchV1().Jobs(namespace).Get(context.Background(), name, metav1.GetOptions{})
+	assert.ErrorContains(t, err, "not found")
 }
 
 type nameGeneratorStub struct{}
