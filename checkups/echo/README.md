@@ -22,7 +22,7 @@ apiVersion: v1
 kind: ConfigMap
 metadata:
   name: echo-checkup-config
-  namespace: kiagnose
+  namespace: <target-namespace>
 data:
   spec.image: quay.io/kiagnose/echo-checkup:main
   spec.timeout: 1m
@@ -54,7 +54,7 @@ spec:
           imagePullPolicy: Always
           env:
             - name: CONFIGMAP_NAMESPACE
-              value: kiagnose
+              value: <target-namespace>
             - name: CONFIGMAP_NAME
               value: echo-checkup-config
 EOF
@@ -68,7 +68,7 @@ kubectl wait --for=condition=complete --timeout=70s job/echo-checkup1 -n kiagnos
 ### Results Retrieval
 After the Kiagnose Job had completed, retrieve the user-supplied `ConfigMap` to get the results:
 ```bash
-kubectl get configmap echo-checkup-config -n kiagnose -o yaml
+kubectl get configmap echo-checkup-config -n <target-namespace> -o yaml
 ```
 
 In a success scenario, the following results are expected:
@@ -102,7 +102,7 @@ kind: ConfigMap
 metadata:
   creationTimestamp: "2022-06-06T10:59:56Z"
   name: echo-checkup-config
-  namespace: kiagnose
+  namespace: <target-namespace>
   resourceVersion: "557"
   uid: e00b801c-3055-4c3c-9dc5-8a944f01d9de
 ```
@@ -110,7 +110,7 @@ metadata:
 Remove the Kiagnose Job and the ConfigMap object when the logs and the results are no longer needed:
 ```bash
 kubectl delete job.batch/echo-checkup1 -n kiagnose
-kubectl delete configmap echo-checkup-config -n kiagnose
+kubectl delete configmap echo-checkup-config -n <target-namespace>
 ```
 
 ## API
