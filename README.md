@@ -5,7 +5,10 @@
 A checkup is a containerized application, which checks that a certain cluster functionality is working.
 A checkup can be provided by a third party vendor, and should adhere to the Kiagnose checkup API.
 
-Kiagnose runs each checkup in a dedicated ephemeral Namespace, which is disposed when the checkup ends.
+Kiagnose can execute a checkup in:
+1. An existing Namespace.
+2. A dedicated ephemeral Namespace, which is disposed when the checkup finishes.
+
 Kiagnose passes user-supplied configuration to the checkup, and reports the checkup's results upon termination.
 
 # Usage
@@ -44,7 +47,8 @@ Kiagnose will **AUTOMATICALLY** bind these permissions to the checkup instance.
 The main user-interface is a [ConfigMap](https://kubernetes.io/docs/concepts/configuration/configmap/) object with a
 certain structure.
 
-The ConfigMap object is created in the `kiagnose` Namespace (created during Kiagnose installation).
+In order to execute a checkup in an existing namespace, create the ConfigMap object in it.
+In order to execute a checkup in an ephemeral namespace create the ConfigMap object in the `kiagnose` Namespace (created during Kiagnose installation).
 
 ### Input Fields
 The user can configure the following under the `data` field:
@@ -63,7 +67,7 @@ apiVersion: v1
 kind: ConfigMap
 metadata:
   name: example-checkup-config
-  namespace: kiagnose
+  namespace: <target namespace>
 data:
   spec.image: my-registry/example-checkup:main
   spec.timeout: 5m
@@ -106,7 +110,7 @@ spec:
           imagePullPolicy: Always
           env:
             - name: CONFIGMAP_NAMESPACE
-              value: kiagnose
+              value: <target namespace>
             - name: CONFIGMAP_NAME
               value: example-checkup-config
 ```
@@ -117,7 +121,7 @@ The Kiagnose Job waits until the checkup Job is completed or timed-out.
 After the Kiagnose Job had completed, the results are made available at the user-supplied ConfigMap object:
 
 ```bash
-kubectl get configmap example-checkup-config -n kiagnose -o yaml
+kubectl get configmap example-checkup-config -n <target-namespace> -o yaml
 ```
 ### Output Fields
 | Property                   | Description                                         | Mandatory | Remarks |
@@ -134,7 +138,7 @@ apiVersion: v1
 kind: ConfigMap
 metadata:
   name: example-checkup-config
-  namespace: kiagnose
+  namespace: <target-namespace>
 data:
   spec.image: my-registry/example-checkup:main
   spec.timeout: 5m
@@ -159,7 +163,7 @@ kubectl logs job.batch/<Kiagnose-job-name> -n kiagnose
 Remove the Kiagnose Job and the ConfigMap object when the logs and the results are no longer needed:
 ```bash
 kubectl delete job.batch/<Kiagnose-job-name> -n kiagnose
-kubectl delete configmap <ConfigMap name> -n kiagnose
+kubectl delete configmap <ConfigMap name> -n <target-namespace>
 ```
 
 ## Checkup Removal
