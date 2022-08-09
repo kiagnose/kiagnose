@@ -57,7 +57,7 @@ apiVersion: v1
 kind: ConfigMap
 metadata:
   name: kubevirt-vm-latency-checkup-config
-  namespace: kiagnose
+  namespace: <target-namespace>
 data:
   spec.image: quay.io/kiagnose/kubevirt-vm-latency:main
   spec.timeout: 5m
@@ -92,7 +92,7 @@ spec:
           image: quay.io/kiagnose/kiagnose:main
           env:
             - name: CONFIGMAP_NAMESPACE
-              value: kiagnose
+              value: <target-namespace>
             - name: CONFIGMAP_NAME
               value: kubevirt-vm-latency-checkup-config
 EOF
@@ -110,14 +110,14 @@ kubectl wait job kubevirt-vm-latency-checkup -n kiagnose --for condition=complet
 ### Example
 Retrieve the checkup results:
 ```bash
-kubectl get configmap kubevirt-vm-latency-checkup-config -n kiagnose -o yaml
+kubectl get configmap kubevirt-vm-latency-checkup-config -n <target-namespace> -o yaml
 ```
 ```yaml
 apiVersion: v1
 kind: ConfigMap
 metadata:
   name: kubevirt-vm-latency-checkup-config
-  namespace: kiagnose
+  namespace: <target-namespace>
 data:
   spec.image: quay.io/kiagnose/kubevirt-vm-latency:main
   spec.timeout: 5m
@@ -173,7 +173,7 @@ status.failureReason: "run: failed to run check: failed due to connectivity issu
 ## Clean up
 ```bash
 kubectl delete job -n kiagnose kubevirt-vm-latency-checkup
-kubectl delete config-map -n kubevirt-vm-latency-checkup-config
+kubectl delete config-map -n <target-namespace> kubevirt-vm-latency-checkup-config
 ```
 Once the checkup is finished it's safe to remove the ClusterRole:
 ```bash
