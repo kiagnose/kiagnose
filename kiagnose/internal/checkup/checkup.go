@@ -33,7 +33,6 @@ import (
 	"k8s.io/client-go/kubernetes"
 
 	"github.com/kiagnose/kiagnose/kiagnose/internal/checkup/job"
-	"github.com/kiagnose/kiagnose/kiagnose/internal/checkup/namespace"
 	"github.com/kiagnose/kiagnose/kiagnose/internal/checkup/serviceaccount"
 	"github.com/kiagnose/kiagnose/kiagnose/internal/config"
 	"github.com/kiagnose/kiagnose/kiagnose/internal/configmap"
@@ -44,7 +43,6 @@ import (
 type Checkup struct {
 	client              kubernetes.Interface
 	teardownTimeout     time.Duration
-	ephemeralNamespace  *corev1.Namespace
 	serviceAccount      *corev1.ServiceAccount
 	resultConfigMap     *corev1.ConfigMap
 	roles               []*rbacv1.Role
@@ -55,7 +53,6 @@ type Checkup struct {
 }
 
 const (
-	KiagnoseNamespace        = "kiagnose"
 	EphemeralNamespacePrefix = "kiagnose-checkup"
 
 	ResultsConfigMapNameEnvVarName      = "RESULT_CONFIGMAP_NAME"
@@ -67,13 +64,7 @@ type namer interface {
 }
 
 func New(c kubernetes.Interface, targetNsName, name string, checkupConfig *config.Config, namer namer) *Checkup {
-	var ephemeralNamespace *corev1.Namespace
 	nsName := targetNsName
-
-	if targetNsName == KiagnoseNamespace {
-		nsName = namer.Name(EphemeralNamespacePrefix)
-		ephemeralNamespace = NewNamespace(nsName)
-	}
 
 	resultsConfigMapName := NameResultsConfigMap(name)
 	resultsConfigMapWriterRoleName := NameResultsConfigMapWriterRole(name)
@@ -97,7 +88,6 @@ func New(c kubernetes.Interface, targetNsName, name string, checkupConfig *confi
 	return &Checkup{
 		client:              c,
 		teardownTimeout:     defaultTeardownTimeout,
-		ephemeralNamespace:  ephemeralNamespace,
 		serviceAccount:      NewServiceAccount(nsName, serviceAccountName),
 		resultConfigMap:     NewConfigMap(nsName, resultsConfigMapName),
 		roles:               checkupRoles,
@@ -112,12 +102,6 @@ func New(c kubernetes.Interface, targetNsName, name string, checkupConfig *confi
 			int64(checkupConfig.Timeout.Seconds()),
 			checkupEnvVars,
 		),
-	}
-}
-
-func NewNamespace(name string) *corev1.Namespace {
-	return &corev1.Namespace{
-		ObjectMeta: metav1.ObjectMeta{Name: name},
 	}
 }
 
@@ -225,17 +209,6 @@ func (c *Checkup) Setup() error {
 	const errPrefix = "setup"
 	var err error
 
-	if c.isEphemeralNamespace() {
-		if c.ephemeralNamespace, err = namespace.Create(c.client, c.ephemeralNamespace); err != nil {
-			return fmt.Errorf("%s: %v", errPrefix, err)
-		}
-		defer func() {
-			if err != nil {
-				_ = namespace.DeleteAndWait(c.client, c.ephemeralNamespace, c.teardownTimeout)
-			}
-		}()
-	}
-
 	if c.serviceAccount, err = serviceaccount.Create(c.client, c.serviceAccount); err != nil {
 		return fmt.Errorf("%s: %v", errPrefix, err)
 	}
@@ -283,30 +256,7 @@ func (c *Checkup) SetTeardownTimeout(duration time.Duration) {
 }
 
 func (c *Checkup) Teardown() error {
-	if c.isEphemeralNamespace() {
-		return c.teardownWithEphemeralNamespace()
-	}
-
 	return c.teardownWithTargetNamespace()
-}
-
-func (c *Checkup) teardownWithEphemeralNamespace() error {
-	const errPrefix = "teardown"
-	var errs []error
-
-	if err := rbac.DeleteClusterRoleBindings(c.client, c.clusterRoleBindings, c.teardownTimeout); err != nil {
-		errs = append(errs, err)
-	}
-
-	if err := namespace.DeleteAndWait(c.client, c.ephemeralNamespace, c.teardownTimeout); err != nil {
-		errs = append(errs, err)
-	}
-
-	if len(errs) > 0 {
-		return fmt.Errorf("%s: %v", errPrefix, concentrateErrors(errs))
-	}
-
-	return nil
 }
 
 func (c *Checkup) teardownWithTargetNamespace() error {
@@ -344,10 +294,6 @@ func (c *Checkup) teardownWithTargetNamespace() error {
 	}
 
 	return nil
-}
-
-func (c *Checkup) isEphemeralNamespace() bool {
-	return c.ephemeralNamespace != nil
 }
 
 func concentrateErrors(errs []error) error {
