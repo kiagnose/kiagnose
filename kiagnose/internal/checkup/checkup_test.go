@@ -73,47 +73,6 @@ type checkupSetupTestCase struct {
 	resource    string
 }
 
-func TestCheckupWith(t *testing.T) {
-	checkupCreateTestCases := []checkupSetupTestCase{
-		{description: "no arguments"},
-		{description: "ClusterRoles", clusterRole: newTestClusterRoles()},
-		{description: "Roles", roles: newTestRoles()},
-		{description: "env vars", envVars: newTestEnvVars()},
-	}
-	for _, testCase := range checkupCreateTestCases {
-		t.Run(testCase.description, func(t *testing.T) {
-			c := fake.NewSimpleClientset()
-			nameGen := nameGeneratorStub{}
-			testCheckup := checkup.New(
-				c,
-				checkup.KiagnoseNamespace,
-				testCheckupName,
-				&config.Config{
-					Image:        testImage,
-					Timeout:      testTimeout,
-					EnvVars:      testCase.envVars,
-					ClusterRoles: testCase.clusterRole,
-					Roles:        testCase.roles,
-				},
-				nameGen,
-			)
-
-			checkupNamespaceName := nameGen.Name(checkup.EphemeralNamespacePrefix)
-			resultsConfigMapName := checkup.NameResultsConfigMap(testCheckupName)
-			resultsConfigMapWriterRoleName := checkup.NameResultsConfigMapWriterRole(testCheckupName)
-			serviceAccountName := checkup.NameServiceAccount(testCheckupName)
-
-			assert.NoError(t, testCheckup.Setup())
-			assertNamespaceCreated(t, c, checkupNamespaceName)
-			assertServiceAccountCreated(t, c, checkupNamespaceName, serviceAccountName)
-			assertResultsConfigMapCreated(t, c, checkupNamespaceName, resultsConfigMapName)
-			assertConfigMapWriterRoleCreated(t, c, checkupNamespaceName, resultsConfigMapName, resultsConfigMapWriterRoleName)
-			assertConfigMapWriterRoleBindingCreated(t, c, checkupNamespaceName, resultsConfigMapWriterRoleName, serviceAccountName)
-			assertClusterRoleBindingsCreated(t, testsClient{c}, testCase.clusterRole, checkupNamespaceName, serviceAccountName, nameGen)
-		})
-	}
-}
-
 func TestCheckupSetupShouldFailWhen(t *testing.T) {
 	checkupCreateFailTestCases := []checkupSetupTestCase{
 		{description: "Namespace creation failed", resource: namespaceResource},
@@ -863,14 +822,6 @@ func (c *testsClient) listObjectsByKind(group, resourceName, resourceKind string
 	gvr := schema.GroupVersionResource{Group: group, Version: "v1", Resource: resourceName}
 	gvk := schema.GroupVersionKind{Group: group, Version: "v1", Kind: resourceKind}
 	return c.Tracker().List(gvr, gvk, "")
-}
-
-func assertNamespaceCreated(t *testing.T, testClient *fake.Clientset, nsName string) {
-	gvr := schema.GroupVersionResource{Group: "", Version: "v1", Resource: namespaceResource}
-	actualNs, err := testClient.Tracker().Get(gvr, "", nsName)
-
-	assert.NoError(t, err)
-	assert.Equal(t, checkup.NewNamespace(nsName), actualNs)
 }
 
 func assertNamespaceExists(t *testing.T, testClient *fake.Clientset, nsName string) {
