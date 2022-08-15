@@ -274,23 +274,25 @@ func TestCheckupRunShouldCreateAJob(t *testing.T) {
 	for _, testCase := range checkupRunTestCases {
 		t.Run(testCase.description, func(t *testing.T) {
 			testClient := newNormalizedFakeClientset()
+
+			targetNs := newTestNamespace()
+			_, err := testClient.CoreV1().Namespaces().Create(context.Background(), targetNs, metav1.CreateOptions{})
+			assert.NoError(t, err)
+
 			testClient.injectResourceVersionUpdateOnJobCreation()
-			testClient.injectResourceVersionUpdateOnNamespaceCreation()
-			testClient.injectWatchWithNamespaceDeleteEvent()
 
 			nameGen := nameGeneratorStub{}
 			testCheckup := checkup.New(
 				testClient,
-				checkup.KiagnoseNamespace,
+				testTargetNs,
 				testCheckupName,
 				&config.Config{Image: testImage, Timeout: testTimeout, EnvVars: testCase.envVars},
 				nameGen,
 			)
 
-			checkupNamespaceName := nameGen.Name(checkup.EphemeralNamespacePrefix)
 			checkupJobName := checkup.NameJob(testCheckupName)
 			completeTrueJobCondition := &batchv1.JobCondition{Type: batchv1.JobComplete, Status: corev1.ConditionTrue}
-			testClient.injectJobWatchEvent(newJobWithCondition(checkupNamespaceName, checkupJobName, completeTrueJobCondition))
+			testClient.injectJobWatchEvent(newJobWithCondition(testTargetNs, checkupJobName, completeTrueJobCondition))
 
 			assert.NoError(t, testCheckup.Setup())
 			assert.NoError(t, testCheckup.Run())
@@ -298,21 +300,21 @@ func TestCheckupRunShouldCreateAJob(t *testing.T) {
 			expectedResultsConfigMapName := checkup.NameResultsConfigMap(testCheckupName)
 			expectedEnvVars := []corev1.EnvVar{
 				{Name: checkup.ResultsConfigMapNameEnvVarName, Value: expectedResultsConfigMapName},
-				{Name: checkup.ResultsConfigMapNameEnvVarNamespace, Value: checkupNamespaceName},
+				{Name: checkup.ResultsConfigMapNameEnvVarNamespace, Value: testTargetNs},
 			}
 			expectedEnvVars = append(expectedEnvVars, testCase.envVars...)
 
 			serviceAccountName := checkup.NameServiceAccount(testCheckupName)
 			expectedJob := checkup.NewCheckupJob(
-				checkupNamespaceName, checkupJobName, serviceAccountName, testImage, int64(testTimeout.Seconds()), expectedEnvVars)
-			actualJob, err := testClient.BatchV1().Jobs(checkupNamespaceName).Get(context.Background(), checkupJobName, metav1.GetOptions{})
+				testTargetNs, checkupJobName, serviceAccountName, testImage, int64(testTimeout.Seconds()), expectedEnvVars)
+			actualJob, err := testClient.BatchV1().Jobs(testTargetNs).Get(context.Background(), checkupJobName, metav1.GetOptions{})
 			assert.NoError(t, err)
 
 			actualJob.ResourceVersion = ""
 			assert.Equal(t, actualJob, expectedJob)
 
+			testClient.injectWatchWithJobDeleteEvent(testTargetNs, checkupJobName)
 			assert.NoError(t, testCheckup.Teardown())
-			assertNoObjectExists(t, testClient)
 		})
 	}
 }
