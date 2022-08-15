@@ -223,129 +223,6 @@ func TestTeardownInTargetNamespaceShouldSucceed(t *testing.T) {
 	assertConfigMapDoesntExists(t, testClient.Clientset, testTargetNs, resultsConfigMapName)
 }
 
-func TestCheckupTeardownShouldFail(t *testing.T) {
-	testTeardownShouldFailWhenNamespaceDeletionFails(t)
-	testTeardownShouldFailWhenNamespaceDeletionTimeoutExpires(t)
-	testTeardownShouldFailWhenClusterRoleBindingsDeletionFails(t)
-	testTeardownShouldFailWhenClusterRoleBindingsDeletionTimeoutExpires(t)
-	testTeardownShouldFailWhenNamespaceAndClusterRoleBindingsDeletionFails(t)
-}
-
-func testTeardownShouldFailWhenNamespaceDeletionFails(t *testing.T) {
-	testClient := newNormalizedFakeClientset()
-	testCheckup := checkup.New(
-		testClient,
-		checkup.KiagnoseNamespace,
-		testCheckupName,
-		&config.Config{Image: testImage, Timeout: testTimeout},
-		nameGeneratorStub{},
-	)
-
-	testClient.injectResourceVersionUpdateOnNamespaceCreation()
-
-	assert.NoError(t, testCheckup.Setup())
-
-	const expectedErr = "failed to delete Namespace"
-	testClient.injectDeleteErrorForResource(namespaceResource, expectedErr)
-
-	assert.ErrorContains(t, testCheckup.Teardown(), expectedErr)
-	assertNoClusterRoleBindingExists(t, testClient)
-}
-
-func testTeardownShouldFailWhenNamespaceDeletionTimeoutExpires(t *testing.T) {
-	testClient := newNormalizedFakeClientset()
-	testCheckup := checkup.New(
-		testClient,
-		checkup.KiagnoseNamespace,
-		testCheckupName,
-		&config.Config{Image: testImage, Timeout: testTimeout},
-		nameGeneratorStub{},
-	)
-
-	testCheckup.SetTeardownTimeout(time.Nanosecond)
-
-	testClient.injectResourceVersionUpdateOnNamespaceCreation()
-
-	assert.NoError(t, testCheckup.Setup())
-
-	testClient.injectIgnoreOperation("delete", namespaceResource)
-
-	assert.ErrorContains(t, testCheckup.Teardown(), wait.ErrWaitTimeout.Error())
-	assertNoClusterRoleBindingExists(t, testClient)
-}
-
-func testTeardownShouldFailWhenClusterRoleBindingsDeletionFails(t *testing.T) {
-	testClient := newNormalizedFakeClientset()
-	testCheckup := checkup.New(
-		testClient,
-		checkup.KiagnoseNamespace,
-		testCheckupName,
-		&config.Config{Image: testImage, Timeout: testTimeout, ClusterRoles: newTestClusterRoles()},
-		nameGeneratorStub{},
-	)
-
-	testClient.injectResourceVersionUpdateOnNamespaceCreation()
-	testClient.injectWatchWithNamespaceDeleteEvent()
-
-	assert.NoError(t, testCheckup.Setup())
-
-	const expectedErr = "failed to delete ClusterRoleBinding"
-	testClient.injectDeleteErrorForResource(clusterRoleBindingResource, expectedErr)
-
-	assert.ErrorContains(t, testCheckup.Teardown(), expectedErr)
-	assertNoNamespaceExists(t, testClient)
-}
-
-func testTeardownShouldFailWhenClusterRoleBindingsDeletionTimeoutExpires(t *testing.T) {
-	testClient := newNormalizedFakeClientset()
-	testCheckup := checkup.New(
-		testClient,
-		checkup.KiagnoseNamespace,
-		testCheckupName,
-		&config.Config{Image: testImage, Timeout: testTimeout, ClusterRoles: newTestClusterRoles()},
-		nameGeneratorStub{},
-	)
-
-	testCheckup.SetTeardownTimeout(time.Nanosecond)
-
-	assert.NoError(t, testCheckup.Setup())
-
-	const (
-		getClusterRoleBindingsError = "failed to get ClusterRoleBinding"
-		expectedErrMatch            = "timed out"
-	)
-	testClient.injectGetErrorForResource(clusterRoleBindingResource, getClusterRoleBindingsError)
-
-	assert.ErrorContains(t, testCheckup.Teardown(), expectedErrMatch)
-	assertNoNamespaceExists(t, testClient)
-}
-
-func testTeardownShouldFailWhenNamespaceAndClusterRoleBindingsDeletionFails(t *testing.T) {
-	testClient := newNormalizedFakeClientset()
-	testCheckup := checkup.New(
-		testClient,
-		checkup.KiagnoseNamespace,
-		testCheckupName,
-		&config.Config{Image: testImage, Timeout: testTimeout, ClusterRoles: newTestClusterRoles()},
-		nameGeneratorStub{},
-	)
-
-	testClient.injectResourceVersionUpdateOnNamespaceCreation()
-
-	assert.NoError(t, testCheckup.Setup())
-
-	const (
-		deleteNamespaceError          = "failed to delete Namespace"
-		deleteClusterRoleBindingError = "failed to delete ClusterRoleBindings"
-	)
-	testClient.injectDeleteErrorForResource(namespaceResource, deleteNamespaceError)
-	testClient.injectDeleteErrorForResource(clusterRoleBindingResource, deleteClusterRoleBindingError)
-
-	err := testCheckup.Teardown()
-	assert.ErrorContains(t, err, deleteNamespaceError)
-	assert.ErrorContains(t, err, deleteClusterRoleBindingError)
-}
-
 func TestTeardownInTargetNamespaceShouldFailWhen(t *testing.T) {
 	testCases := []struct {
 		description string
@@ -624,11 +501,6 @@ func (c *testsClient) injectCreateErrorForResource(resourceName, err string) {
 	c.injectResourceManipulationError(createVerb, resourceName, err)
 }
 
-func (c *testsClient) injectGetErrorForResource(resourceName, err string) {
-	const getVerb = "get"
-	c.injectResourceManipulationError(getVerb, resourceName, err)
-}
-
 func (c *testsClient) injectDeleteErrorForResource(resourceName, err string) {
 	const deleteVerb = "delete"
 	c.injectResourceManipulationError(deleteVerb, resourceName, err)
@@ -639,14 +511,6 @@ func (c *testsClient) injectResourceManipulationError(verb, resourceName, err st
 		return true, nil, errors.New(err)
 	}
 	c.PrependReactor(verb, resourceName, reactionFn)
-}
-
-// injectIgnoreOperation causes the operation described by the verb and resourceName to be ignored.
-// e.g. no events are triggered, datastore is not changed.
-func (c *testsClient) injectIgnoreOperation(verb, resourceName string) {
-	c.PrependReactor(verb, resourceName, func(action clienttesting.Action) (bool, runtime.Object, error) {
-		return true, nil, nil
-	})
 }
 
 func (c *testsClient) injectResourceVersionUpdateOnNamespaceCreation() {
