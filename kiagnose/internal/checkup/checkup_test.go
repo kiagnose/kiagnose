@@ -34,7 +34,6 @@ import (
 
 	k8smeta "k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	k8slabels "k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/util/wait"
@@ -49,7 +48,6 @@ import (
 
 const (
 	namespaceResource          = "namespaces"
-	namespaceKind              = "Namespace"
 	clusterRoleBindingResource = "clusterrolebindings"
 	clusterRoleBindingKind     = "ClusterRoleBinding"
 	rolesResource              = "roles"
@@ -202,7 +200,7 @@ func TestTeardownInTargetNamespaceShouldSucceed(t *testing.T) {
 
 	checkupJobName := checkup.NameJob(testCheckupName)
 	completeTrueJobCondition := &batchv1.JobCondition{Type: batchv1.JobComplete, Status: corev1.ConditionTrue}
-	testClient.injectJobWatchEvent(newJobWithCondition(testTargetNs, checkupJobName, completeTrueJobCondition))
+	testClient.injectJobWatchEvent(newJobWithCondition(checkupJobName, completeTrueJobCondition))
 	assert.NoError(t, testCheckup.Run())
 
 	testClient.injectWatchWithJobDeleteEvent(testTargetNs, checkupJobName)
@@ -292,7 +290,7 @@ func TestCheckupRunShouldCreateAJob(t *testing.T) {
 
 			checkupJobName := checkup.NameJob(testCheckupName)
 			completeTrueJobCondition := &batchv1.JobCondition{Type: batchv1.JobComplete, Status: corev1.ConditionTrue}
-			testClient.injectJobWatchEvent(newJobWithCondition(testTargetNs, checkupJobName, completeTrueJobCondition))
+			testClient.injectJobWatchEvent(newJobWithCondition(checkupJobName, completeTrueJobCondition))
 
 			assert.NoError(t, testCheckup.Setup())
 			assert.NoError(t, testCheckup.Run())
@@ -342,7 +340,7 @@ func TestCheckupRunShouldSucceed(t *testing.T) {
 				nameGeneratorStub{})
 
 			checkupJobName := checkup.NameJob(testCheckupName)
-			testClient.injectJobWatchEvent(newJobWithCondition(testTargetNs, checkupJobName, testCase.jobCondition))
+			testClient.injectJobWatchEvent(newJobWithCondition(checkupJobName, testCase.jobCondition))
 
 			assert.NoError(t, testCheckup.Setup())
 			assert.NoError(t, testCheckup.Run())
@@ -359,8 +357,10 @@ func TestCheckupRunShouldFailWhen(t *testing.T) {
 
 	setup := func() {
 		testClient = newNormalizedFakeClientset()
-		testClient.injectResourceVersionUpdateOnNamespaceCreation()
-		testClient.injectWatchWithNamespaceDeleteEvent()
+
+		targetNs := newTestNamespace()
+		_, err := testClient.CoreV1().Namespaces().Create(context.Background(), targetNs, metav1.CreateOptions{})
+		assert.NoError(t, err)
 	}
 
 	t.Run("failed to create Job", func(t *testing.T) {
@@ -372,7 +372,7 @@ func TestCheckupRunShouldFailWhen(t *testing.T) {
 
 		testCheckup := checkup.New(
 			testClient,
-			checkup.KiagnoseNamespace,
+			testTargetNs,
 			testCheckupName,
 			&config.Config{Image: testImage, Timeout: testTimeout},
 			nameGen,
@@ -381,7 +381,6 @@ func TestCheckupRunShouldFailWhen(t *testing.T) {
 		assert.NoError(t, testCheckup.Setup())
 		assert.ErrorContains(t, testCheckup.Run(), expectedErr)
 		assert.NoError(t, testCheckup.Teardown())
-		assertNoObjectExists(t, testClient)
 	})
 
 	t.Run("fail to watch Job", func(t *testing.T) {
@@ -389,7 +388,7 @@ func TestCheckupRunShouldFailWhen(t *testing.T) {
 
 		testCheckup := checkup.New(
 			testClient,
-			checkup.KiagnoseNamespace,
+			testTargetNs,
 			testCheckupName,
 			&config.Config{Image: testImage, Timeout: testTimeout},
 			nameGen,
@@ -398,7 +397,6 @@ func TestCheckupRunShouldFailWhen(t *testing.T) {
 		assert.NoError(t, testCheckup.Setup())
 		assert.ErrorContains(t, testCheckup.Run(), "initial RV \"\" is not supported")
 		assert.NoError(t, testCheckup.Teardown())
-		assertNoObjectExists(t, testClient)
 	})
 
 	t.Run("Job wont finish on time", func(t *testing.T) {
@@ -407,7 +405,7 @@ func TestCheckupRunShouldFailWhen(t *testing.T) {
 
 		testCheckup := checkup.New(
 			testClient,
-			checkup.KiagnoseNamespace,
+			testTargetNs,
 			testCheckupName,
 			&config.Config{Image: testImage, Timeout: time.Nanosecond},
 			nameGen,
@@ -416,7 +414,6 @@ func TestCheckupRunShouldFailWhen(t *testing.T) {
 		assert.NoError(t, testCheckup.Setup())
 		assert.ErrorContains(t, testCheckup.Run(), wait.ErrWaitTimeout.Error())
 		assert.NoError(t, testCheckup.Teardown())
-		assertNoObjectExists(t, testClient)
 	})
 
 	t.Run("Job wont finish on time with complete condition status false", func(t *testing.T) {
@@ -425,21 +422,19 @@ func TestCheckupRunShouldFailWhen(t *testing.T) {
 
 		testCheckup := checkup.New(
 			testClient,
-			checkup.KiagnoseNamespace,
+			testTargetNs,
 			testCheckupName,
 			&config.Config{Image: testImage, Timeout: time.Second},
 			nameGen,
 		)
 
-		checkupNamespaceName := nameGen.Name(checkup.EphemeralNamespacePrefix)
 		checkupJobName := checkup.NameJob(testCheckupName)
 		completeFalseJobCondition := &batchv1.JobCondition{Type: batchv1.JobComplete, Status: corev1.ConditionFalse}
-		testClient.injectJobWatchEvent(newJobWithCondition(checkupNamespaceName, checkupJobName, completeFalseJobCondition))
+		testClient.injectJobWatchEvent(newJobWithCondition(checkupJobName, completeFalseJobCondition))
 
 		assert.NoError(t, testCheckup.Setup())
 		assert.ErrorContains(t, testCheckup.Run(), wait.ErrWaitTimeout.Error())
 		assert.NoError(t, testCheckup.Teardown())
-		assertNoObjectExists(t, testClient)
 	})
 }
 
@@ -461,11 +456,11 @@ func newTestEnvVars() []corev1.EnvVar {
 		{Name: "env-var-1", Value: "env-var-1-value"}}
 }
 
-func newJobWithCondition(namespace, name string, condition *batchv1.JobCondition) *batchv1.Job {
+func newJobWithCondition(name string, condition *batchv1.JobCondition) *batchv1.Job {
 	return &batchv1.Job{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:            name,
-			Namespace:       namespace,
+			Namespace:       testTargetNs,
 			ResourceVersion: "123",
 		},
 		Status: batchv1.JobStatus{
@@ -515,10 +510,6 @@ func (c *testsClient) injectResourceManipulationError(verb, resourceName, err st
 		return true, nil, errors.New(err)
 	}
 	c.PrependReactor(verb, resourceName, reactionFn)
-}
-
-func (c *testsClient) injectResourceVersionUpdateOnNamespaceCreation() {
-	c.injectResourceVersionUpdate("create", namespaceResource)
 }
 
 func (c *testsClient) injectResourceVersionUpdateOnJobCreation() {
@@ -582,34 +573,6 @@ func (c *testsClient) injectWatchWithJobDeleteEvent(namespace, name string) {
 		return true, watcher, nil
 	}
 	c.PrependWatchReactor(jobResource, watchReactionFn)
-}
-
-func (c *testsClient) listNamespaces() ([]corev1.Namespace, error) {
-	objects, err := c.listObjectsByKind("", namespaceResource, namespaceKind)
-	if err != nil {
-		return nil, err
-	}
-	if objects != nil {
-		namespacesList := objects.(*corev1.NamespaceList)
-		return namespacesList.Items, nil
-	}
-	return nil, nil
-}
-
-func (c *testsClient) injectWatchWithNamespaceDeleteEvent() {
-	c.PrependWatchReactor(namespaceResource, func(action clienttesting.Action) (bool, watch.Interface, error) {
-		watcher := watch.NewRaceFreeFake()
-		watcher.Delete(
-			&corev1.Namespace{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:            checkup.EphemeralNamespacePrefix,
-					Labels:          k8slabels.Set{corev1.LabelMetadataName: checkup.EphemeralNamespacePrefix},
-					ResourceVersion: "123",
-				},
-			},
-		)
-		return true, watcher, nil
-	})
 }
 
 func (c *testsClient) listClusterRoleBindings() ([]rbacv1.ClusterRoleBinding, error) {
@@ -726,22 +689,6 @@ func assertClusterRoleBindingsCreated(
 		expectedClusterRoleBindings = append(expectedClusterRoleBindings, *clusterRoleBindingPtr)
 	}
 	assert.Equal(t, actualClusterRoleBindings, expectedClusterRoleBindings)
-}
-
-// assertNoObjectExists checks that the checkup's Namespace and ClusterRoleBinding's are deleted.
-// When a namespace is deleted each object inside it will be deleted eventually.
-// The fake client won't perform forwarder checking when a Namespace is deleted and won't delete each
-// associated object, Thus other objects that were created inside the checkup Namespace
-// are not being checked explicitly.
-func assertNoObjectExists(t *testing.T, testClient *testsClient) {
-	assertNoNamespaceExists(t, testClient)
-	assertNoClusterRoleBindingExists(t, testClient)
-}
-
-func assertNoNamespaceExists(t *testing.T, testClient *testsClient) {
-	namespaces, err := testClient.listNamespaces()
-	assert.NoError(t, err)
-	assert.Empty(t, namespaces)
 }
 
 func assertNoClusterRoleBindingExists(t *testing.T, testClient *testsClient) {

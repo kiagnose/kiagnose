@@ -312,8 +312,10 @@ func (c *Checkup) teardownWithEphemeralNamespace() error {
 func (c *Checkup) teardownWithTargetNamespace() error {
 	var errs []error
 
-	if err := job.DeleteAndWait(c.client, c.job, c.teardownTimeout); err != nil {
-		errs = append(errs, err)
+	if c.job != nil {
+		if err := job.DeleteAndWait(c.client, c.job, c.teardownTimeout); err != nil {
+			errs = append(errs, err)
+		}
 	}
 
 	if err := rbac.DeleteClusterRoleBindings(c.client, c.clusterRoleBindings, c.teardownTimeout); err != nil {
