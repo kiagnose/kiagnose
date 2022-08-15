@@ -185,7 +185,7 @@ func TestSetupInTargetNamespaceShouldSucceedWith(t *testing.T) {
 		t.Run(testCase.description, func(t *testing.T) {
 			c := fake.NewSimpleClientset()
 
-			targetNs := newNamespace(testTargetNs)
+			targetNs := newTestNamespace()
 			_, err := c.CoreV1().Namespaces().Create(context.Background(), targetNs, metav1.CreateOptions{})
 			assert.NoError(t, err)
 
@@ -238,7 +238,7 @@ func TestSetupInTargetNamespaceShouldFailWhen(t *testing.T) {
 		t.Run(testCase.description, func(t *testing.T) {
 			testClient := newNormalizedFakeClientset()
 
-			targetNs := newNamespace(testTargetNs)
+			targetNs := newTestNamespace()
 			_, err := testClient.CoreV1().Namespaces().Create(context.Background(), targetNs, metav1.CreateOptions{})
 			assert.NoError(t, err)
 
@@ -279,7 +279,7 @@ func TestTeardownInTargetNamespaceShouldSucceed(t *testing.T) {
 	testClient := newNormalizedFakeClientset()
 	testClient.injectResourceVersionUpdateOnJobCreation()
 
-	targetNs := newNamespace(testTargetNs)
+	targetNs := newTestNamespace()
 	_, err := testClient.CoreV1().Namespaces().Create(context.Background(), targetNs, metav1.CreateOptions{})
 	assert.NoError(t, err)
 
@@ -438,6 +438,43 @@ func testTeardownShouldFailWhenNamespaceAndClusterRoleBindingsDeletionFails(t *t
 	err := testCheckup.Teardown()
 	assert.ErrorContains(t, err, deleteNamespaceError)
 	assert.ErrorContains(t, err, deleteClusterRoleBindingError)
+}
+
+func TestTeardownInTargetNamespaceShouldFailWhen(t *testing.T) {
+	testCases := []struct {
+		description string
+		resource    string
+	}{
+		{"Failed to delete Job", jobResource},
+		{"Failed to create ConfigMap writer RoleBinding", rolesBindingResource},
+		{"Failed to create results ConfigMap", configMapResource},
+		{"Failed to create ConfigMap writer Role", rolesResource},
+	}
+
+	for _, testCase := range testCases {
+		t.Run(testCase.description, func(t *testing.T) {
+			testClient := newNormalizedFakeClientset()
+
+			targetNs := newTestNamespace()
+			_, err := testClient.CoreV1().Namespaces().Create(context.Background(), targetNs, metav1.CreateOptions{})
+			assert.NoError(t, err)
+
+			testCheckup := checkup.New(
+				testClient,
+				testTargetNs,
+				testCheckupName,
+				&config.Config{Image: testImage, Timeout: testTimeout},
+				nameGeneratorStub{},
+			)
+
+			assert.NoError(t, testCheckup.Setup())
+
+			expectedErr := fmt.Sprintf("failed to create resource %q object", testCase.resource)
+			testClient.injectDeleteErrorForResource(testCase.resource, expectedErr)
+
+			assert.ErrorContains(t, testCheckup.Teardown(), expectedErr)
+		})
+	}
 }
 
 type checkupRunTestCase struct {
@@ -650,10 +687,10 @@ func newJobWithCondition(namespace, name string, condition *batchv1.JobCondition
 	}
 }
 
-func newNamespace(name string) *corev1.Namespace {
+func newTestNamespace() *corev1.Namespace {
 	return &corev1.Namespace{
 		ObjectMeta: metav1.ObjectMeta{
-			Name: name,
+			Name: testTargetNs,
 		},
 	}
 }
