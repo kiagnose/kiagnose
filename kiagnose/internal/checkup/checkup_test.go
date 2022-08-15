@@ -185,12 +185,7 @@ func TestSetupInTargetNamespaceShouldSucceedWith(t *testing.T) {
 		t.Run(testCase.description, func(t *testing.T) {
 			c := fake.NewSimpleClientset()
 
-			targetNs := &corev1.Namespace{
-				ObjectMeta: metav1.ObjectMeta{
-					Name: testTargetNs,
-				},
-			}
-
+			targetNs := newNamespace(testTargetNs)
 			_, err := c.CoreV1().Namespaces().Create(context.Background(), targetNs, metav1.CreateOptions{})
 			assert.NoError(t, err)
 
@@ -228,6 +223,41 @@ func TestSetupInTargetNamespaceShouldSucceedWith(t *testing.T) {
 	}
 }
 
+func TestSetupInTargetNamespaceShouldFailWhen(t *testing.T) {
+	testCases := []struct {
+		description string
+		resource    string
+	}{
+		{"Failed to create ServiceAccount", serviceAccountResource},
+		{"Failed to create results ConfigMap", configMapResource},
+		{"Failed to create ConfigMap writer Role", rolesResource},
+		{"Failed to create ConfigMap writer RoleBinding", rolesBindingResource},
+	}
+
+	for _, testCase := range testCases {
+		t.Run(testCase.description, func(t *testing.T) {
+			testClient := newNormalizedFakeClientset()
+
+			targetNs := newNamespace(testTargetNs)
+			_, err := testClient.CoreV1().Namespaces().Create(context.Background(), targetNs, metav1.CreateOptions{})
+			assert.NoError(t, err)
+
+			expectedErr := fmt.Sprintf("failed to create resource %q object", testCase.resource)
+			testClient.injectCreateErrorForResource(testCase.resource, expectedErr)
+
+			testCheckup := checkup.New(
+				testClient,
+				testTargetNs,
+				testCheckupName,
+				&config.Config{Image: testImage, Timeout: testTimeout},
+				nameGeneratorStub{},
+			)
+
+			assert.ErrorContains(t, testCheckup.Setup(), expectedErr)
+		})
+	}
+}
+
 func TestCheckTeardownShouldSucceed(t *testing.T) {
 	testClient := newNormalizedFakeClientset()
 	testCheckup := checkup.New(
@@ -249,12 +279,7 @@ func TestTeardownInTargetNamespaceShouldSucceed(t *testing.T) {
 	testClient := newNormalizedFakeClientset()
 	testClient.injectResourceVersionUpdateOnJobCreation()
 
-	targetNs := &corev1.Namespace{
-		ObjectMeta: metav1.ObjectMeta{
-			Name: testTargetNs,
-		},
-	}
-
+	targetNs := newNamespace(testTargetNs)
 	_, err := testClient.CoreV1().Namespaces().Create(context.Background(), targetNs, metav1.CreateOptions{})
 	assert.NoError(t, err)
 
@@ -621,6 +646,14 @@ func newJobWithCondition(namespace, name string, condition *batchv1.JobCondition
 		},
 		Status: batchv1.JobStatus{
 			Conditions: []batchv1.JobCondition{*condition},
+		},
+	}
+}
+
+func newNamespace(name string) *corev1.Namespace {
+	return &corev1.Namespace{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: name,
 		},
 	}
 }
