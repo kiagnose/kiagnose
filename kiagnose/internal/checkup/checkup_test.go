@@ -181,23 +181,6 @@ func TestSetupInTargetNamespaceShouldFailWhen(t *testing.T) {
 	}
 }
 
-func TestCheckTeardownShouldSucceed(t *testing.T) {
-	testClient := newNormalizedFakeClientset()
-	testCheckup := checkup.New(
-		testClient,
-		checkup.KiagnoseNamespace,
-		testCheckupName,
-		&config.Config{Image: testImage, Timeout: testTimeout},
-		nameGeneratorStub{},
-	)
-
-	testClient.injectResourceVersionUpdateOnNamespaceCreation()
-	testClient.injectWatchWithNamespaceDeleteEvent()
-
-	assert.NoError(t, testCheckup.Setup())
-	assert.NoError(t, testCheckup.Teardown())
-}
-
 func TestTeardownInTargetNamespaceShouldSucceed(t *testing.T) {
 	testClient := newNormalizedFakeClientset()
 	testClient.injectResourceVersionUpdateOnJobCreation()
