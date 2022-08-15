@@ -9,10 +9,6 @@ on:
   # Allows you to run this workflow manually from the Actions tab
   workflow_dispatch:
 
-defaults:
-  run:
-    working-directory: ./checkups/echo
-
 jobs:
   unit-test:
     name: Unit Test
@@ -21,4 +17,23 @@ jobs:
       - name: Check out code
         uses: actions/checkout@v2
       - name: Run unit tests
+        working-directory: ./checkups/echo
         run: ./automation/make.sh --unit-test
+  e2e-test:
+    name: e2e
+    runs-on: ubuntu-latest
+    env:
+      KIND: /usr/local/bin/kind
+      KUBECTL: /usr/local/bin/kubectl
+      CRI: docker
+    steps:
+      - name: Check out code
+        uses: actions/checkout@v2
+      - name: Build kiagnose image
+        run: ./automation/make.sh --build-core --build-core-image
+      - name: Deploy
+        run: ./automation/make.sh --e2e -- --install-kind --install-kubectl --create-cluster --deploy-kiagnose
+      - name: Run e2e tests
+        run: ./automation/make.sh --e2e -- --run-tests
+      - name: Delete cluster
+        run: ./automation/make.sh --e2e -- --delete-cluster
