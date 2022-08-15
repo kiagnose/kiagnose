@@ -25,14 +25,6 @@ rules:
       - patch
       - delete
   - apiGroups: [ "" ]
-    resources: [ "namespaces" ]
-    verbs:
-      - get
-      - list
-      - create
-      - delete
-      - watch
-  - apiGroups: [ "" ]
     resources: [ "serviceaccounts" ]
     verbs:
       - get
