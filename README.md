@@ -5,10 +5,7 @@
 A checkup is a containerized application, which checks that a certain cluster functionality is working.
 A checkup can be provided by a third party vendor, and should adhere to the Kiagnose checkup API.
 
-Kiagnose can execute a checkup in:
-1. An existing Namespace.
-2. A dedicated ephemeral Namespace, which is disposed when the checkup finishes.
-
+Kiagnose executes a checkup in an existing Namespace.
 Kiagnose passes user-supplied configuration to the checkup, and reports the checkup's results upon termination.
 
 # Usage
@@ -48,7 +45,6 @@ The main user-interface is a [ConfigMap](https://kubernetes.io/docs/concepts/con
 certain structure.
 
 In order to execute a checkup in an existing namespace, create the ConfigMap object in it.
-In order to execute a checkup in an ephemeral namespace create the ConfigMap object in the `kiagnose` Namespace (created during Kiagnose installation).
 
 ### Input Fields
 The user can configure the following under the `data` field:
@@ -83,9 +79,9 @@ data:
 In order to execute a checkup, Kiagnose needs to run a Kiagnose Job.
 The Kiagnose Job acts as a "short-lived" controller, and controls the checkup lifecycle:
 1. Read the checkup configuration from the user-supplied ConfigMap object.
-2. Set up a Namespace and other objects required to run the checkup.
-3. Run the checkup as a Job in the dedicated Namespace and wait for its termination or timeout expiration.
-4. Clean the dedicated Namespace and the rest of the objects created in the setup stage.
+2. Set up the objects required to run the checkup.
+3. Run the checkup as a Job in the target Namespace and wait for its termination or timeout expiration.
+4. Clean the objects created in the setup stage.
 
 
 Apply a Kiagnose Job using the following manifest file:
