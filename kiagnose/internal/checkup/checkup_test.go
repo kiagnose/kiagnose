@@ -327,26 +327,28 @@ func TestCheckupRunShouldSucceed(t *testing.T) {
 	for _, testCase := range checkupRunTestCases {
 		t.Run(testCase.description, func(t *testing.T) {
 			testClient := newNormalizedFakeClientset()
-			testClient.injectResourceVersionUpdateOnNamespaceCreation()
-			testClient.injectResourceVersionUpdateOnJobCreation()
-			testClient.injectWatchWithNamespaceDeleteEvent()
 
-			nameGen := nameGeneratorStub{}
+			targetNs := newTestNamespace()
+			_, err := testClient.CoreV1().Namespaces().Create(context.Background(), targetNs, metav1.CreateOptions{})
+			assert.NoError(t, err)
+
+			testClient.injectResourceVersionUpdateOnJobCreation()
+
 			testCheckup := checkup.New(
 				testClient,
-				checkup.KiagnoseNamespace,
+				testTargetNs,
 				testCheckupName,
 				&config.Config{Image: testImage, Timeout: testTimeout},
-				nameGen)
+				nameGeneratorStub{})
 
-			checkupNamespaceName := nameGen.Name(checkup.EphemeralNamespacePrefix)
 			checkupJobName := checkup.NameJob(testCheckupName)
-			testClient.injectJobWatchEvent(newJobWithCondition(checkupNamespaceName, checkupJobName, testCase.jobCondition))
+			testClient.injectJobWatchEvent(newJobWithCondition(testTargetNs, checkupJobName, testCase.jobCondition))
 
 			assert.NoError(t, testCheckup.Setup())
 			assert.NoError(t, testCheckup.Run())
+
+			testClient.injectWatchWithJobDeleteEvent(testTargetNs, checkupJobName)
 			assert.NoError(t, testCheckup.Teardown())
-			assertNoObjectExists(t, testClient)
 		})
 	}
 }
