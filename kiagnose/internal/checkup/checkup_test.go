@@ -70,43 +70,6 @@ type checkupSetupTestCase struct {
 	clusterRole []*rbacv1.ClusterRole
 	roles       []*rbacv1.Role
 	envVars     []corev1.EnvVar
-	resource    string
-}
-
-func TestCheckupSetupShouldFailWhen(t *testing.T) {
-	checkupCreateFailTestCases := []checkupSetupTestCase{
-		{description: "Namespace creation failed", resource: namespaceResource},
-		{description: "ServiceAccount creation failed", resource: serviceAccountResource},
-		{description: "ConfigMap creation failed", resource: configMapResource},
-		{description: "Role creation failed", resource: rolesResource},
-		{description: "RolesBinding creation failed", resource: rolesBindingResource},
-		{description: "ClusterRoleBinding creation failed",
-			resource: clusterRoleBindingResource, clusterRole: newTestClusterRoles()},
-	}
-	for _, testCase := range checkupCreateFailTestCases {
-		t.Run(testCase.description, func(t *testing.T) {
-			testClient := newNormalizedFakeClientset()
-			expectedErr := fmt.Sprintf("failed to create resource %q object", testCase.resource)
-			testClient.injectCreateErrorForResource(testCase.resource, expectedErr)
-			testCheckup := checkup.New(
-				testClient,
-				checkup.KiagnoseNamespace,
-				testCheckupName,
-				&config.Config{
-					Image:        testImage,
-					Timeout:      testTimeout,
-					EnvVars:      testCase.envVars,
-					ClusterRoles: testCase.clusterRole,
-					Roles:        testCase.roles,
-				},
-				nameGeneratorStub{},
-			)
-
-			assert.ErrorContains(t, testCheckup.Setup(), expectedErr)
-
-			assertNoObjectExists(t, testClient)
-		})
-	}
 }
 
 func TestCheckupSetupShould(t *testing.T) {
