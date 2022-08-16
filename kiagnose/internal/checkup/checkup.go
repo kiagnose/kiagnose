@@ -256,10 +256,6 @@ func (c *Checkup) SetTeardownTimeout(duration time.Duration) {
 }
 
 func (c *Checkup) Teardown() error {
-	return c.teardownWithTargetNamespace()
-}
-
-func (c *Checkup) teardownWithTargetNamespace() error {
 	var errs []error
 
 	if c.job != nil {
