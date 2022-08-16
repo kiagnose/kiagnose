@@ -211,9 +211,6 @@ func TestSetupInTargetNamespaceShouldSucceedWith(t *testing.T) {
 			resultsConfigMapWriterRoleName := checkup.NameResultsConfigMapWriterRole(testCheckupName)
 			serviceAccountName := checkup.NameServiceAccount(testCheckupName)
 
-			expectedEphemeralNamespaceName := nameGen.Name(checkup.EphemeralNamespacePrefix)
-			assertNamespaceDoesntExists(t, c, expectedEphemeralNamespaceName)
-
 			assertServiceAccountCreated(t, c, testTargetNs, serviceAccountName)
 			assertResultsConfigMapCreated(t, c, testTargetNs, resultsConfigMapName)
 			assertConfigMapWriterRoleCreated(t, c, testTargetNs, resultsConfigMapName, resultsConfigMapWriterRoleName)
@@ -881,13 +878,6 @@ func assertNamespaceExists(t *testing.T, testClient *fake.Clientset, nsName stri
 	_, err := testClient.Tracker().Get(gvr, "", nsName)
 
 	assert.NoError(t, err)
-}
-
-func assertNamespaceDoesntExists(t *testing.T, testClient *fake.Clientset, nsName string) {
-	gvr := schema.GroupVersionResource{Group: "", Version: "v1", Resource: namespaceResource}
-	_, err := testClient.Tracker().Get(gvr, "", nsName)
-
-	assert.ErrorContains(t, err, "not found")
 }
 
 func assertServiceAccountCreated(t *testing.T, testClient *fake.Clientset, nsName, serviceAccountName string) {
