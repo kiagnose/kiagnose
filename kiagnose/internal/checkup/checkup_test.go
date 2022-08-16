@@ -75,6 +75,11 @@ type checkupSetupTestCase struct {
 func TestCheckupSetupShould(t *testing.T) {
 	t.Run("clean-up remaining ClusterRoleBinding on failure", func(t *testing.T) {
 		testClient := newNormalizedFakeClientset()
+
+		targetNs := newTestNamespace()
+		_, err := testClient.CoreV1().Namespaces().Create(context.Background(), targetNs, metav1.CreateOptions{})
+		assert.NoError(t, err)
+
 		expectedErr := fmt.Sprintf("failed to create resource %q object", clusterRoleBindingResource)
 		expectedClusterRoles := newTestClusterRoles()
 		nameGen := nameGeneratorStub{}
@@ -83,15 +88,14 @@ func TestCheckupSetupShould(t *testing.T) {
 		testClient.injectResourceVersionUpdateOnJobCreation()
 		testCheckup := checkup.New(
 			testClient,
-			checkup.KiagnoseNamespace,
+			testTargetNs,
 			testCheckupName,
 			&config.Config{Image: testImage, Timeout: testTimeout, ClusterRoles: expectedClusterRoles},
 			nameGen,
 		)
 
 		assert.ErrorContains(t, testCheckup.Setup(), expectedErr)
-
-		assertNoObjectExists(t, testClient)
+		assertNoClusterRoleBindingExists(t, testClient)
 	})
 }
 
