@@ -64,23 +64,21 @@ type namer interface {
 }
 
 func New(c kubernetes.Interface, targetNsName, name string, checkupConfig *config.Config, namer namer) *Checkup {
-	nsName := targetNsName
-
 	resultsConfigMapName := NameResultsConfigMap(name)
 	resultsConfigMapWriterRoleName := NameResultsConfigMapWriterRole(name)
 	serviceAccountName := NameServiceAccount(name)
 	jobName := NameJob(name)
-	checkupRoles := []*rbacv1.Role{NewConfigMapWriterRole(nsName, resultsConfigMapWriterRoleName, resultsConfigMapName)}
+	checkupRoles := []*rbacv1.Role{NewConfigMapWriterRole(targetNsName, resultsConfigMapWriterRoleName, resultsConfigMapName)}
 
-	serviceAccountSubject := NewServiceAccountSubject(nsName, serviceAccountName)
+	serviceAccountSubject := NewServiceAccountSubject(targetNsName, serviceAccountName)
 	var checkupRoleBindings []*rbacv1.RoleBinding
 	for _, role := range checkupRoles {
-		checkupRoleBindings = append(checkupRoleBindings, NewRoleBinding(nsName, role.Name, serviceAccountSubject))
+		checkupRoleBindings = append(checkupRoleBindings, NewRoleBinding(targetNsName, role.Name, serviceAccountSubject))
 	}
 
 	checkupEnvVars := []corev1.EnvVar{
 		{Name: ResultsConfigMapNameEnvVarName, Value: resultsConfigMapName},
-		{Name: ResultsConfigMapNameEnvVarNamespace, Value: nsName},
+		{Name: ResultsConfigMapNameEnvVarNamespace, Value: targetNsName},
 	}
 	checkupEnvVars = append(checkupEnvVars, checkupConfig.EnvVars...)
 
@@ -88,14 +86,14 @@ func New(c kubernetes.Interface, targetNsName, name string, checkupConfig *confi
 	return &Checkup{
 		client:              c,
 		teardownTimeout:     defaultTeardownTimeout,
-		serviceAccount:      NewServiceAccount(nsName, serviceAccountName),
-		resultConfigMap:     NewConfigMap(nsName, resultsConfigMapName),
+		serviceAccount:      NewServiceAccount(targetNsName, serviceAccountName),
+		resultConfigMap:     NewConfigMap(targetNsName, resultsConfigMapName),
 		roles:               checkupRoles,
 		roleBindings:        checkupRoleBindings,
 		jobTimeout:          checkupConfig.Timeout,
 		clusterRoleBindings: NewClusterRoleBindings(checkupConfig.ClusterRoles, serviceAccountSubject, namer),
 		job: NewCheckupJob(
-			nsName,
+			targetNsName,
 			jobName,
 			serviceAccountName,
 			checkupConfig.Image,
