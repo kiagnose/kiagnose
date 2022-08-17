@@ -38,7 +38,3 @@ func Create(client kubernetes.Interface, sa *corev1.ServiceAccount) (*corev1.Ser
 
 	return createdSa, nil
 }
-
-func Delete(client kubernetes.Interface, namespace, name string) error {
-	return client.CoreV1().ServiceAccounts(namespace).Delete(context.Background(), name, metav1.DeleteOptions{})
-}
