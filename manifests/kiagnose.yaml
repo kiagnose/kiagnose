@@ -28,20 +28,11 @@ rules:
     resources:
       - roles
       - rolebindings
-      - clusterrolebindings
     verbs:
       - get
       - list
       - create
       - delete
-  - apiGroups: [ "rbac.authorization.k8s.io" ]
-    resources:
-      - clusterroles
-    verbs:
-      - get
-      - list
-      - create
-      - bind
   - apiGroups: [ "batch" ]
     resources: [ "jobs" ]
     verbs:

@@ -41,8 +41,6 @@ type configMapParser struct {
 	Timeout            time.Duration
 	ServiceAccountName string
 	Params             map[string]string
-	ClusterRoleNames   []string
-	RoleNames          []string
 }
 
 func newConfigMapParser(configMapRawData map[string]string) *configMapParser {
@@ -68,9 +66,6 @@ func (cmp *configMapParser) Parse() error {
 	if err := cmp.parseParamsField(); err != nil {
 		return err
 	}
-
-	cmp.parseClusterRoleNamesField()
-	cmp.parseRoleNamesField()
 
 	return nil
 }
@@ -123,21 +118,4 @@ func (cmp *configMapParser) parseParamsField() error {
 	}
 
 	return nil
-}
-
-func (cmp *configMapParser) parseClusterRoleNamesField() {
-	if rawClusterRoleNames := cmp.configMapRawData[types.ClusterRolesKey]; rawClusterRoleNames != "" {
-		cmp.ClusterRoleNames = parseListSeparatedByNewlines(rawClusterRoleNames)
-	}
-}
-
-func (cmp *configMapParser) parseRoleNamesField() {
-	if rawRoleNames := cmp.configMapRawData[types.RolesKey]; rawRoleNames != "" {
-		cmp.RoleNames = parseListSeparatedByNewlines(rawRoleNames)
-	}
-}
-
-func parseListSeparatedByNewlines(rawString string) []string {
-	trimmedString := strings.TrimSpace(rawString)
-	return strings.Split(trimmedString, "\n")
 }

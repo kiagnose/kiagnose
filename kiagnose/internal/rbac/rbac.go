@@ -31,63 +31,6 @@ import (
 	"k8s.io/client-go/kubernetes"
 )
 
-func GetClusterRoles(client kubernetes.Interface, clusterRoleNames []string) ([]*rbacv1.ClusterRole, error) {
-	var clusterRoles []*rbacv1.ClusterRole
-
-	for _, name := range clusterRoleNames {
-		clusterRole, err := getClusterRole(client, name)
-		if err != nil {
-			return nil, err
-		}
-
-		clusterRoles = append(clusterRoles, clusterRole)
-	}
-
-	return clusterRoles, nil
-}
-
-func GetRoles(client kubernetes.Interface, roleNames []string) ([]*rbacv1.Role, error) {
-	const requiredPartsCount = 2
-	var roles []*rbacv1.Role
-
-	for _, roleFullName := range roleNames {
-		nameParts := strings.Split(roleFullName, "/")
-		if len(nameParts) != requiredPartsCount {
-			return nil, fmt.Errorf("role name: %q is illeagal", roleFullName)
-		}
-
-		roleNamespace := nameParts[0]
-		roleName := nameParts[1]
-
-		role, err := getRole(client, roleNamespace, roleName)
-		if err != nil {
-			return nil, err
-		}
-
-		roles = append(roles, role)
-	}
-
-	return roles, nil
-}
-
-func getClusterRole(client kubernetes.Interface, name string) (*rbacv1.ClusterRole, error) {
-	clusterRole, err := client.RbacV1().ClusterRoles().Get(context.Background(), name, metav1.GetOptions{})
-	if err != nil {
-		return nil, err
-	}
-
-	return clusterRole, nil
-}
-
-func getRole(client kubernetes.Interface, namespace, name string) (*rbacv1.Role, error) {
-	role, err := client.RbacV1().Roles(namespace).Get(context.Background(), name, metav1.GetOptions{})
-	if err != nil {
-		return nil, err
-	}
-
-	return role, nil
-}
-
 func CreateRoles(client kubernetes.Interface, roles []*rbacv1.Role) ([]*rbacv1.Role, error) {
 	var createdRoles []*rbacv1.Role
 	for _, role := range roles {
