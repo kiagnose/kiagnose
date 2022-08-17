@@ -262,10 +262,6 @@ func (c *Checkup) Teardown() error {
 		}
 	}
 
-	if err := rbac.DeleteClusterRoleBindings(c.client, c.clusterRoleBindings, c.teardownTimeout); err != nil {
-		errs = append(errs, err)
-	}
-
 	if err := rbac.DeleteRoleBindings(c.client, c.roleBindings); err != nil {
 		errs = append(errs, err)
 	}
