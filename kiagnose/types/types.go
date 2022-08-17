@@ -24,8 +24,6 @@ const (
 	TimeoutKey            = "spec.timeout"
 	ServiceAccountNameKey = "spec.serviceAccountName"
 	ParamNameKeyPrefix    = "spec.param."
-	ClusterRolesKey       = "spec.clusterRoles"
-	RolesKey              = "spec.roles"
 )
 
 const (

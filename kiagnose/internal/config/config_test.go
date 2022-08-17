@@ -20,7 +20,6 @@
 package config_test
 
 import (
-	"context"
 	"sort"
 	"strings"
 	"testing"
@@ -29,7 +28,6 @@ import (
 	assert "github.com/stretchr/testify/require"
 
 	corev1 "k8s.io/api/core/v1"
-	rbacv1 "k8s.io/api/rbac/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes/fake"
 
@@ -50,16 +48,9 @@ const (
 	param2Value             = "message2 value"
 )
 
-var (
-	clusterRoleNamesList = []string{"cluster_role1", "cluster_role2"}
-	roleNamesList        = []string{"default/role1", "default/role2"}
-)
-
 func TestReadFromConfigMapShouldSucceed(t *testing.T) {
 	type loadTestCase struct {
 		description    string
-		clusterRoles   []*rbacv1.ClusterRole
-		roles          []*rbacv1.Role
 		configMapData  map[string]string
 		expectedConfig *config.Config
 	}
@@ -79,32 +70,26 @@ func TestReadFromConfigMapShouldSucceed(t *testing.T) {
 			},
 		},
 		{
-			description:  "when supplied with all parameters",
-			clusterRoles: expectedClusterRoles(),
-			roles:        expectedRoles(),
+			description: "when supplied with all parameters",
 			configMapData: map[string]string{
 				types.ImageKey:                       imageName,
 				types.TimeoutKey:                     timeoutValue,
 				types.ServiceAccountNameKey:          serviceAccountNameValue,
 				types.ParamNameKeyPrefix + param1Key: param1Value,
 				types.ParamNameKeyPrefix + param2Key: param2Value,
-				types.ClusterRolesKey:                strings.Join(clusterRoleNamesList, "\n"),
-				types.RolesKey:                       strings.Join(roleNamesList, "\n"),
 			},
 			expectedConfig: &config.Config{
 				Image:              imageName,
 				Timeout:            stringToDurationMustParse(timeoutValue),
 				ServiceAccountName: serviceAccountNameValue,
 				EnvVars:            expectedEnvVars(param1Key, param1Value, param2Key, param2Value),
-				ClusterRoles:       expectedClusterRoles(),
-				Roles:              expectedRoles(),
 			},
 		},
 	}
 
 	for _, testCase := range testCases {
 		t.Run(testCase.description, func(t *testing.T) {
-			fakeClient := newFakeClientWithObjects(configMapNamespace, configMapName, testCase.configMapData, testCase.clusterRoles, testCase.roles)
+			fakeClient := fake.NewSimpleClientset(newConfigMap(configMapNamespace, configMapName, testCase.configMapData))
 
 			actualConfig, err := config.ReadFromConfigMap(fakeClient, configMapNamespace, configMapName)
 			assert.NoError(t, err)
@@ -178,21 +163,6 @@ func TestReadFromConfigMapShouldFail(t *testing.T) {
 			expectedError: config.ErrConfigMapDataIsNil.Error(),
 		},
 		{
-			description:   "when ClusterRole doesn't exist",
-			configMapData: map[string]string{types.ImageKey: imageName, types.TimeoutKey: timeoutValue, types.ClusterRolesKey: "NA\n"},
-			expectedError: "clusterroles.rbac.authorization.k8s.io",
-		},
-		{
-			description:   "when Role doesn't exist",
-			configMapData: map[string]string{types.ImageKey: imageName, types.TimeoutKey: timeoutValue, types.RolesKey: "default/role999\n"},
-			expectedError: "roles.rbac.authorization.k8s.io",
-		},
-		{
-			description:   "when Role name is illegal",
-			configMapData: map[string]string{types.ImageKey: imageName, types.TimeoutKey: timeoutValue, types.RolesKey: "illegal name\n"},
-			expectedError: "role name",
-		},
-		{
 			description: "when param name is empty",
 			configMapData: map[string]string{
 				types.ImageKey:   imageName,
@@ -213,27 +183,6 @@ func TestReadFromConfigMapShouldFail(t *testing.T) {
 	}
 }
 
-func newFakeClientWithObjects(namespace, name string,
-	configMapData map[string]string, clusterRoles []*rbacv1.ClusterRole, roles []*rbacv1.Role) *fake.Clientset {
-	client := fake.NewSimpleClientset(newConfigMap(namespace, name, configMapData))
-
-	for _, clusterRole := range clusterRoles {
-		_, err := client.RbacV1().ClusterRoles().Create(context.Background(), clusterRole, metav1.CreateOptions{})
-		if err != nil {
-			panic("failed to create ClusterRole")
-		}
-	}
-
-	for _, role := range roles {
-		_, err := client.RbacV1().Roles(role.Namespace).Create(context.Background(), role, metav1.CreateOptions{})
-		if err != nil {
-			panic("failed to create Role")
-		}
-	}
-
-	return client
-}
-
 func newConfigMap(namespace, name string, data map[string]string) *corev1.ConfigMap {
 	return &corev1.ConfigMap{
 		ObjectMeta: metav1.ObjectMeta{
@@ -248,32 +197,6 @@ func expectedEnvVars(param1Key, param1Value, param2Key, param2Value string) []co
 	return []corev1.EnvVar{
 		{Name: strings.ToUpper(param1Key), Value: param1Value},
 		{Name: strings.ToUpper(param2Key), Value: param2Value},
-	}
-}
-
-func expectedClusterRoles() []*rbacv1.ClusterRole {
-	return []*rbacv1.ClusterRole{
-		{
-			TypeMeta:   metav1.TypeMeta{Kind: "ClusterRole", APIVersion: rbacv1.GroupName},
-			ObjectMeta: metav1.ObjectMeta{Name: "cluster_role1"},
-		},
-		{
-			TypeMeta:   metav1.TypeMeta{Kind: "ClusterRole", APIVersion: rbacv1.GroupName},
-			ObjectMeta: metav1.ObjectMeta{Name: "cluster_role2"},
-		},
-	}
-}
-
-func expectedRoles() []*rbacv1.Role {
-	return []*rbacv1.Role{
-		{
-			TypeMeta:   metav1.TypeMeta{Kind: "Role", APIVersion: rbacv1.GroupName},
-			ObjectMeta: metav1.ObjectMeta{Name: "role1", Namespace: "default"},
-		},
-		{
-			TypeMeta:   metav1.TypeMeta{Kind: "Role", APIVersion: rbacv1.GroupName},
-			ObjectMeta: metav1.ObjectMeta{Name: "role2", Namespace: "default"},
-		},
 	}
 }
 

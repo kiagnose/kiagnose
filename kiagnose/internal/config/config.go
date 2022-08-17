@@ -25,12 +25,9 @@ import (
 	"time"
 
 	corev1 "k8s.io/api/core/v1"
-	rbacv1 "k8s.io/api/rbac/v1"
-
 	"k8s.io/client-go/kubernetes"
 
 	"github.com/kiagnose/kiagnose/kiagnose/internal/configmap"
-	"github.com/kiagnose/kiagnose/kiagnose/internal/rbac"
 	"github.com/kiagnose/kiagnose/kiagnose/types"
 )
 
@@ -44,8 +41,6 @@ type Config struct {
 	Timeout            time.Duration
 	ServiceAccountName string
 	EnvVars            []corev1.EnvVar
-	ClusterRoles       []*rbacv1.ClusterRole
-	Roles              []*rbacv1.Role
 }
 
 func ReadFromConfigMap(client kubernetes.Interface, configMapNamespace, configMapName string) (*Config, error) {
@@ -68,23 +63,11 @@ func ReadFromConfigMap(client kubernetes.Interface, configMapNamespace, configMa
 		return nil, err
 	}
 
-	clusterRoles, err := rbac.GetClusterRoles(client, parser.ClusterRoleNames)
-	if err != nil {
-		return nil, err
-	}
-
-	roles, err := rbac.GetRoles(client, parser.RoleNames)
-	if err != nil {
-		return nil, err
-	}
-
 	return &Config{
 		Image:              parser.Image,
 		Timeout:            parser.Timeout,
 		ServiceAccountName: parser.ServiceAccountName,
 		EnvVars:            paramsToEnvVars(parser.Params),
-		ClusterRoles:       clusterRoles,
-		Roles:              roles,
 	}, nil
 }
 
