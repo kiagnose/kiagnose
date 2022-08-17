@@ -47,14 +47,12 @@ import (
 )
 
 const (
-	namespaceResource          = "namespaces"
-	clusterRoleBindingResource = "clusterrolebindings"
-	clusterRoleBindingKind     = "ClusterRoleBinding"
-	rolesResource              = "roles"
-	rolesBindingResource       = "rolebindings"
-	roleBindingKind            = "RoleBinding"
-	configMapResource          = "configmaps"
-	jobResource                = "jobs"
+	namespaceResource    = "namespaces"
+	rolesResource        = "roles"
+	rolesBindingResource = "rolebindings"
+	roleBindingKind      = "RoleBinding"
+	configMapResource    = "configmaps"
+	jobResource          = "jobs"
 
 	testTargetNs           = "target-ns"
 	testCheckupName        = "checkup1"
@@ -65,16 +63,12 @@ const (
 
 type checkupSetupTestCase struct {
 	description string
-	clusterRole []*rbacv1.ClusterRole
-	roles       []*rbacv1.Role
 	envVars     []corev1.EnvVar
 }
 
 func TestSetupInTargetNamespaceShouldSucceedWith(t *testing.T) {
 	checkupCreateTestCases := []checkupSetupTestCase{
 		{description: "no arguments"},
-		{description: "ClusterRoles", clusterRole: newTestClusterRoles()},
-		{description: "Roles", roles: newTestRoles()},
 		{description: "env vars", envVars: newTestEnvVars()},
 	}
 
@@ -90,8 +84,6 @@ func TestSetupInTargetNamespaceShouldSucceedWith(t *testing.T) {
 			_, err = c.CoreV1().ServiceAccounts(testTargetNs).Create(context.Background(), serviceAccount, metav1.CreateOptions{})
 			assert.NoError(t, err)
 
-			nameGen := nameGeneratorStub{}
-
 			testCheckup := checkup.New(
 				c,
 				testTargetNs,
@@ -101,10 +93,7 @@ func TestSetupInTargetNamespaceShouldSucceedWith(t *testing.T) {
 					Timeout:            testTimeout,
 					ServiceAccountName: testServiceAccountName,
 					EnvVars:            testCase.envVars,
-					ClusterRoles:       testCase.clusterRole,
-					Roles:              testCase.roles,
 				},
-				nameGen,
 			)
 
 			assert.NoError(t, testCheckup.Setup())
@@ -115,7 +104,6 @@ func TestSetupInTargetNamespaceShouldSucceedWith(t *testing.T) {
 			assertResultsConfigMapCreated(t, c, testTargetNs, resultsConfigMapName)
 			assertConfigMapWriterRoleCreated(t, c, testTargetNs, resultsConfigMapName, resultsConfigMapWriterRoleName)
 			assertConfigMapWriterRoleBindingCreated(t, c, testTargetNs, resultsConfigMapWriterRoleName, testServiceAccountName)
-			assertClusterRoleBindingsCreated(t, testsClient{c}, testCase.clusterRole, testTargetNs, testServiceAccountName, nameGen)
 		})
 	}
 }
@@ -150,7 +138,6 @@ func TestSetupInTargetNamespaceShouldFailWhen(t *testing.T) {
 				testTargetNs,
 				testCheckupName,
 				&config.Config{Image: testImage, Timeout: testTimeout, ServiceAccountName: testServiceAccountName},
-				nameGeneratorStub{},
 			)
 
 			assert.ErrorContains(t, testCheckup.Setup(), expectedErr)
@@ -170,13 +157,11 @@ func TestTeardownInTargetNamespaceShouldSucceed(t *testing.T) {
 	_, err = testClient.CoreV1().ServiceAccounts(testTargetNs).Create(context.Background(), serviceAccount, metav1.CreateOptions{})
 	assert.NoError(t, err)
 
-	nameGen := nameGeneratorStub{}
 	testCheckup := checkup.New(
 		testClient,
 		testTargetNs,
 		testCheckupName,
-		&config.Config{Image: testImage, Timeout: testTimeout, ServiceAccountName: testServiceAccountName, ClusterRoles: newTestClusterRoles()},
-		nameGen,
+		&config.Config{Image: testImage, Timeout: testTimeout, ServiceAccountName: testServiceAccountName},
 	)
 
 	assert.NoError(t, testCheckup.Setup())
@@ -228,7 +213,6 @@ func TestTeardownInTargetNamespaceShouldFailWhen(t *testing.T) {
 				testTargetNs,
 				testCheckupName,
 				&config.Config{Image: testImage, Timeout: testTimeout, ServiceAccountName: testServiceAccountName},
-				nameGeneratorStub{},
 			)
 
 			assert.NoError(t, testCheckup.Setup())
@@ -266,13 +250,11 @@ func TestCheckupRunShouldCreateAJob(t *testing.T) {
 
 			testClient.injectResourceVersionUpdateOnJobCreation()
 
-			nameGen := nameGeneratorStub{}
 			testCheckup := checkup.New(
 				testClient,
 				testTargetNs,
 				testCheckupName,
 				&config.Config{Image: testImage, Timeout: testTimeout, ServiceAccountName: testServiceAccountName, EnvVars: testCase.envVars},
-				nameGen,
 			)
 
 			checkupJobName := checkup.NameJob(testCheckupName)
@@ -327,7 +309,7 @@ func TestCheckupRunShouldSucceed(t *testing.T) {
 				testTargetNs,
 				testCheckupName,
 				&config.Config{Image: testImage, Timeout: testTimeout, ServiceAccountName: testServiceAccountName},
-				nameGeneratorStub{})
+			)
 
 			checkupJobName := checkup.NameJob(testCheckupName)
 			testClient.injectJobWatchEvent(newJobWithCondition(checkupJobName, testCase.jobCondition))
@@ -343,7 +325,6 @@ func TestCheckupRunShouldSucceed(t *testing.T) {
 
 func TestCheckupRunShouldFailWhen(t *testing.T) {
 	var testClient *testsClient
-	var nameGen nameGeneratorStub
 
 	setup := func() {
 		testClient = newNormalizedFakeClientset()
@@ -369,7 +350,6 @@ func TestCheckupRunShouldFailWhen(t *testing.T) {
 			testTargetNs,
 			testCheckupName,
 			&config.Config{Image: testImage, Timeout: testTimeout, ServiceAccountName: testServiceAccountName},
-			nameGen,
 		)
 
 		assert.NoError(t, testCheckup.Setup())
@@ -385,7 +365,6 @@ func TestCheckupRunShouldFailWhen(t *testing.T) {
 			testTargetNs,
 			testCheckupName,
 			&config.Config{Image: testImage, Timeout: testTimeout, ServiceAccountName: testServiceAccountName},
-			nameGen,
 		)
 
 		assert.NoError(t, testCheckup.Setup())
@@ -402,7 +381,6 @@ func TestCheckupRunShouldFailWhen(t *testing.T) {
 			testTargetNs,
 			testCheckupName,
 			&config.Config{Image: testImage, Timeout: time.Nanosecond, ServiceAccountName: testServiceAccountName},
-			nameGen,
 		)
 
 		assert.NoError(t, testCheckup.Setup())
@@ -419,7 +397,6 @@ func TestCheckupRunShouldFailWhen(t *testing.T) {
 			testTargetNs,
 			testCheckupName,
 			&config.Config{Image: testImage, Timeout: time.Second, ServiceAccountName: testServiceAccountName},
-			nameGen,
 		)
 
 		checkupJobName := checkup.NameJob(testCheckupName)
@@ -430,18 +407,6 @@ func TestCheckupRunShouldFailWhen(t *testing.T) {
 		assert.ErrorContains(t, testCheckup.Run(), wait.ErrWaitTimeout.Error())
 		assert.NoError(t, testCheckup.Teardown())
 	})
-}
-
-func newTestClusterRoles() []*rbacv1.ClusterRole {
-	return []*rbacv1.ClusterRole{
-		{TypeMeta: metav1.TypeMeta{Kind: "ClusterRole"}, ObjectMeta: metav1.ObjectMeta{Name: "cluster-role1"}},
-		{TypeMeta: metav1.TypeMeta{Kind: "ClusterRole"}, ObjectMeta: metav1.ObjectMeta{Name: "cluster-role2"}}}
-}
-
-func newTestRoles() []*rbacv1.Role {
-	return []*rbacv1.Role{
-		{TypeMeta: metav1.TypeMeta{Kind: "Role"}, ObjectMeta: metav1.ObjectMeta{Name: "role1", Namespace: checkup.EphemeralNamespacePrefix}},
-		{TypeMeta: metav1.TypeMeta{Kind: "Role"}, ObjectMeta: metav1.ObjectMeta{Name: "role2", Namespace: checkup.EphemeralNamespacePrefix}}}
 }
 
 func newTestEnvVars() []corev1.EnvVar {
@@ -561,18 +526,6 @@ func (c *testsClient) injectWatchWithJobDeleteEvent(namespace, name string) {
 	c.PrependWatchReactor(jobResource, watchReactionFn)
 }
 
-func (c *testsClient) listClusterRoleBindings() ([]rbacv1.ClusterRoleBinding, error) {
-	objects, err := c.listObjectsByKind(rbacv1.GroupName, clusterRoleBindingResource, clusterRoleBindingKind)
-	if err != nil {
-		return nil, err
-	}
-	if objects != nil {
-		clusterRoleBindingsList := objects.(*rbacv1.ClusterRoleBindingList)
-		return clusterRoleBindingsList.Items, nil
-	}
-	return nil, nil
-}
-
 func (c *testsClient) listRoleBindings() ([]rbacv1.RoleBinding, error) {
 	objects, err := c.listObjectsByKind(rbacv1.GroupName, rolesBindingResource, roleBindingKind)
 	if err != nil {
@@ -643,25 +596,6 @@ func assertConfigMapWriterRoleBindingCreated(t *testing.T, testClient *fake.Clie
 	assert.Equal(t, expectedRoleBinding, actualRoleBinding)
 }
 
-func assertClusterRoleBindingsCreated(
-	t *testing.T,
-	testClient testsClient,
-	clusterRoles []*rbacv1.ClusterRole,
-	nsName,
-	serviceAccountName string,
-	nameGen nameGeneratorStub) {
-	actualClusterRoleBindings, err := testClient.listClusterRoleBindings()
-	assert.NoError(t, err)
-
-	serviceAccountSubject := checkup.NewServiceAccountSubject(nsName, serviceAccountName)
-
-	var expectedClusterRoleBindings []rbacv1.ClusterRoleBinding
-	for _, clusterRoleBindingPtr := range checkup.NewClusterRoleBindings(clusterRoles, serviceAccountSubject, nameGen) {
-		expectedClusterRoleBindings = append(expectedClusterRoleBindings, *clusterRoleBindingPtr)
-	}
-	assert.Equal(t, actualClusterRoleBindings, expectedClusterRoleBindings)
-}
-
 func assertCheckupJobDoesntExists(t *testing.T, testClient *testsClient, namespace, name string) {
 	_, err := testClient.BatchV1().Jobs(namespace).Get(context.Background(), name, metav1.GetOptions{})
 	assert.ErrorContains(t, err, "not found")
@@ -671,10 +605,4 @@ func assertNoRoleBindingExists(t *testing.T, testClient *testsClient) {
 	roleBindings, err := testClient.listRoleBindings()
 	assert.NoError(t, err)
 	assert.Empty(t, roleBindings)
-}
-
-type nameGeneratorStub struct{}
-
-func (ngs nameGeneratorStub) Name(prefix string) string {
-	return fmt.Sprintf("%s-12345", prefix)
 }

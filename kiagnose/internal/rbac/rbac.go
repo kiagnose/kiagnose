@@ -25,44 +25,11 @@ import (
 	"fmt"
 	"log"
 	"strings"
-	"time"
 
 	rbacv1 "k8s.io/api/rbac/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 )
-
-// CreateClusterRoleBindings creates the given ClusterRoleBindings in the cluster.
-// In case of failure it will delete and waits for the ClusterRoleBindings to dispose.
-func CreateClusterRoleBindings(client kubernetes.Interface, clusterRoleBindings []*rbacv1.ClusterRoleBinding,
-	timeout time.Duration) ([]*rbacv1.ClusterRoleBinding, error) {
-	var createdClusterRoleBindings []*rbacv1.ClusterRoleBinding
-	var createErr error
-	for _, clusterRoleBinding := range clusterRoleBindings {
-		createdClusterRoleBinding, err := createClusterRoleBinding(client, clusterRoleBinding)
-		if err != nil {
-			createErr = err
-			break
-		}
-		createdClusterRoleBindings = append(createdClusterRoleBindings, createdClusterRoleBinding)
-	}
-
-	if createErr != nil {
-		return nil, createErr
-	}
-
-	return createdClusterRoleBindings, nil
-}
-
-func createClusterRoleBinding(c kubernetes.Interface, bindings *rbacv1.ClusterRoleBinding) (*rbacv1.ClusterRoleBinding, error) {
-	createdClusterRoleBinding, err := c.RbacV1().ClusterRoleBindings().Create(context.Background(), bindings, metav1.CreateOptions{})
-	if err != nil {
-		return nil, err
-	}
-	log.Printf("ClusterRoleBinding %q successfully created\n", createdClusterRoleBinding.Name)
-
-	return createdClusterRoleBinding, nil
-}
 
 func GetClusterRoles(client kubernetes.Interface, clusterRoleNames []string) ([]*rbacv1.ClusterRole, error) {
 	var clusterRoles []*rbacv1.ClusterRole
