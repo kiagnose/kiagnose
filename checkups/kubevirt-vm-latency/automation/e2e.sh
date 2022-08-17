@@ -165,7 +165,6 @@ if [ -n "${OPT_DEPLOY_CHECKUP}" ]; then
     echo
     echo "Deploy kubevirt-vm-latency..."
     echo
-    ${KUBECTL} apply -f ${SCRIPT_PATH}/../manifests/clusterroles.yaml
 
     ${KIND} load docker-image "${CHECKUP_IMAGE}" --name "${CLUSTER_NAME}"
 fi
@@ -223,8 +222,6 @@ data:
   spec.image: ${CHECKUP_IMAGE}
   spec.timeout: 10m
   spec.serviceAccountName: ${VM_LATENCY_SERVICE_ACCOUNT_NAME}
-  spec.clusterRoles: |
-    kubevirt-vm-latency-checker
   spec.param.network_attachment_definition_namespace: "${TARGET_NAMESPACE}"
   spec.param.network_attachment_definition_name: "bridge-network"
   spec.param.max_desired_latency_milliseconds: "500"
