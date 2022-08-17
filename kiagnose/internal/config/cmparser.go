@@ -37,17 +37,17 @@ var (
 
 type configMapParser struct {
 	configMapRawData map[string]string
-	image            string
-	timeout          time.Duration
-	params           map[string]string
-	clusterRoleNames []string
-	roleNames        []string
+	Image            string
+	Timeout          time.Duration
+	Params           map[string]string
+	ClusterRoleNames []string
+	RoleNames        []string
 }
 
 func newConfigMapParser(configMapRawData map[string]string) *configMapParser {
 	return &configMapParser{
 		configMapRawData: configMapRawData,
-		params:           map[string]string{},
+		Params:           map[string]string{},
 	}
 }
 
@@ -70,35 +70,15 @@ func (cmp *configMapParser) Parse() error {
 	return nil
 }
 
-func (cmp *configMapParser) Image() string {
-	return cmp.image
-}
-
-func (cmp *configMapParser) Timeout() time.Duration {
-	return cmp.timeout
-}
-
-func (cmp *configMapParser) Params() map[string]string {
-	return cmp.params
-}
-
-func (cmp *configMapParser) ClusterRoleNames() []string {
-	return cmp.clusterRoleNames
-}
-
-func (cmp *configMapParser) RoleNames() []string {
-	return cmp.roleNames
-}
-
 func (cmp *configMapParser) parseImageField() error {
 	var exists bool
 
-	cmp.image, exists = cmp.configMapRawData[types.ImageKey]
+	cmp.Image, exists = cmp.configMapRawData[types.ImageKey]
 	if !exists {
 		return ErrImageFieldIsMissing
 	}
 
-	if cmp.image == "" {
+	if cmp.Image == "" {
 		return ErrImageFieldIsIllegal
 	}
 
@@ -112,7 +92,7 @@ func (cmp *configMapParser) parseTimeoutField() error {
 	}
 
 	var err error
-	cmp.timeout, err = time.ParseDuration(rawTimeout)
+	cmp.Timeout, err = time.ParseDuration(rawTimeout)
 	if err != nil {
 		return ErrTimeoutFieldIsIllegal
 	}
@@ -128,7 +108,7 @@ func (cmp *configMapParser) parseParamsField() error {
 				return ErrParamNameIsIllegal
 			}
 
-			cmp.params[paramName] = v
+			cmp.Params[paramName] = v
 		}
 	}
 
@@ -137,13 +117,13 @@ func (cmp *configMapParser) parseParamsField() error {
 
 func (cmp *configMapParser) parseClusterRoleNamesField() {
 	if rawClusterRoleNames := cmp.configMapRawData[types.ClusterRolesKey]; rawClusterRoleNames != "" {
-		cmp.clusterRoleNames = parseListSeparatedByNewlines(rawClusterRoleNames)
+		cmp.ClusterRoleNames = parseListSeparatedByNewlines(rawClusterRoleNames)
 	}
 }
 
 func (cmp *configMapParser) parseRoleNamesField() {
 	if rawRoleNames := cmp.configMapRawData[types.RolesKey]; rawRoleNames != "" {
-		cmp.roleNames = parseListSeparatedByNewlines(rawRoleNames)
+		cmp.RoleNames = parseListSeparatedByNewlines(rawRoleNames)
 	}
 }
 
