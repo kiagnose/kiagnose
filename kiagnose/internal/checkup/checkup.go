@@ -40,28 +40,21 @@ import (
 )
 
 type Checkup struct {
-	client              kubernetes.Interface
-	teardownTimeout     time.Duration
-	resultConfigMap     *corev1.ConfigMap
-	roles               []*rbacv1.Role
-	roleBindings        []*rbacv1.RoleBinding
-	clusterRoleBindings []*rbacv1.ClusterRoleBinding
-	jobTimeout          time.Duration
-	job                 *batchv1.Job
+	client          kubernetes.Interface
+	teardownTimeout time.Duration
+	resultConfigMap *corev1.ConfigMap
+	roles           []*rbacv1.Role
+	roleBindings    []*rbacv1.RoleBinding
+	jobTimeout      time.Duration
+	job             *batchv1.Job
 }
 
 const (
-	EphemeralNamespacePrefix = "kiagnose-checkup"
-
 	ResultsConfigMapNameEnvVarName      = "RESULT_CONFIGMAP_NAME"
 	ResultsConfigMapNameEnvVarNamespace = "RESULT_CONFIGMAP_NAMESPACE"
 )
 
-type namer interface {
-	Name(string) string
-}
-
-func New(c kubernetes.Interface, targetNsName, name string, checkupConfig *config.Config, namer namer) *Checkup {
+func New(c kubernetes.Interface, targetNsName, name string, checkupConfig *config.Config) *Checkup {
 	resultsConfigMapName := NameResultsConfigMap(name)
 	resultsConfigMapWriterRoleName := NameResultsConfigMapWriterRole(name)
 	jobName := NameJob(name)
@@ -81,13 +74,12 @@ func New(c kubernetes.Interface, targetNsName, name string, checkupConfig *confi
 
 	const defaultTeardownTimeout = time.Minute * 5
 	return &Checkup{
-		client:              c,
-		teardownTimeout:     defaultTeardownTimeout,
-		resultConfigMap:     NewConfigMap(targetNsName, resultsConfigMapName),
-		roles:               checkupRoles,
-		roleBindings:        checkupRoleBindings,
-		jobTimeout:          checkupConfig.Timeout,
-		clusterRoleBindings: NewClusterRoleBindings(checkupConfig.ClusterRoles, serviceAccountSubject, namer),
+		client:          c,
+		teardownTimeout: defaultTeardownTimeout,
+		resultConfigMap: NewConfigMap(targetNsName, resultsConfigMapName),
+		roles:           checkupRoles,
+		roleBindings:    checkupRoleBindings,
+		jobTimeout:      checkupConfig.Timeout,
 		job: NewCheckupJob(
 			targetNsName,
 			jobName,
@@ -131,36 +123,11 @@ func NewRoleBinding(namespaceName, roleName string, subject rbacv1.Subject) *rba
 	}
 }
 
-func NewClusterRoleBindings(
-	clusterRoles []*rbacv1.ClusterRole,
-	subject rbacv1.Subject,
-	namer namer) []*rbacv1.ClusterRoleBinding {
-	var clusterRoleBindings []*rbacv1.ClusterRoleBinding
-	for _, clusterRole := range clusterRoles {
-		clusterRoleBindingName := namer.Name(clusterRole.Name)
-		clusterRoleBindings = append(clusterRoleBindings, newClusterRoleBinding(clusterRoleBindingName, clusterRole.Name, subject))
-	}
-	return clusterRoleBindings
-}
-
 func NewServiceAccountSubject(serviceAccountNamespace, serviceAccountName string) rbacv1.Subject {
 	return rbacv1.Subject{
 		Kind:      rbacv1.ServiceAccountKind,
 		Name:      serviceAccountName,
 		Namespace: serviceAccountNamespace,
-	}
-}
-
-func newClusterRoleBinding(name, clusterRoleName string, subject rbacv1.Subject) *rbacv1.ClusterRoleBinding {
-	return &rbacv1.ClusterRoleBinding{
-		TypeMeta:   metav1.TypeMeta{Kind: "ClusterRoleBinding", APIVersion: rbacv1.GroupName},
-		ObjectMeta: metav1.ObjectMeta{Name: name},
-		Subjects:   []rbacv1.Subject{subject},
-		RoleRef: rbacv1.RoleRef{
-			Kind:     "ClusterRole",
-			APIGroup: rbacv1.GroupName,
-			Name:     clusterRoleName,
-		},
 	}
 }
 
@@ -206,10 +173,6 @@ func (c *Checkup) Setup() error {
 	}
 
 	if c.roleBindings, err = rbac.CreateRoleBindings(c.client, c.roleBindings); err != nil {
-		return fmt.Errorf("%s: %v", errPrefix, err)
-	}
-
-	if c.clusterRoleBindings, err = rbac.CreateClusterRoleBindings(c.client, c.clusterRoleBindings, c.teardownTimeout); err != nil {
 		return fmt.Errorf("%s: %v", errPrefix, err)
 	}
 
