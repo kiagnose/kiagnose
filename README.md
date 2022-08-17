@@ -27,13 +27,18 @@ Please see the [removal instructions](./README.install.md/#kiagnose-removal).
 A vendor creating a checkup should provide:
 1. Checkup's documentation (what it does, how to configure it, what are its output, etc). 
 2. A checkup image.
-3. A yaml file containing the ClusterRole objects, required by the checkup.
+3. A yaml file containing the following objects required for the checkup's execution:
+ - A ServiceAccount object
+ - Role object(s) - optional
+ - RoleBinding object(s) - optional
+ - ClusterRole object(s) - optional
+ - ClusterRoleBinding object(s) - optional
 
 > **_WARNING:_**
 > 1. One should make sure a trustful checkup is used.
 > 2. It is up to the cluster administrator to **ALWAYS** check the checkup's **image** and **permissions**
 **BEFORE** applying them and running the checkup.
-Kiagnose will **AUTOMATICALLY** bind these permissions to the checkup instance.
+Kiagnose will **AUTOMATICALLY** use the user-supplied ServiceAccount for granting permissions to the checkup instance.
 
 ### Installation Steps
 1. Make sure the checkup's image is accessible to your cluster.
@@ -49,12 +54,12 @@ In order to execute a checkup in an existing namespace, create the ConfigMap obj
 ### Input Fields
 The user can configure the following under the `data` field:
 
-| Property          | Description                                                                   | Mandatory | Remarks                               |
-|-------------------|-------------------------------------------------------------------------------|-----------|---------------------------------------|
-| spec.image        | Where to pull the checkup's image from                                        | Yes       | A registry accessible to your cluster |
-| spec.timeout      | After how much time should Kiagnose stop the running checkup                  | Yes       | 5m, 1h etc                            |
-| spec.clusterRoles | Newline separated list of **deployed** ClusterRole names the checkup requires | No        | [0..N]                                |
-| spec.param.*      | Arbitrary strings that will be passed to the checkup as input parameters      | No        | [0..N]                                |
+| Property                | Description                                                                                                                 | Mandatory | Remarks                               |
+|-------------------------|-----------------------------------------------------------------------------------------------------------------------------|-----------|---------------------------------------|
+| spec.image              | Where to pull the checkup's image from                                                                                      | Yes       | A registry accessible to your cluster |
+| spec.timeout            | After how much time should Kiagnose stop the running checkup                                                                | Yes       | 5m, 1h etc                            |
+| spec.serviceAccountName | Name of ServiceAccount object, that exists in the target namespace and bound to the proper permissions the checkup requires | Yes       | "default" value is illegal            |
+| spec.param.*            | Arbitrary strings that will be passed to the checkup as input parameters                                                    | No        | [0..N]                                |
 
 Example configuration:
 
@@ -67,8 +72,7 @@ metadata:
 data:
   spec.image: my-registry/example-checkup:main
   spec.timeout: 5m
-  spec.clusterRoles: |
-    clusterRoleName1
+  spec.serviceAccountName: example-sa
   spec.param.param_key_1: "value 1"
   spec.param.param_key_2: "value 2"
 ```
@@ -138,8 +142,7 @@ metadata:
 data:
   spec.image: my-registry/example-checkup:main
   spec.timeout: 5m
-  spec.clusterRoles: |
-    clusterRoleName1
+  spec.serviceAccountName: example-sa
   spec.param.param_key_1: "value 1"
   spec.param.param_key_2: "value 2"
   
@@ -164,5 +167,10 @@ kubectl delete configmap <ConfigMap name> -n <target-namespace>
 
 ## Checkup Removal
 In order to remove a checkup from the cluster:
-1. Remove vendor-supplied ClusterRole / Role objects.
+1. Remove vendor-supplied objects:
+- A ServiceAccount object
+- Role object(s) - optional
+- RoleBinding object(s) - optional
+- ClusterRole object(s) - optional
+- ClusterRoleBinding object(s) - optional
 2. If the checkup's image is stored on your registry - remove it.
