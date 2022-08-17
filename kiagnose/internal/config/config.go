@@ -67,20 +67,20 @@ func ReadFromConfigMap(client kubernetes.Interface, configMapNamespace, configMa
 		return nil, err
 	}
 
-	clusterRoles, err := rbac.GetClusterRoles(client, parser.ClusterRoleNames())
+	clusterRoles, err := rbac.GetClusterRoles(client, parser.ClusterRoleNames)
 	if err != nil {
 		return nil, err
 	}
 
-	roles, err := rbac.GetRoles(client, parser.RoleNames())
+	roles, err := rbac.GetRoles(client, parser.RoleNames)
 	if err != nil {
 		return nil, err
 	}
 
 	return &Config{
-		Image:        parser.Image(),
-		Timeout:      parser.Timeout(),
-		EnvVars:      paramsToEnvVars(parser.Params()),
+		Image:        parser.Image,
+		Timeout:      parser.Timeout,
+		EnvVars:      paramsToEnvVars(parser.Params),
 		ClusterRoles: clusterRoles,
 		Roles:        roles,
 	}, nil
