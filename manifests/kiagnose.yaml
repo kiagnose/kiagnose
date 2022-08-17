@@ -30,7 +30,6 @@ rules:
       - get
       - list
       - create
-      - delete
   - apiGroups: [ "rbac.authorization.k8s.io" ]
     resources:
       - roles

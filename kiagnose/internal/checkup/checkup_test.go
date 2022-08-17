@@ -211,9 +211,6 @@ func TestTeardownInTargetNamespaceShouldSucceed(t *testing.T) {
 	assertNoClusterRoleBindingExists(t, testClient)
 	assertNoRoleBindingExists(t, testClient)
 
-	serviceAccountName := checkup.NameServiceAccount(testCheckupName)
-	assertServiceAccountDoesntExists(t, testClient.Clientset, testTargetNs, serviceAccountName)
-
 	configMapWriterRoleName := checkup.NameResultsConfigMapWriterRole(testCheckupName)
 	assertConfigMapWriterRoleDoesntExists(t, testClient.Clientset, testTargetNs, configMapWriterRoleName)
 
@@ -618,13 +615,6 @@ func assertServiceAccountCreated(t *testing.T, testClient *fake.Clientset, nsNam
 
 	assert.NoError(t, err)
 	assert.Equal(t, checkup.NewServiceAccount(nsName, serviceAccountName), actualServiceAccount)
-}
-
-func assertServiceAccountDoesntExists(t *testing.T, testClient *fake.Clientset, nsName, serviceAccountName string) {
-	gvr := schema.GroupVersionResource{Group: "", Version: "v1", Resource: serviceAccountResource}
-	_, err := testClient.Tracker().Get(gvr, nsName, serviceAccountName)
-
-	assert.ErrorContains(t, err, "not found")
 }
 
 func assertResultsConfigMapCreated(t *testing.T, testClient *fake.Clientset, nsName, expectedConfigMapName string) {

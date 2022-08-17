@@ -270,10 +270,6 @@ func (c *Checkup) Teardown() error {
 		errs = append(errs, err)
 	}
 
-	if err := serviceaccount.Delete(c.client, c.serviceAccount.Namespace, c.serviceAccount.Name); err != nil {
-		errs = append(errs, err)
-	}
-
 	if err := rbac.DeleteRoles(c.client, c.roles); err != nil {
 		errs = append(errs, err)
 	}
