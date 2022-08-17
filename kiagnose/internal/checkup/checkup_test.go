@@ -70,33 +70,6 @@ type checkupSetupTestCase struct {
 	envVars     []corev1.EnvVar
 }
 
-func TestCheckupSetupShould(t *testing.T) {
-	t.Run("clean-up remaining ClusterRoleBinding on failure", func(t *testing.T) {
-		testClient := newNormalizedFakeClientset()
-
-		targetNs := newTestNamespace()
-		_, err := testClient.CoreV1().Namespaces().Create(context.Background(), targetNs, metav1.CreateOptions{})
-		assert.NoError(t, err)
-
-		expectedErr := fmt.Sprintf("failed to create resource %q object", clusterRoleBindingResource)
-		expectedClusterRoles := newTestClusterRoles()
-		nameGen := nameGeneratorStub{}
-		secondClusterRoleBindingName := nameGen.Name(expectedClusterRoles[1].Name)
-		testClient.injectClusterRoleBindingCreateError(secondClusterRoleBindingName, expectedErr)
-		testClient.injectResourceVersionUpdateOnJobCreation()
-		testCheckup := checkup.New(
-			testClient,
-			testTargetNs,
-			testCheckupName,
-			&config.Config{Image: testImage, Timeout: testTimeout, ClusterRoles: expectedClusterRoles},
-			nameGen,
-		)
-
-		assert.ErrorContains(t, testCheckup.Setup(), expectedErr)
-		assertNoClusterRoleBindingExists(t, testClient)
-	})
-}
-
 func TestSetupInTargetNamespaceShouldSucceedWith(t *testing.T) {
 	checkupCreateTestCases := []checkupSetupTestCase{
 		{description: "no arguments"},
@@ -208,7 +181,6 @@ func TestTeardownInTargetNamespaceShouldSucceed(t *testing.T) {
 
 	assertNamespaceExists(t, testClient.Clientset, testTargetNs)
 	assertCheckupJobDoesntExists(t, testClient, testTargetNs, checkupJobName)
-	assertNoClusterRoleBindingExists(t, testClient)
 	assertNoRoleBindingExists(t, testClient)
 
 	configMapWriterRoleName := checkup.NameResultsConfigMapWriterRole(testCheckupName)
@@ -530,23 +502,6 @@ func (c *testsClient) injectResourceVersionUpdate(verb, resourceName string) {
 	})
 }
 
-// injectClusterRoleBindingCreateError injects an error when the given ClusterRoleBinding name is created.
-func (c *testsClient) injectClusterRoleBindingCreateError(clusterRoleBindingName, injectedErr string) {
-	const createVerb = "create"
-	reactionFn := func(action clienttesting.Action) (bool, runtime.Object, error) {
-		if createAction, succeed := action.(clienttesting.CreateActionImpl); succeed {
-			clusterRoleBinding, succeed := createAction.Object.(*rbacv1.ClusterRoleBinding)
-			if succeed && clusterRoleBinding != nil &&
-				clusterRoleBinding.Name == clusterRoleBindingName {
-				return true, nil, errors.New(injectedErr)
-			}
-		}
-		// delegate this action to the next reactor
-		return false, nil, nil
-	}
-	c.PrependReactor(createVerb, clusterRoleBindingResource, reactionFn)
-}
-
 func (c *testsClient) injectJobWatchEvent(job *batchv1.Job) {
 	watchReactionFn := func(action clienttesting.Action) (bool, watch.Interface, error) {
 		watcher := watch.NewRaceFreeFake()
@@ -679,12 +634,6 @@ func assertClusterRoleBindingsCreated(
 		expectedClusterRoleBindings = append(expectedClusterRoleBindings, *clusterRoleBindingPtr)
 	}
 	assert.Equal(t, actualClusterRoleBindings, expectedClusterRoleBindings)
-}
-
-func assertNoClusterRoleBindingExists(t *testing.T, testClient *testsClient) {
-	clusterRoleBindings, err := testClient.listClusterRoleBindings()
-	assert.NoError(t, err)
-	assert.Empty(t, clusterRoleBindings)
 }
 
 func assertCheckupJobDoesntExists(t *testing.T, testClient *testsClient, namespace, name string) {
