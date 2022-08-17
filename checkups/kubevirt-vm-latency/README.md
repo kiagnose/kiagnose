@@ -31,7 +31,43 @@ The default binding method is `bridge`.
 ## Permissions
 The checkup requires some additional permissions in order to operate:
 ```bash
-kubectl apply -f ./manifests/clusterroles.yaml
+cat <<EOF | kubectl apply -f -
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: vm-latency-checkup-sa
+  namespace: <target-namespace>
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: kubevirt-vm-latency-checker
+  namespace: <target-namespace>
+rules:
+- apiGroups: ["kubevirt.io"]
+  resources: ["virtualmachineinstances"]
+  verbs: ["get", "create", "delete"]
+- apiGroups: ["subresources.kubevirt.io"]
+  resources: ["virtualmachineinstances/console"]
+  verbs: ["get"]
+- apiGroups: ["k8s.cni.cncf.io"]
+  resources: ["network-attachment-definitions"]
+  verbs: ["get"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: kubevirt-vm-latency-checker
+  namespace: <target-namespace>
+subjects:
+- kind: ServiceAccount
+  name: vm-latency-checkup-sa
+roleRef:
+  kind: Role
+  name: kubevirt-vm-latency-checker
+  apiGroup: rbac.authorization.k8s.io
+EOF
 ```
 
 ## Configuration
@@ -41,7 +77,7 @@ The checkup is configured by the following parameters:
 |:-----------------------------------------------------------------------------------|:-----------------------------------------------------------------------------------------------------------------------------|
 | `spec.image`                                                                       | The checkup container image.                                                                                                 |
 | `spec.timeout`                                                                     | Overall time the checkup can run.                                                                                            |
-| `spec.clusterRoles`                                                                | ClusterRole name with the required permission.                                                                               |
+| `spec.serviceAccountName`                                                          | Name of ServiceAccount object, that exists in the target namespace and bound to the proper permissions the checkup requires  |
 | `network_attachment_definition_namespace`<br/>`network_attachment_definition_name` | `NetworkAttachmentDefinition` object on which <br/> the VMs are connected to and measure network latency.                    |
 | `sample_duration_seconds`                                                          | Network latency measurement sample time (optional).<br/> Default is 5 seconds.                                               |
 | `max_desired_latency_milliseconds`                                                 | Maximal network latency accepted, if the actual latency <br/> is higher the checkup will be considered as failed (optional). |
@@ -53,6 +89,7 @@ The checkup is configured by the following parameters:
 ### Example
 ```yaml
 cat <<EOF | kubectl apply -f -
+---
 apiVersion: v1
 kind: ConfigMap
 metadata:
@@ -61,8 +98,7 @@ metadata:
 data:
   spec.image: quay.io/kiagnose/kubevirt-vm-latency:main
   spec.timeout: 5m
-  spec.clusterRoles: |
-    kubevirt-vm-latency-checker
+  spec.serviceAccountName: vm-latency-checkup-sa
   spec.param.network_attachment_definition_namespace: "default"
   spec.param.network_attachment_definition_name: "blue-network"
   spec.param.max_desired_latency_milliseconds: "10"
@@ -76,6 +112,7 @@ EOF
 The checkup can be executed with a Batch Job: 
 ```yaml
 cat <<EOF | kubectl apply -f -
+---
 apiVersion: batch/v1
 kind: Job
 metadata:
@@ -121,8 +158,7 @@ metadata:
 data:
   spec.image: quay.io/kiagnose/kubevirt-vm-latency:main
   spec.timeout: 5m
-  spec.clusterRoles: |
-    kubevirt-vm-latency-checker
+  spec.serviceAccountName: vm-latency-checkup-sa
   spec.param.network_attachment_definition_namespace: "default"
   spec.param.network_attachment_definition_name: "blue-network"
   spec.param.max_desired_latency_milliseconds: "10"
