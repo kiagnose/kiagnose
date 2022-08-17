@@ -9,7 +9,17 @@ This is an example checkup, used as a reference for creating more realistic chec
 
 ### Installation
 
-The checkup does not require additional permissions.
+The checkup requires only a ServiceAccount:
+```bash
+cat <<EOF | kubectl apply -f -
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: echo-checkup-sa
+  namespace: <target-namespace>
+EOF
+```
 
 ### Configuration
 
@@ -26,6 +36,7 @@ metadata:
 data:
   spec.image: quay.io/kiagnose/echo-checkup:main
   spec.timeout: 1m
+  spec.serviceAccountName: echo-checkup-sa
   spec.param.message: "Hi!"
 EOF
 ```
@@ -93,6 +104,7 @@ data:
   spec.image: quay.io/kiagnose/echo-checkup:main
   spec.param.message: Hi!
   spec.timeout: 1m
+  spec.serviceAccountName: echo-checkup-sa
   status.completionTimestamp: "2022-06-06T11:00:10Z"
   status.failureReason: ""
   status.result.echo: Hi!
@@ -112,6 +124,8 @@ Remove the Kiagnose Job and the ConfigMap object when the logs and the results a
 kubectl delete job.batch/echo-checkup1 -n kiagnose
 kubectl delete configmap echo-checkup-config -n <target-namespace>
 ```
+
+Remove the previously created ServiceAccount when you no longer wish to use it.
 
 ## API
 ### Inputs
