@@ -77,4 +77,9 @@ The checkup author is expected to provide:
 2. Documentation of:
    - Required and optional parameters, that affects its behavior.
    - Checkup results and their meaning (physical units etc.).
-3. Manifest files of required Role and ClusterRole objects.
+3. Manifest files of required objects:
+- A ServiceAccount object
+- Role object(s) - optional
+- RoleBinding object(s) - optional
+- ClusterRole object(s) - optional
+- ClusterRoleBinding object(s) - optional
