@@ -36,12 +36,13 @@ var (
 )
 
 type configMapParser struct {
-	configMapRawData map[string]string
-	Image            string
-	Timeout          time.Duration
-	Params           map[string]string
-	ClusterRoleNames []string
-	RoleNames        []string
+	configMapRawData   map[string]string
+	Image              string
+	Timeout            time.Duration
+	ServiceAccountName string
+	Params             map[string]string
+	ClusterRoleNames   []string
+	RoleNames          []string
 }
 
 func newConfigMapParser(configMapRawData map[string]string) *configMapParser {
@@ -57,6 +58,10 @@ func (cmp *configMapParser) Parse() error {
 	}
 
 	if err := cmp.parseTimeoutField(); err != nil {
+		return err
+	}
+
+	if err := cmp.parseServiceAccountName(); err != nil {
 		return err
 	}
 
@@ -97,6 +102,11 @@ func (cmp *configMapParser) parseTimeoutField() error {
 		return ErrTimeoutFieldIsIllegal
 	}
 
+	return nil
+}
+
+func (cmp *configMapParser) parseServiceAccountName() error {
+	cmp.ServiceAccountName = cmp.configMapRawData[types.ServiceAccountNameKey]
 	return nil
 }
 
