@@ -38,6 +38,7 @@ CHECKUP_IMAGE="quay.io/kiagnose/kubevirt-vm-latency:devel"
 KIAGNOSE_NAMESPACE=kiagnose
 KIAGNOSE_JOB=kubevirt-vm-latency-checkup
 VM_LATENCY_CONFIGMAP=kubevirt-vm-latency-checkup
+VM_LATENCY_SERVICE_ACCOUNT_NAME=kubevirt-vm-latency-checkup-sa
 
 TARGET_NAMESPACE="target-ns"
 
@@ -170,6 +171,44 @@ if [ -n "${OPT_DEPLOY_CHECKUP}" ]; then
 fi
 
 if [ -n "${OPT_RUN_TEST}" ]; then
+     cat <<EOF | ${KUBECTL} apply -f -
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: ${VM_LATENCY_SERVICE_ACCOUNT_NAME}
+  namespace: ${TARGET_NAMESPACE}
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: kubevirt-vm-latency-checker
+  namespace: ${TARGET_NAMESPACE}
+rules:
+- apiGroups: ["kubevirt.io"]
+  resources: ["virtualmachineinstances"]
+  verbs: ["get", "create", "delete"]
+- apiGroups: ["subresources.kubevirt.io"]
+  resources: ["virtualmachineinstances/console"]
+  verbs: ["get"]
+- apiGroups: ["k8s.cni.cncf.io"]
+  resources: ["network-attachment-definitions"]
+  verbs: ["get"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: kubevirt-vm-latency-checker
+  namespace: ${TARGET_NAMESPACE}
+subjects:
+- kind: ServiceAccount
+  name: ${VM_LATENCY_SERVICE_ACCOUNT_NAME}
+roleRef:
+  kind: Role
+  name: kubevirt-vm-latency-checker
+  apiGroup: rbac.authorization.k8s.io
+EOF
+
     echo
     echo "Deploy ConfigMap with input data: "
     echo
@@ -183,6 +222,7 @@ metadata:
 data:
   spec.image: ${CHECKUP_IMAGE}
   spec.timeout: 10m
+  spec.serviceAccountName: ${VM_LATENCY_SERVICE_ACCOUNT_NAME}
   spec.clusterRoles: |
     kubevirt-vm-latency-checker
   spec.param.network_attachment_definition_namespace: "${TARGET_NAMESPACE}"
