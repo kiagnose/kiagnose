@@ -53,14 +53,14 @@ const (
 	rolesResource              = "roles"
 	rolesBindingResource       = "rolebindings"
 	roleBindingKind            = "RoleBinding"
-	serviceAccountResource     = "serviceaccounts"
 	configMapResource          = "configmaps"
 	jobResource                = "jobs"
 
-	testTargetNs    = "target-ns"
-	testCheckupName = "checkup1"
-	testImage       = "framework:v1"
-	testTimeout     = time.Minute
+	testTargetNs           = "target-ns"
+	testCheckupName        = "checkup1"
+	testImage              = "framework:v1"
+	testTimeout            = time.Minute
+	testServiceAccountName = "test-sa"
 )
 
 type checkupSetupTestCase struct {
@@ -86,6 +86,10 @@ func TestSetupInTargetNamespaceShouldSucceedWith(t *testing.T) {
 			_, err := c.CoreV1().Namespaces().Create(context.Background(), targetNs, metav1.CreateOptions{})
 			assert.NoError(t, err)
 
+			serviceAccount := newTestServiceAccount()
+			_, err = c.CoreV1().ServiceAccounts(testTargetNs).Create(context.Background(), serviceAccount, metav1.CreateOptions{})
+			assert.NoError(t, err)
+
 			nameGen := nameGeneratorStub{}
 
 			testCheckup := checkup.New(
@@ -93,11 +97,12 @@ func TestSetupInTargetNamespaceShouldSucceedWith(t *testing.T) {
 				testTargetNs,
 				testCheckupName,
 				&config.Config{
-					Image:        testImage,
-					Timeout:      testTimeout,
-					EnvVars:      testCase.envVars,
-					ClusterRoles: testCase.clusterRole,
-					Roles:        testCase.roles,
+					Image:              testImage,
+					Timeout:            testTimeout,
+					ServiceAccountName: testServiceAccountName,
+					EnvVars:            testCase.envVars,
+					ClusterRoles:       testCase.clusterRole,
+					Roles:              testCase.roles,
 				},
 				nameGen,
 			)
@@ -106,13 +111,11 @@ func TestSetupInTargetNamespaceShouldSucceedWith(t *testing.T) {
 
 			resultsConfigMapName := checkup.NameResultsConfigMap(testCheckupName)
 			resultsConfigMapWriterRoleName := checkup.NameResultsConfigMapWriterRole(testCheckupName)
-			serviceAccountName := checkup.NameServiceAccount(testCheckupName)
 
-			assertServiceAccountCreated(t, c, testTargetNs, serviceAccountName)
 			assertResultsConfigMapCreated(t, c, testTargetNs, resultsConfigMapName)
 			assertConfigMapWriterRoleCreated(t, c, testTargetNs, resultsConfigMapName, resultsConfigMapWriterRoleName)
-			assertConfigMapWriterRoleBindingCreated(t, c, testTargetNs, resultsConfigMapWriterRoleName, serviceAccountName)
-			assertClusterRoleBindingsCreated(t, testsClient{c}, testCase.clusterRole, testTargetNs, serviceAccountName, nameGen)
+			assertConfigMapWriterRoleBindingCreated(t, c, testTargetNs, resultsConfigMapWriterRoleName, testServiceAccountName)
+			assertClusterRoleBindingsCreated(t, testsClient{c}, testCase.clusterRole, testTargetNs, testServiceAccountName, nameGen)
 		})
 	}
 }
@@ -122,7 +125,6 @@ func TestSetupInTargetNamespaceShouldFailWhen(t *testing.T) {
 		description string
 		resource    string
 	}{
-		{"Failed to create ServiceAccount", serviceAccountResource},
 		{"Failed to create results ConfigMap", configMapResource},
 		{"Failed to create ConfigMap writer Role", rolesResource},
 		{"Failed to create ConfigMap writer RoleBinding", rolesBindingResource},
@@ -136,6 +138,10 @@ func TestSetupInTargetNamespaceShouldFailWhen(t *testing.T) {
 			_, err := testClient.CoreV1().Namespaces().Create(context.Background(), targetNs, metav1.CreateOptions{})
 			assert.NoError(t, err)
 
+			serviceAccount := newTestServiceAccount()
+			_, err = testClient.CoreV1().ServiceAccounts(testTargetNs).Create(context.Background(), serviceAccount, metav1.CreateOptions{})
+			assert.NoError(t, err)
+
 			expectedErr := fmt.Sprintf("failed to create resource %q object", testCase.resource)
 			testClient.injectCreateErrorForResource(testCase.resource, expectedErr)
 
@@ -143,7 +149,7 @@ func TestSetupInTargetNamespaceShouldFailWhen(t *testing.T) {
 				testClient,
 				testTargetNs,
 				testCheckupName,
-				&config.Config{Image: testImage, Timeout: testTimeout},
+				&config.Config{Image: testImage, Timeout: testTimeout, ServiceAccountName: testServiceAccountName},
 				nameGeneratorStub{},
 			)
 
@@ -160,12 +166,16 @@ func TestTeardownInTargetNamespaceShouldSucceed(t *testing.T) {
 	_, err := testClient.CoreV1().Namespaces().Create(context.Background(), targetNs, metav1.CreateOptions{})
 	assert.NoError(t, err)
 
+	serviceAccount := newTestServiceAccount()
+	_, err = testClient.CoreV1().ServiceAccounts(testTargetNs).Create(context.Background(), serviceAccount, metav1.CreateOptions{})
+	assert.NoError(t, err)
+
 	nameGen := nameGeneratorStub{}
 	testCheckup := checkup.New(
 		testClient,
 		testTargetNs,
 		testCheckupName,
-		&config.Config{Image: testImage, Timeout: testTimeout, ClusterRoles: newTestClusterRoles()},
+		&config.Config{Image: testImage, Timeout: testTimeout, ServiceAccountName: testServiceAccountName, ClusterRoles: newTestClusterRoles()},
 		nameGen,
 	)
 
@@ -209,11 +219,15 @@ func TestTeardownInTargetNamespaceShouldFailWhen(t *testing.T) {
 			_, err := testClient.CoreV1().Namespaces().Create(context.Background(), targetNs, metav1.CreateOptions{})
 			assert.NoError(t, err)
 
+			serviceAccount := newTestServiceAccount()
+			_, err = testClient.CoreV1().ServiceAccounts(testTargetNs).Create(context.Background(), serviceAccount, metav1.CreateOptions{})
+			assert.NoError(t, err)
+
 			testCheckup := checkup.New(
 				testClient,
 				testTargetNs,
 				testCheckupName,
-				&config.Config{Image: testImage, Timeout: testTimeout},
+				&config.Config{Image: testImage, Timeout: testTimeout, ServiceAccountName: testServiceAccountName},
 				nameGeneratorStub{},
 			)
 
@@ -246,6 +260,10 @@ func TestCheckupRunShouldCreateAJob(t *testing.T) {
 			_, err := testClient.CoreV1().Namespaces().Create(context.Background(), targetNs, metav1.CreateOptions{})
 			assert.NoError(t, err)
 
+			serviceAccount := newTestServiceAccount()
+			_, err = testClient.CoreV1().ServiceAccounts(testTargetNs).Create(context.Background(), serviceAccount, metav1.CreateOptions{})
+			assert.NoError(t, err)
+
 			testClient.injectResourceVersionUpdateOnJobCreation()
 
 			nameGen := nameGeneratorStub{}
@@ -253,7 +271,7 @@ func TestCheckupRunShouldCreateAJob(t *testing.T) {
 				testClient,
 				testTargetNs,
 				testCheckupName,
-				&config.Config{Image: testImage, Timeout: testTimeout, EnvVars: testCase.envVars},
+				&config.Config{Image: testImage, Timeout: testTimeout, ServiceAccountName: testServiceAccountName, EnvVars: testCase.envVars},
 				nameGen,
 			)
 
@@ -271,9 +289,8 @@ func TestCheckupRunShouldCreateAJob(t *testing.T) {
 			}
 			expectedEnvVars = append(expectedEnvVars, testCase.envVars...)
 
-			serviceAccountName := checkup.NameServiceAccount(testCheckupName)
 			expectedJob := checkup.NewCheckupJob(
-				testTargetNs, checkupJobName, serviceAccountName, testImage, int64(testTimeout.Seconds()), expectedEnvVars)
+				testTargetNs, checkupJobName, testServiceAccountName, testImage, int64(testTimeout.Seconds()), expectedEnvVars)
 			actualJob, err := testClient.BatchV1().Jobs(testTargetNs).Get(context.Background(), checkupJobName, metav1.GetOptions{})
 			assert.NoError(t, err)
 
@@ -299,13 +316,17 @@ func TestCheckupRunShouldSucceed(t *testing.T) {
 			_, err := testClient.CoreV1().Namespaces().Create(context.Background(), targetNs, metav1.CreateOptions{})
 			assert.NoError(t, err)
 
+			serviceAccount := newTestServiceAccount()
+			_, err = testClient.CoreV1().ServiceAccounts(testTargetNs).Create(context.Background(), serviceAccount, metav1.CreateOptions{})
+			assert.NoError(t, err)
+
 			testClient.injectResourceVersionUpdateOnJobCreation()
 
 			testCheckup := checkup.New(
 				testClient,
 				testTargetNs,
 				testCheckupName,
-				&config.Config{Image: testImage, Timeout: testTimeout},
+				&config.Config{Image: testImage, Timeout: testTimeout, ServiceAccountName: testServiceAccountName},
 				nameGeneratorStub{})
 
 			checkupJobName := checkup.NameJob(testCheckupName)
@@ -330,6 +351,10 @@ func TestCheckupRunShouldFailWhen(t *testing.T) {
 		targetNs := newTestNamespace()
 		_, err := testClient.CoreV1().Namespaces().Create(context.Background(), targetNs, metav1.CreateOptions{})
 		assert.NoError(t, err)
+
+		serviceAccount := newTestServiceAccount()
+		_, err = testClient.CoreV1().ServiceAccounts(testTargetNs).Create(context.Background(), serviceAccount, metav1.CreateOptions{})
+		assert.NoError(t, err)
 	}
 
 	t.Run("failed to create Job", func(t *testing.T) {
@@ -343,7 +368,7 @@ func TestCheckupRunShouldFailWhen(t *testing.T) {
 			testClient,
 			testTargetNs,
 			testCheckupName,
-			&config.Config{Image: testImage, Timeout: testTimeout},
+			&config.Config{Image: testImage, Timeout: testTimeout, ServiceAccountName: testServiceAccountName},
 			nameGen,
 		)
 
@@ -359,7 +384,7 @@ func TestCheckupRunShouldFailWhen(t *testing.T) {
 			testClient,
 			testTargetNs,
 			testCheckupName,
-			&config.Config{Image: testImage, Timeout: testTimeout},
+			&config.Config{Image: testImage, Timeout: testTimeout, ServiceAccountName: testServiceAccountName},
 			nameGen,
 		)
 
@@ -376,7 +401,7 @@ func TestCheckupRunShouldFailWhen(t *testing.T) {
 			testClient,
 			testTargetNs,
 			testCheckupName,
-			&config.Config{Image: testImage, Timeout: time.Nanosecond},
+			&config.Config{Image: testImage, Timeout: time.Nanosecond, ServiceAccountName: testServiceAccountName},
 			nameGen,
 		)
 
@@ -393,7 +418,7 @@ func TestCheckupRunShouldFailWhen(t *testing.T) {
 			testClient,
 			testTargetNs,
 			testCheckupName,
-			&config.Config{Image: testImage, Timeout: time.Second},
+			&config.Config{Image: testImage, Timeout: time.Second, ServiceAccountName: testServiceAccountName},
 			nameGen,
 		)
 
@@ -442,6 +467,15 @@ func newTestNamespace() *corev1.Namespace {
 	return &corev1.Namespace{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: testTargetNs,
+		},
+	}
+}
+
+func newTestServiceAccount() *corev1.ServiceAccount {
+	return &corev1.ServiceAccount{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      testServiceAccountName,
+			Namespace: testTargetNs,
 		},
 	}
 }
@@ -562,14 +596,6 @@ func assertNamespaceExists(t *testing.T, testClient *fake.Clientset, nsName stri
 	_, err := testClient.Tracker().Get(gvr, "", nsName)
 
 	assert.NoError(t, err)
-}
-
-func assertServiceAccountCreated(t *testing.T, testClient *fake.Clientset, nsName, serviceAccountName string) {
-	gvr := schema.GroupVersionResource{Group: "", Version: "v1", Resource: serviceAccountResource}
-	actualServiceAccount, err := testClient.Tracker().Get(gvr, nsName, serviceAccountName)
-
-	assert.NoError(t, err)
-	assert.Equal(t, checkup.NewServiceAccount(nsName, serviceAccountName), actualServiceAccount)
 }
 
 func assertResultsConfigMapCreated(t *testing.T, testClient *fake.Clientset, nsName, expectedConfigMapName string) {

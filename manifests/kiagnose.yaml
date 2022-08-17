@@ -24,12 +24,6 @@ rules:
       - update
       - patch
       - delete
-  - apiGroups: [ "" ]
-    resources: [ "serviceaccounts" ]
-    verbs:
-      - get
-      - list
-      - create
   - apiGroups: [ "rbac.authorization.k8s.io" ]
     resources:
       - roles
