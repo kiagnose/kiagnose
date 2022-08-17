@@ -28,8 +28,8 @@ KUBECTL=${KUBECTL:-$PWD/kubectl}
 KIND=${KIND:-$PWD/kind}
 CLUSTER_NAME=${CLUSTER_NAME:-kind}
 
-FRAMEWORK_IMAGE="quay.io/kiagnose/kiagnose:main"
-CHECKUP_IMAGE="quay.io/kiagnose/echo-checkup:main"
+FRAMEWORK_IMAGE="quay.io/kiagnose/kiagnose:devel"
+CHECKUP_IMAGE="quay.io/kiagnose/echo-checkup:devel"
 
 KIAGNOSE_NAMESPACE=kiagnose
 KIAGNOSE_JOB=echo-checkup

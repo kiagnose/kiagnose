@@ -31,8 +31,15 @@ jobs:
         uses: actions/checkout@v2
       - name: Build kiagnose image
         run: ./automation/make.sh --build-core --build-core-image
-      - name: Deploy
-        run: ./automation/make.sh --e2e -- --install-kind --install-kubectl --create-cluster --deploy-kiagnose
+      - name: Build checkup image
+        working-directory: ./checkups/echo
+        run: ./automation/make.sh --build-checkup-image
+      - name: Start cluster
+        run: ./automation/make.sh --e2e -- --install-kind --install-kubectl --create-cluster
+      - name: Deploy kiagnose
+        run: ./automation/make.sh --e2e -- --deploy-kiagnose
+      - name: Deploy Echo checkup
+        run: ./checkups/echo/automation/make.sh --e2e -- --deploy-checkup
       - name: Run e2e tests
         run: ./checkups/echo/automation/make.sh --e2e -- --run-tests
       - name: Delete cluster
