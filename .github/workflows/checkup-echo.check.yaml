@@ -34,6 +34,6 @@ jobs:
       - name: Deploy
         run: ./automation/make.sh --e2e -- --install-kind --install-kubectl --create-cluster --deploy-kiagnose
       - name: Run e2e tests
-        run: ./automation/make.sh --e2e -- --run-tests
+        run: ./checkups/echo/automation/make.sh --e2e -- --run-tests
       - name: Delete cluster
         run: ./automation/make.sh --e2e -- --delete-cluster
