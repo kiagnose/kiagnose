@@ -33,7 +33,6 @@ import (
 	"k8s.io/client-go/kubernetes"
 
 	"github.com/kiagnose/kiagnose/kiagnose/internal/checkup/job"
-	"github.com/kiagnose/kiagnose/kiagnose/internal/checkup/serviceaccount"
 	"github.com/kiagnose/kiagnose/kiagnose/internal/config"
 	"github.com/kiagnose/kiagnose/kiagnose/internal/configmap"
 	"github.com/kiagnose/kiagnose/kiagnose/internal/rbac"
@@ -43,7 +42,6 @@ import (
 type Checkup struct {
 	client              kubernetes.Interface
 	teardownTimeout     time.Duration
-	serviceAccount      *corev1.ServiceAccount
 	resultConfigMap     *corev1.ConfigMap
 	roles               []*rbacv1.Role
 	roleBindings        []*rbacv1.RoleBinding
@@ -66,11 +64,10 @@ type namer interface {
 func New(c kubernetes.Interface, targetNsName, name string, checkupConfig *config.Config, namer namer) *Checkup {
 	resultsConfigMapName := NameResultsConfigMap(name)
 	resultsConfigMapWriterRoleName := NameResultsConfigMapWriterRole(name)
-	serviceAccountName := NameServiceAccount(name)
 	jobName := NameJob(name)
 	checkupRoles := []*rbacv1.Role{NewConfigMapWriterRole(targetNsName, resultsConfigMapWriterRoleName, resultsConfigMapName)}
 
-	serviceAccountSubject := NewServiceAccountSubject(targetNsName, serviceAccountName)
+	serviceAccountSubject := NewServiceAccountSubject(targetNsName, checkupConfig.ServiceAccountName)
 	var checkupRoleBindings []*rbacv1.RoleBinding
 	for _, role := range checkupRoles {
 		checkupRoleBindings = append(checkupRoleBindings, NewRoleBinding(targetNsName, role.Name, serviceAccountSubject))
@@ -86,7 +83,6 @@ func New(c kubernetes.Interface, targetNsName, name string, checkupConfig *confi
 	return &Checkup{
 		client:              c,
 		teardownTimeout:     defaultTeardownTimeout,
-		serviceAccount:      NewServiceAccount(targetNsName, serviceAccountName),
 		resultConfigMap:     NewConfigMap(targetNsName, resultsConfigMapName),
 		roles:               checkupRoles,
 		roleBindings:        checkupRoleBindings,
@@ -95,17 +91,11 @@ func New(c kubernetes.Interface, targetNsName, name string, checkupConfig *confi
 		job: NewCheckupJob(
 			targetNsName,
 			jobName,
-			serviceAccountName,
+			checkupConfig.ServiceAccountName,
 			checkupConfig.Image,
 			int64(checkupConfig.Timeout.Seconds()),
 			checkupEnvVars,
 		),
-	}
-}
-
-func NewServiceAccount(namespaceName, name string) *corev1.ServiceAccount {
-	return &corev1.ServiceAccount{
-		ObjectMeta: metav1.ObjectMeta{Name: name, Namespace: namespaceName},
 	}
 }
 
@@ -207,10 +197,6 @@ func (c *Checkup) Setup() error {
 	const errPrefix = "setup"
 	var err error
 
-	if c.serviceAccount, err = serviceaccount.Create(c.client, c.serviceAccount); err != nil {
-		return fmt.Errorf("%s: %v", errPrefix, err)
-	}
-
 	if c.resultConfigMap, err = configmap.Create(c.client, c.resultConfigMap); err != nil {
 		return fmt.Errorf("%s: %v", errPrefix, err)
 	}
@@ -298,10 +284,6 @@ func NameResultsConfigMap(checkupName string) string {
 
 func NameResultsConfigMapWriterRole(checkupName string) string {
 	return checkupName + "-results-cm-writer"
-}
-
-func NameServiceAccount(checkupName string) string {
-	return checkupName + "-sa"
 }
 
 func NameJob(checkupName string) string {
