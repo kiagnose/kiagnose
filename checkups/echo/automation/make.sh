@@ -21,6 +21,8 @@ set -e
 
 ARGCOUNT=$#
 
+SCRIPT_PATH=$(dirname $(realpath -s $0))
+
 CRI=${CRI:-podman}
 
 IMAGE_REGISTRY=${IMAGE_REGISTRY:-quay.io}
@@ -31,7 +33,7 @@ ECHO_IMAGE_TAG=${ECHO_IMAGE_TAG:-devel}
 ECHO_IMAGE="${IMAGE_REGISTRY}/${IMAGE_ORG}/${ECHO_IMAGE_NAME}:${ECHO_IMAGE_TAG}"
 
 options=$(getopt --options "" \
-    --long unit-test,build-checkup-image,push-checkup-image,help\
+    --long unit-test,build-checkup-image,push-checkup-image,e2e,help\
     -- "${@}")
 eval set -- "$options"
 while true; do
@@ -45,9 +47,12 @@ while true; do
     --push-checkup-image)
         OPT_PUSH_IMAGE=1
         ;;
+    --e2e)
+        OPT_E2E=1
+        ;;
     --help)
         set +x
-        echo "$0 [--unit-test] [--build-checkup-image] [--push-checkup-image]"
+        echo "$0 [--unit-test] [--e2e] [--build-checkup-image] [--push-checkup-image]"
         exit
         ;;
     --)
@@ -75,4 +80,8 @@ fi
 if [ -n "${OPT_PUSH_IMAGE}" ]; then
    echo "Pushing \"${ECHO_IMAGE}\"..."
    ${CRI} push ${ECHO_IMAGE}
+fi
+
+if [ -n "${OPT_E2E}" ]; then
+    ${SCRIPT_PATH}/e2e.sh $@
 fi

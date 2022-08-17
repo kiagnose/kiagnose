@@ -31,7 +31,7 @@ CLUSTER_NAME=${CLUSTER_NAME:-kind}
 FRAMEWORK_IMAGE="quay.io/kiagnose/kiagnose:devel"
 
 options=$(getopt --options "" \
-    --long install-kind,install-kubectl,create-cluster,delete-cluster,deploy-kiagnose,run-tests,help\
+    --long install-kind,install-kubectl,create-cluster,delete-cluster,deploy-kiagnose,help\
     -- "${@}")
 eval set -- "$options"
 while true; do
@@ -51,12 +51,9 @@ while true; do
     --deploy-kiagnose)
         OPT_DEPLOY_KIAGNOSE=1
         ;;
-    --run-tests)
-        OPT_RUN_TEST=1
-        ;;
     --help)
         set +x
-        echo "$0 [--install-kind] [--install-kubectl] [--create-cluster] [--delete-cluster] [--deploy-kiagnose] [--run-tests]"
+        echo "$0 [--install-kind] [--install-kubectl] [--create-cluster] [--delete-cluster] [--deploy-kiagnose]"
         exit
         ;;
     --)
@@ -72,7 +69,6 @@ if [ "${ARGCOUNT}" -eq "0" ] ; then
     OPT_INSTALL_KUBECTL=1
     OPT_CREATE_CLUSTER=1
     OPT_DEPLOY_KIAGNOSE=1
-    OPT_RUN_TEST=1
     OPT_DELETE_CLUSTER=1
 fi
 
@@ -107,64 +103,6 @@ fi
 if [ -n "${OPT_DEPLOY_KIAGNOSE}" ]; then
   ${KIND} load docker-image "${FRAMEWORK_IMAGE}" --name "${CLUSTER_NAME}"
   ${KUBECTL} apply -f manifests/kiagnose.yaml
-fi
-
-if [ -n "${OPT_RUN_TEST}" ]; then
-    # kiagnose sanity e2e test uses the echo-checkup
-    echo "Post echo checkup ConfigMap & Job:"
-    echo
-
-    KIAGNOSE_NAMESPACE=kiagnose
-    KIAGNOSE_JOB=echo-checkup1
-    ECHO_CONFIGMAP=echo-checkup-config
-
-    cat <<EOF | ${KUBECTL} apply -f -
-apiVersion: v1
-kind: ConfigMap
-metadata:
-  name: ${ECHO_CONFIGMAP}
-  namespace: ${KIAGNOSE_NAMESPACE}
-data:
-  spec.image: quay.io/kiagnose/echo-checkup:main
-  spec.timeout: 1m
-  spec.param.message: "Hi!"
-EOF
-
-  cat <<EOF | ${KUBECTL} apply -f -
-apiVersion: batch/v1
-kind: Job
-metadata:
-  name: ${KIAGNOSE_JOB}
-  namespace: ${KIAGNOSE_NAMESPACE}
-spec:
-  backoffLimit: 0
-  template:
-    spec:
-      serviceAccount: kiagnose
-      restartPolicy: Never
-      containers:
-        - name: framework
-          image: quay.io/kiagnose/kiagnose:main
-          imagePullPolicy: Always
-          env:
-            - name: CONFIGMAP_NAMESPACE
-              value: ${KIAGNOSE_NAMESPACE}
-            - name: CONFIGMAP_NAME
-              value: ${ECHO_CONFIGMAP}
-EOF
-
-    ${KUBECTL} wait --for=condition=complete --timeout=1m job.batch/${KIAGNOSE_JOB} -n ${KIAGNOSE_NAMESPACE}
-
-    echo
-    echo "Result:"
-    echo
-    ${KUBECTL} get configmap ${ECHO_CONFIGMAP} -n ${KIAGNOSE_NAMESPACE} -o yaml
-    ${KUBECTL} get configmap ${ECHO_CONFIGMAP} -n ${KIAGNOSE_NAMESPACE} -o yaml | grep -q "status.result.echo: Hi!"
-    echo
-    echo "Cleanup:"
-    echo
-    ${KUBECTL} delete job ${KIAGNOSE_JOB} -n ${KIAGNOSE_NAMESPACE}
-    ${KUBECTL} delete configmap ${ECHO_CONFIGMAP} -n ${KIAGNOSE_NAMESPACE}
 fi
 
 if [ -n "${OPT_DELETE_CLUSTER}" ]; then
