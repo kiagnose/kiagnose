@@ -34,6 +34,7 @@ CHECKUP_IMAGE="quay.io/kiagnose/echo-checkup:devel"
 KIAGNOSE_NAMESPACE=kiagnose
 KIAGNOSE_JOB=echo-checkup
 ECHO_CONFIGMAP=echo-checkup
+ECHO_SERVICE_ACCOUNT_NAME=echo-sa
 
 TARGET_NAMESPACE="echo-checkup-e2e-test"
 
@@ -80,6 +81,16 @@ fi
 
 if [ -n "${OPT_RUN_TEST}" ]; then
     ${KUBECTL} create namespace ${TARGET_NAMESPACE}
+
+    cat <<EOF | ${KUBECTL} apply -f -
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: ${ECHO_SERVICE_ACCOUNT_NAME}
+  namespace: ${TARGET_NAMESPACE}
+EOF
+
     echo
     echo "Deploy ConfigMap with input data: "
     echo
@@ -93,6 +104,7 @@ metadata:
 data:
   spec.image: ${CHECKUP_IMAGE}
   spec.timeout: 1m
+  spec.serviceAccountName: ${ECHO_SERVICE_ACCOUNT_NAME}
   spec.param.message: "Hi!"
 EOF
 
