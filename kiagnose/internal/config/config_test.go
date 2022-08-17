@@ -38,7 +38,7 @@ import (
 )
 
 const (
-	configMapNamespace = "kiagnose"
+	configMapNamespace = "target-ns"
 	configMapName      = "cm1"
 
 	imageName    = "registry:5000/echo-checkup:latest"
