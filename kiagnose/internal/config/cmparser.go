@@ -28,11 +28,14 @@ import (
 )
 
 var (
-	ErrImageFieldIsMissing   = errors.New("image field is missing")
-	ErrImageFieldIsIllegal   = errors.New("image field is illegal")
-	ErrTimeoutFieldIsMissing = errors.New("timeout field is missing")
-	ErrTimeoutFieldIsIllegal = errors.New("timeout field is illegal")
-	ErrParamNameIsIllegal    = errors.New("param name is illegal")
+	ErrImageFieldIsMissing              = errors.New("image field is missing")
+	ErrImageFieldIsIllegal              = errors.New("image field is illegal")
+	ErrTimeoutFieldIsMissing            = errors.New("timeout field is missing")
+	ErrTimeoutFieldIsIllegal            = errors.New("timeout field is illegal")
+	ErrServiceAccountNameFieldIsMissing = errors.New("serviceAccountName field is missing")
+	ErrServiceAccountNameIsEmpty        = errors.New("serviceAccountName field is empty")
+	ErrServiceAccountNameIsIllegal      = errors.New("serviceAccountName field is illegal")
+	ErrParamNameIsIllegal               = errors.New("param name is illegal")
 )
 
 type configMapParser struct {
@@ -101,7 +104,17 @@ func (cmp *configMapParser) parseTimeoutField() error {
 }
 
 func (cmp *configMapParser) parseServiceAccountName() error {
-	cmp.ServiceAccountName = cmp.configMapRawData[types.ServiceAccountNameKey]
+	const defaultK8sServiceAccountName = "default"
+	var exists bool
+
+	if cmp.ServiceAccountName, exists = cmp.configMapRawData[types.ServiceAccountNameKey]; !exists {
+		return ErrServiceAccountNameFieldIsMissing
+	} else if cmp.ServiceAccountName == "" {
+		return ErrServiceAccountNameIsEmpty
+	} else if cmp.ServiceAccountName == defaultK8sServiceAccountName {
+		return ErrServiceAccountNameIsIllegal
+	}
+
 	return nil
 }
 
