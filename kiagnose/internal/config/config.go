@@ -40,11 +40,12 @@ var (
 )
 
 type Config struct {
-	Image        string
-	Timeout      time.Duration
-	EnvVars      []corev1.EnvVar
-	ClusterRoles []*rbacv1.ClusterRole
-	Roles        []*rbacv1.Role
+	Image              string
+	Timeout            time.Duration
+	ServiceAccountName string
+	EnvVars            []corev1.EnvVar
+	ClusterRoles       []*rbacv1.ClusterRole
+	Roles              []*rbacv1.Role
 }
 
 func ReadFromConfigMap(client kubernetes.Interface, configMapNamespace, configMapName string) (*Config, error) {
@@ -78,11 +79,12 @@ func ReadFromConfigMap(client kubernetes.Interface, configMapNamespace, configMa
 	}
 
 	return &Config{
-		Image:        parser.Image,
-		Timeout:      parser.Timeout,
-		EnvVars:      paramsToEnvVars(parser.Params),
-		ClusterRoles: clusterRoles,
-		Roles:        roles,
+		Image:              parser.Image,
+		Timeout:            parser.Timeout,
+		ServiceAccountName: parser.ServiceAccountName,
+		EnvVars:            paramsToEnvVars(parser.Params),
+		ClusterRoles:       clusterRoles,
+		Roles:              roles,
 	}, nil
 }
 

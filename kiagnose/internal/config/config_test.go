@@ -41,12 +41,13 @@ const (
 	configMapNamespace = "target-ns"
 	configMapName      = "cm1"
 
-	imageName    = "registry:5000/echo-checkup:latest"
-	timeoutValue = "1m"
-	param1Key    = "message1"
-	param1Value  = "message1 value"
-	param2Key    = "message2"
-	param2Value  = "message2 value"
+	imageName               = "registry:5000/echo-checkup:latest"
+	timeoutValue            = "1m"
+	serviceAccountNameValue = "test-sa"
+	param1Key               = "message1"
+	param1Value             = "message1 value"
+	param2Key               = "message2"
+	param2Value             = "message2 value"
 )
 
 var (
@@ -65,11 +66,16 @@ func TestReadFromConfigMapShouldSucceed(t *testing.T) {
 
 	testCases := []loadTestCase{
 		{
-			description:   "when supplied with required parameters only",
-			configMapData: map[string]string{types.ImageKey: imageName, types.TimeoutKey: timeoutValue},
+			description: "when supplied with required parameters only",
+			configMapData: map[string]string{
+				types.ImageKey:              imageName,
+				types.TimeoutKey:            timeoutValue,
+				types.ServiceAccountNameKey: serviceAccountNameValue,
+			},
 			expectedConfig: &config.Config{
-				Image:   imageName,
-				Timeout: stringToDurationMustParse(timeoutValue),
+				Image:              imageName,
+				Timeout:            stringToDurationMustParse(timeoutValue),
+				ServiceAccountName: serviceAccountNameValue,
 			},
 		},
 		{
@@ -79,17 +85,19 @@ func TestReadFromConfigMapShouldSucceed(t *testing.T) {
 			configMapData: map[string]string{
 				types.ImageKey:                       imageName,
 				types.TimeoutKey:                     timeoutValue,
+				types.ServiceAccountNameKey:          serviceAccountNameValue,
 				types.ParamNameKeyPrefix + param1Key: param1Value,
 				types.ParamNameKeyPrefix + param2Key: param2Value,
 				types.ClusterRolesKey:                strings.Join(clusterRoleNamesList, "\n"),
 				types.RolesKey:                       strings.Join(roleNamesList, "\n"),
 			},
 			expectedConfig: &config.Config{
-				Image:        imageName,
-				Timeout:      stringToDurationMustParse(timeoutValue),
-				EnvVars:      expectedEnvVars(param1Key, param1Value, param2Key, param2Value),
-				ClusterRoles: expectedClusterRoles(),
-				Roles:        expectedRoles(),
+				Image:              imageName,
+				Timeout:            stringToDurationMustParse(timeoutValue),
+				ServiceAccountName: serviceAccountNameValue,
+				EnvVars:            expectedEnvVars(param1Key, param1Value, param2Key, param2Value),
+				ClusterRoles:       expectedClusterRoles(),
+				Roles:              expectedRoles(),
 			},
 		},
 	}
