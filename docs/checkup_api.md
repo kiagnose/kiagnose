@@ -3,9 +3,7 @@
 A checkup is a containerized application, which checks that a certain cluster functionality is working properly.
 A checkup provided by a third party vendor should adhere to the API described in this document.
 
-Kiagnose executes a checkup as a [Job](https://kubernetes.io/docs/concepts/workloads/controllers/job/) in a dedicated ephemeral [Namespace](https://kubernetes.io/docs/concepts/overview/working-with-objects/namespaces/).
-The ephemeral Namespace is deleted after the checkup had finished its execution (or timed-out).
-The Namespace's name is of the following format `kiagnose-checkup-<random string>`.
+Kiagnose executes a checkup as a [Job](https://kubernetes.io/docs/concepts/workloads/controllers/job/) in an existing [Namespace](https://kubernetes.io/docs/concepts/overview/working-with-objects/namespaces/).
 > **_Note:_** In order to get the namespace in which the checkup runs: 
 > from within a Pod - read the content of the following file:
 > `/var/run/secrets/kubernetes.io/serviceaccount/namespace`
@@ -14,7 +12,6 @@ The Namespace's name is of the following format `kiagnose-checkup-<random string
 
 The checkup lifecycle is:
 1. Kiagnose creates the following objects for a checkup instance:
-   - An ephemeral `Namespace`
    - A [ServiceAccount](https://kubernetes.io/docs/tasks/configure-pod-container/configure-service-account/)
    - An empty [ConfigMap](https://kubernetes.io/docs/concepts/configuration/configmap/) object to store the checkup's results (results ConfigMap).
    - [Role](https://kubernetes.io/docs/reference/access-authn-authz/rbac/#role-and-clusterrole) and [RoleBinding](https://kubernetes.io/docs/reference/access-authn-authz/rbac/#rolebinding-and-clusterrolebinding) which grants write permissions of the `ConfigMap`.
@@ -23,7 +20,7 @@ The checkup lifecycle is:
 3. Kiagnose configures the checkup using [environment variables](https://kubernetes.io/docs/tasks/inject-data-application/define-environment-variable-container/).
 4. Kiagnose expects the checkup's [results](#output) to be written to the results ConfigMap. 
 
-A checkup is free to create arbitrary objects in the ephemeral Namespace.
+A checkup is free to create arbitrary objects in the target Namespace.
 It is expected that the checkup will delete the objects it has created.
 
 > **_Note:_** Please see the [Accessing the API from within a Pod](https://kubernetes.io/docs/tasks/run-application/access-api-from-pod/#accessing-the-api-from-within-a-pod)
