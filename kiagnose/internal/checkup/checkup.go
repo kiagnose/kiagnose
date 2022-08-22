@@ -91,71 +91,6 @@ func New(c kubernetes.Interface, targetNsName, name string, checkupConfig *confi
 	}
 }
 
-func NewConfigMap(namespaceName, name string) *corev1.ConfigMap {
-	return &corev1.ConfigMap{
-		ObjectMeta: metav1.ObjectMeta{Name: name, Namespace: namespaceName},
-	}
-}
-
-func NewConfigMapWriterRole(namespaceName, name, configMapName string) *rbacv1.Role {
-	return &rbacv1.Role{
-		TypeMeta:   metav1.TypeMeta{Kind: "Role", APIVersion: rbacv1.GroupName},
-		ObjectMeta: metav1.ObjectMeta{Name: name, Namespace: namespaceName},
-		Rules:      []rbacv1.PolicyRule{newConfigMapWriterPolicyRule(configMapName)},
-	}
-}
-
-func newConfigMapWriterPolicyRule(cmName string) rbacv1.PolicyRule {
-	return rbacv1.PolicyRule{
-		Verbs:         []string{"get", "update", "patch"},
-		APIGroups:     []string{""},
-		Resources:     []string{"configmaps"},
-		ResourceNames: []string{cmName},
-	}
-}
-
-func NewRoleBinding(namespaceName, roleName string, subject rbacv1.Subject) *rbacv1.RoleBinding {
-	return &rbacv1.RoleBinding{
-		TypeMeta:   metav1.TypeMeta{Kind: "RoleBinding", APIVersion: rbacv1.GroupName},
-		ObjectMeta: metav1.ObjectMeta{Name: roleName, Namespace: namespaceName},
-		Subjects:   []rbacv1.Subject{subject},
-		RoleRef:    rbacv1.RoleRef{Kind: "Role", APIGroup: rbacv1.GroupName, Name: roleName},
-	}
-}
-
-func NewServiceAccountSubject(serviceAccountNamespace, serviceAccountName string) rbacv1.Subject {
-	return rbacv1.Subject{
-		Kind:      rbacv1.ServiceAccountKind,
-		Name:      serviceAccountName,
-		Namespace: serviceAccountNamespace,
-	}
-}
-
-func NewCheckupJob(namespaceName, name, serviceAccountName, image string, activeDeadlineSeconds int64, envs []corev1.EnvVar) *batchv1.Job {
-	const containerName = "checkup"
-
-	checkupContainer := corev1.Container{Name: containerName, Image: image, Env: envs}
-	var defaultTerminationGracePeriodSeconds int64 = 5
-	checkupPodSpec := corev1.PodTemplateSpec{
-		ObjectMeta: metav1.ObjectMeta{},
-		Spec: corev1.PodSpec{
-			ServiceAccountName:            serviceAccountName,
-			RestartPolicy:                 corev1.RestartPolicyNever,
-			TerminationGracePeriodSeconds: &defaultTerminationGracePeriodSeconds,
-			Containers:                    []corev1.Container{checkupContainer},
-		},
-	}
-	var backoffLimit int32 = 0
-	return &batchv1.Job{
-		ObjectMeta: metav1.ObjectMeta{Name: name, Namespace: namespaceName},
-		Spec: batchv1.JobSpec{
-			BackoffLimit:          &backoffLimit,
-			ActiveDeadlineSeconds: &activeDeadlineSeconds,
-			Template:              checkupPodSpec,
-		},
-	}
-}
-
 // Setup creates each of the checkup objects inside the cluster.
 // In case of failure, an attempt to clean up the objects that already been created is made,
 // by deleting the Namespace and eventually all the objects inside it
@@ -229,6 +164,71 @@ func (c *Checkup) Teardown() error {
 	}
 
 	return nil
+}
+
+func NewConfigMap(namespaceName, name string) *corev1.ConfigMap {
+	return &corev1.ConfigMap{
+		ObjectMeta: metav1.ObjectMeta{Name: name, Namespace: namespaceName},
+	}
+}
+
+func NewConfigMapWriterRole(namespaceName, name, configMapName string) *rbacv1.Role {
+	return &rbacv1.Role{
+		TypeMeta:   metav1.TypeMeta{Kind: "Role", APIVersion: rbacv1.GroupName},
+		ObjectMeta: metav1.ObjectMeta{Name: name, Namespace: namespaceName},
+		Rules:      []rbacv1.PolicyRule{newConfigMapWriterPolicyRule(configMapName)},
+	}
+}
+
+func newConfigMapWriterPolicyRule(cmName string) rbacv1.PolicyRule {
+	return rbacv1.PolicyRule{
+		Verbs:         []string{"get", "update", "patch"},
+		APIGroups:     []string{""},
+		Resources:     []string{"configmaps"},
+		ResourceNames: []string{cmName},
+	}
+}
+
+func NewRoleBinding(namespaceName, roleName string, subject rbacv1.Subject) *rbacv1.RoleBinding {
+	return &rbacv1.RoleBinding{
+		TypeMeta:   metav1.TypeMeta{Kind: "RoleBinding", APIVersion: rbacv1.GroupName},
+		ObjectMeta: metav1.ObjectMeta{Name: roleName, Namespace: namespaceName},
+		Subjects:   []rbacv1.Subject{subject},
+		RoleRef:    rbacv1.RoleRef{Kind: "Role", APIGroup: rbacv1.GroupName, Name: roleName},
+	}
+}
+
+func NewServiceAccountSubject(serviceAccountNamespace, serviceAccountName string) rbacv1.Subject {
+	return rbacv1.Subject{
+		Kind:      rbacv1.ServiceAccountKind,
+		Name:      serviceAccountName,
+		Namespace: serviceAccountNamespace,
+	}
+}
+
+func NewCheckupJob(namespaceName, name, serviceAccountName, image string, activeDeadlineSeconds int64, envs []corev1.EnvVar) *batchv1.Job {
+	const containerName = "checkup"
+
+	checkupContainer := corev1.Container{Name: containerName, Image: image, Env: envs}
+	var defaultTerminationGracePeriodSeconds int64 = 5
+	checkupPodSpec := corev1.PodTemplateSpec{
+		ObjectMeta: metav1.ObjectMeta{},
+		Spec: corev1.PodSpec{
+			ServiceAccountName:            serviceAccountName,
+			RestartPolicy:                 corev1.RestartPolicyNever,
+			TerminationGracePeriodSeconds: &defaultTerminationGracePeriodSeconds,
+			Containers:                    []corev1.Container{checkupContainer},
+		},
+	}
+	var backoffLimit int32 = 0
+	return &batchv1.Job{
+		ObjectMeta: metav1.ObjectMeta{Name: name, Namespace: namespaceName},
+		Spec: batchv1.JobSpec{
+			BackoffLimit:          &backoffLimit,
+			ActiveDeadlineSeconds: &activeDeadlineSeconds,
+			Template:              checkupPodSpec,
+		},
+	}
 }
 
 func concentrateErrors(errs []error) error {
