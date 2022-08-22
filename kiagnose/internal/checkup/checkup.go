@@ -231,16 +231,6 @@ func NewCheckupJob(namespaceName, name, serviceAccountName, image string, active
 	}
 }
 
-func concentrateErrors(errs []error) error {
-	sb := strings.Builder{}
-	for _, err := range errs {
-		sb.WriteString(err.Error())
-		sb.WriteString("\n")
-	}
-
-	return errors.New(sb.String())
-}
-
 func NameResultsConfigMap(checkupName string) string {
 	return checkupName + "-results"
 }
@@ -251,4 +241,14 @@ func NameResultsConfigMapWriterRole(checkupName string) string {
 
 func NameJob(checkupName string) string {
 	return checkupName
+}
+
+func concentrateErrors(errs []error) error {
+	sb := strings.Builder{}
+	for _, err := range errs {
+		sb.WriteString(err.Error())
+		sb.WriteString("\n")
+	}
+
+	return errors.New(sb.String())
 }
