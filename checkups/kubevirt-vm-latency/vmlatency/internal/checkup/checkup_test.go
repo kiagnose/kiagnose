@@ -104,9 +104,6 @@ func TestCheckupTeardownShouldFailWhen(t *testing.T) {
 		defer cancel()
 
 		assert.NoError(t, testCheckup.Preflight())
-
-		testClient.returnVmi = newTestReadyVmi()
-
 		assert.NoError(t, testCheckup.Setup(testCtx))
 
 		expectedErr := errors.New("delete vmi test error")
@@ -125,9 +122,6 @@ func TestCheckupTeardownShouldFailWhen(t *testing.T) {
 		)
 
 		assert.NoError(t, testCheckup.Preflight())
-
-		testClient.returnVmi = newTestReadyVmi()
-
 		assert.NoError(t, testCheckup.Setup(context.Background()))
 
 		testCtx, cancel := context.WithTimeout(context.Background(), testTimeout)
@@ -164,7 +158,6 @@ func TestCheckupSetupShouldCreateVMsWith(t *testing.T) {
 		t.Run(testCase.description, func(t *testing.T) {
 			testClient := &clientStub{
 				returnNetAttachDef: testCase.netAttachDef,
-				returnVmi:          newTestReadyVmi(),
 			}
 			testCheckup := checkup.New(
 				testClient,
@@ -182,17 +175,6 @@ func TestCheckupSetupShouldCreateVMsWith(t *testing.T) {
 			}
 		})
 	}
-}
-
-func newTestReadyVmi() *kvcorev1.VirtualMachineInstance {
-	return &kvcorev1.VirtualMachineInstance{Status: kvcorev1.VirtualMachineInstanceStatus{
-		Conditions: []kvcorev1.VirtualMachineInstanceCondition{
-			{
-				Type:   kvcorev1.VirtualMachineInstanceAgentConnected,
-				Status: k8scorev1.ConditionTrue,
-			},
-		},
-	}}
 }
 
 func newTestNetAttachDef(cniPluginName string) *netattdefv1.NetworkAttachmentDefinition {
@@ -215,8 +197,8 @@ func newTestsCheckupParameters() config.CheckupParameters {
 }
 
 type clientStub struct {
-	returnVmi          *kvcorev1.VirtualMachineInstance
-	createdVmis        []*kvcorev1.VirtualMachineInstance
+	createdVmis map[string]*kvcorev1.VirtualMachineInstance
+
 	returnNetAttachDef *netattdefv1.NetworkAttachmentDefinition
 
 	failGetNetAttachDef error
@@ -225,13 +207,27 @@ type clientStub struct {
 	failDeleteVmi       error
 }
 
-func (c *clientStub) GetVirtualMachineInstance(_, _ string) (*kvcorev1.VirtualMachineInstance, error) {
-	return c.returnVmi, c.failGetVmi
+func (c *clientStub) GetVirtualMachineInstance(_, name string) (*kvcorev1.VirtualMachineInstance, error) {
+	return c.createdVmis[name], c.failGetVmi
 }
 
 func (c *clientStub) CreateVirtualMachineInstance(_ string, v *kvcorev1.VirtualMachineInstance) (*kvcorev1.VirtualMachineInstance, error) {
-	c.createdVmis = append(c.createdVmis, v)
-	return v, c.failCreateVmi
+	if c.failCreateVmi != nil {
+		return nil, c.failCreateVmi
+	}
+
+	if c.createdVmis == nil {
+		c.createdVmis = map[string]*kvcorev1.VirtualMachineInstance{}
+	}
+
+	v.Status.Conditions = append(v.Status.Conditions, kvcorev1.VirtualMachineInstanceCondition{
+		Type:   kvcorev1.VirtualMachineInstanceAgentConnected,
+		Status: k8scorev1.ConditionTrue,
+	})
+
+	c.createdVmis[v.Name] = v
+
+	return v, nil
 }
 
 func (c *clientStub) DeleteVirtualMachineInstance(_, _ string) error {
