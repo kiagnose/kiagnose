@@ -25,6 +25,8 @@ import (
 	"strings"
 	"time"
 
+	k8scorev1 "k8s.io/api/core/v1"
+
 	kvcorev1 "kubevirt.io/api/core/v1"
 
 	netattdefv1 "github.com/k8snetworkplumbingwg/network-attachment-definition-client/pkg/apis/k8s.cni.cncf.io/v1"
@@ -66,6 +68,12 @@ func (c *checkup) Preflight() error {
 	return nil
 }
 
+const (
+	SourceVmiName       = "latency-check-source"
+	TargetVmiName       = "latency-check-target"
+	LabelLatencyCheckVM = "latency-check-vm"
+)
+
 func (c *checkup) Setup(ctx context.Context) error {
 	const (
 		errMessagePrefix = "setup"
@@ -73,10 +81,8 @@ func (c *checkup) Setup(ctx context.Context) error {
 		defaultSetupTimeout = time.Minute * 10
 
 		networkName   = "net0"
-		sourceVmiName = "latency-check-source"
 		sourceVmiMac  = "02:00:00:01:00:01"
 		sourceVmiCidr = "192.168.100.10/24"
-		targetVmiName = "latency-check-target"
 		targetVmiMac  = "02:00:00:02:00:02"
 		targetVmiCidr = "192.168.100.20/24"
 	)
@@ -88,24 +94,21 @@ func (c *checkup) Setup(ctx context.Context) error {
 		return fmt.Errorf("%s: %v", errMessagePrefix, err)
 	}
 
-	sourceVmi := newLatencyCheckVmi(sourceVmiName, c.params.SourceNodeName, networkName, netAttachDef, sourceVmiMac, sourceVmiCidr)
-	targetVmi := newLatencyCheckVmi(targetVmiName, c.params.TargetNodeName, networkName, netAttachDef, targetVmiMac, targetVmiCidr)
+	sourceVmi := newLatencyCheckVmi(SourceVmiName, c.params.SourceNodeName, networkName, netAttachDef, sourceVmiMac, sourceVmiCidr)
+	targetVmi := newLatencyCheckVmi(TargetVmiName, c.params.TargetNodeName, networkName, netAttachDef, targetVmiMac, targetVmiCidr)
 
 	if err = vmi.Start(c.client, c.namespace, sourceVmi); err != nil {
 		return fmt.Errorf("%s: %v", errMessagePrefix, err)
 	}
-
 	if err = vmi.Start(c.client, c.namespace, targetVmi); err != nil {
 		return fmt.Errorf("%s: %v", errMessagePrefix, err)
 	}
 
 	waitCtx, cancel := context.WithTimeout(ctx, defaultSetupTimeout)
 	defer cancel()
-
 	if c.targetVM, err = vmi.WaitUntilReady(waitCtx, c.client, c.namespace, targetVmi.Name); err != nil {
 		return fmt.Errorf("%s: %v", errMessagePrefix, err)
 	}
-
 	if c.sourceVM, err = vmi.WaitUntilReady(waitCtx, c.client, c.namespace, sourceVmi.Name); err != nil {
 		return fmt.Errorf("%s: %v", errMessagePrefix, err)
 	}
@@ -134,8 +137,17 @@ func newLatencyCheckVmi(
 		vmiInterface = vmi.NewInterface(networkName, vmi.WithMacAddress(macAddress), vmi.WithBridgeBinding())
 	}
 
+	vmLabel := vmi.Label{Key: LabelLatencyCheckVM, Value: ""}
+	var affinity *k8scorev1.Affinity
+	if nodeName != "" {
+		affinity = &k8scorev1.Affinity{NodeAffinity: vmi.NewNodeAffinity(nodeName)}
+	} else {
+		affinity = &k8scorev1.Affinity{PodAntiAffinity: vmi.NewPodAntiAffinity(vmLabel)}
+	}
+
 	return vmi.NewAlpine(name,
-		vmi.WithNodeSelector(nodeName),
+		vmi.WithLabels(vmLabel),
+		vmi.WithAffinity(affinity),
 		vmi.WithMultusNetwork(networkName, netAttachDef.Namespace+"/"+netAttachDef.Name),
 		vmi.WithInterface(vmiInterface),
 		vmi.WithCloudInitNoCloudNetworkData(networkData),

@@ -59,16 +59,20 @@ func withTerminationGracePeriodSecond(duration int64) Option {
 	}
 }
 
-// WithNodeSelector ensures that the VMI gets scheduled on the specified node.
-func WithNodeSelector(nodeName string) Option {
+type Label struct {
+	Key, Value string
+}
+
+// WithLabels adds the given labels.
+func WithLabels(labels ...Label) Option {
 	return func(vmi *kvcorev1.VirtualMachineInstance) {
-		if nodeName == "" {
-			return
+		if vmi.ObjectMeta.Labels == nil {
+			vmi.ObjectMeta.Labels = map[string]string{}
 		}
-		if vmi.Spec.NodeSelector == nil {
-			vmi.Spec.NodeSelector = map[string]string{}
+
+		for _, label := range labels {
+			vmi.ObjectMeta.Labels[label.Key] = label.Value
 		}
-		vmi.Spec.NodeSelector[k8scorev1.LabelHostname] = nodeName
 	}
 }
 
