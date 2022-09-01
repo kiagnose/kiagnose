@@ -249,12 +249,9 @@ func (c *fakeClient) GetVirtualMachineInstance(namespace, name string) (*kvcorev
 func (c *fakeClient) CreateVirtualMachineInstance(
 	namespace string,
 	vmi *kvcorev1.VirtualMachineInstance) (*kvcorev1.VirtualMachineInstance, error) {
-	vmi.Status.Conditions = append(vmi.Status.Conditions,
-		kvcorev1.VirtualMachineInstanceCondition{
-			Type:   kvcorev1.VirtualMachineInstanceAgentConnected,
-			Status: k8scorev1.ConditionTrue,
-		},
-	)
+	vmi.Status.Interfaces = append(vmi.Status.Interfaces, kvcorev1.VirtualMachineInstanceNetworkInterface{
+		IP: "0.0.0.0",
+	})
 
 	if vmi.Spec.Affinity != nil && vmi.Spec.Affinity.NodeAffinity != nil {
 		term := vmi.Spec.Affinity.NodeAffinity.RequiredDuringSchedulingIgnoredDuringExecution.NodeSelectorTerms[0]
