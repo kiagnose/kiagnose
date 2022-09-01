@@ -244,7 +244,8 @@ func (c *fakeClient) GetVirtualMachineInstance(namespace, name string) (*kvcorev
 }
 
 // CreateVirtualMachineInstance adds the given VMI to the VMI tracker,
-// and adds VirtualMachineInstanceReady condition to the VMI status.
+// adds VirtualMachineInstanceAgentConnected condition to the VMI status and
+// the node name according to node affinity rule with 'kubernetes.io/hostname' label selector.
 func (c *fakeClient) CreateVirtualMachineInstance(
 	namespace string,
 	vmi *kvcorev1.VirtualMachineInstance) (*kvcorev1.VirtualMachineInstance, error) {
@@ -254,7 +255,15 @@ func (c *fakeClient) CreateVirtualMachineInstance(
 			Status: k8scorev1.ConditionTrue,
 		},
 	)
-	vmi.Status.NodeName = vmi.Spec.NodeSelector[k8scorev1.LabelHostname]
+
+	if vmi.Spec.Affinity != nil && vmi.Spec.Affinity.NodeAffinity != nil {
+		term := vmi.Spec.Affinity.NodeAffinity.RequiredDuringSchedulingIgnoredDuringExecution.NodeSelectorTerms[0]
+		req := term.MatchExpressions[0]
+		if req.Key == k8scorev1.LabelHostname {
+			vmi.Status.NodeName = req.Values[0]
+		}
+	}
+
 	c.vmiTracker[vmiKey(namespace, vmi.Name)] = vmi
 	return vmi, nil
 }

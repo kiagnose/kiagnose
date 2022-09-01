@@ -37,6 +37,7 @@ import (
 
 	"github.com/kiagnose/kiagnose/checkups/kubevirt-vm-latency/vmlatency/internal/checkup"
 	"github.com/kiagnose/kiagnose/checkups/kubevirt-vm-latency/vmlatency/internal/config"
+	"github.com/kiagnose/kiagnose/checkups/kubevirt-vm-latency/vmlatency/internal/vmi"
 )
 
 const (
@@ -154,6 +155,74 @@ func TestCheckupSetupShouldCreateVMsWith(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestCheckupSetupShouldCreateVMsWithPodAntiAffinity(t *testing.T) {
+	t.Run("when source and target nodes names are not specified", func(t *testing.T) {
+		testClient := newTestClient()
+		testClient.returnNetAttachDef = newTestNetAttachDef("")
+		testCheckup := checkup.New(testClient, testNamespace, config.CheckupParameters{}, &checkerStub{})
+
+		assert.NoError(t, testCheckup.Preflight())
+		assert.NoError(t, testCheckup.Setup(context.Background()))
+		assertVmiPodAntiAffinityExist(t, testClient, checkup.SourceVmiName)
+		assertVmiPodAntiAffinityExist(t, testClient, checkup.TargetVmiName)
+		assertVmiNodeAffinityNotExist(t, testClient, checkup.SourceVmiName)
+		assertVmiNodeAffinityNotExist(t, testClient, checkup.TargetVmiName)
+	})
+}
+
+func TestCheckupSetupShouldCreateVMsWithNodeAffinity(t *testing.T) {
+	t.Run("when both source and target node names are specified", func(t *testing.T) {
+		const (
+			testSourceNode = "source.example.com"
+			testTargetNode = "target.example.com"
+		)
+		testClient := newTestClient()
+		testClient.returnNetAttachDef = newTestNetAttachDef("blah")
+		testCheckupParams := config.CheckupParameters{SourceNodeName: testSourceNode, TargetNodeName: testTargetNode}
+		testCheckup := checkup.New(testClient, testNamespace, testCheckupParams, &checkerStub{})
+
+		assert.NoError(t, testCheckup.Preflight())
+		assert.NoError(t, testCheckup.Setup(context.Background()))
+		assertVmiNodeAffinityExist(t, testClient, checkup.SourceVmiName, testSourceNode)
+		assertVmiNodeAffinityExist(t, testClient, checkup.TargetVmiName, testTargetNode)
+		assertVmiPodAntiAffinityNotExist(t, testClient, checkup.SourceVmiName)
+		assertVmiPodAntiAffinityNotExist(t, testClient, checkup.TargetVmiName)
+	})
+}
+
+func assertVmiPodAntiAffinityExist(t *testing.T, testClient *clientStub, vmiName string) {
+	actualVmi, err := testClient.GetVirtualMachineInstance(testNamespace, vmiName)
+	assert.NoError(t, err)
+	assert.NotNil(t, actualVmi.Spec.Affinity.PodAntiAffinity)
+	expectedPodAntiAffinity := vmi.NewPodAntiAffinity(vmi.Label{Key: checkup.LabelLatencyCheckVM, Value: ""})
+	assert.Equal(t, expectedPodAntiAffinity, actualVmi.Spec.Affinity.PodAntiAffinity)
+}
+
+func assertVmiPodAntiAffinityNotExist(t *testing.T, testClient *clientStub, name string) {
+	actualVmi, err := testClient.GetVirtualMachineInstance(testNamespace, name)
+	assert.NoError(t, err)
+
+	assert.Nil(t, actualVmi.Spec.Affinity.PodAntiAffinity)
+}
+
+func assertVmiNodeAffinityExist(t *testing.T, testClient *clientStub, vmiName, nodeName string) {
+	actualVmi, err := testClient.GetVirtualMachineInstance(testNamespace, vmiName)
+	assert.NoError(t, err)
+
+	actualVmiNodeAffinity := actualVmi.Spec.Affinity.NodeAffinity
+	assert.NotNil(t, actualVmiNodeAffinity)
+
+	expectedNodeAffinity := vmi.NewNodeAffinity(nodeName)
+	assert.Equal(t, expectedNodeAffinity, actualVmiNodeAffinity)
+}
+
+func assertVmiNodeAffinityNotExist(t *testing.T, testClient *clientStub, name string) {
+	actualVmi, err := testClient.GetVirtualMachineInstance(testNamespace, name)
+	assert.NoError(t, err)
+
+	assert.Nil(t, actualVmi.Spec.Affinity.NodeAffinity)
 }
 
 func newTestNetAttachDef(cniPluginName string) *netattdefv1.NetworkAttachmentDefinition {
