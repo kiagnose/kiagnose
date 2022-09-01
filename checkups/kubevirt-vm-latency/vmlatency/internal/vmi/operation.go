@@ -43,16 +43,26 @@ type KubevirtVmisClient interface {
 	GetNetworkAttachmentDefinition(namespace, name string) (*netattdefv1.NetworkAttachmentDefinition, error)
 }
 
-func Start(c KubevirtVmisClient, namespace string, vmi *kvcorev1.VirtualMachineInstance) error {
-	log.Printf("starting VMI %s/%s..", namespace, vmi.Name)
+func StartAndWaitUntilReady(ctx context.Context,
+	c KubevirtVmisClient,
+	namespace string,
+	vmi *kvcorev1.VirtualMachineInstance) (*kvcorev1.VirtualMachineInstance, error) {
+	if err := start(c, namespace, vmi); err != nil {
+		return nil, err
+	}
+	return waitUntilReady(ctx, c, namespace, vmi.Name)
+}
+
+func start(c KubevirtVmisClient, namespace string, vmi *kvcorev1.VirtualMachineInstance) error {
+	log.Printf("starting VMI \"%s/%s\"..", namespace, vmi.Name)
 	if _, err := c.CreateVirtualMachineInstance(namespace, vmi); err != nil {
-		return fmt.Errorf("failed to start VMI %s/%s: %v", vmi.Namespace, vmi.Name, err)
+		return fmt.Errorf("failed to start VMI \"%s/%s\": %v", vmi.Namespace, vmi.Name, err)
 	}
 	return nil
 }
 
-func WaitUntilReady(ctx context.Context, c KubevirtVmisClient, namespace, name string) (*kvcorev1.VirtualMachineInstance, error) {
-	log.Printf("waiting for VMI %s/%s to be ready..\n", namespace, name)
+func waitUntilReady(ctx context.Context, c KubevirtVmisClient, namespace, name string) (*kvcorev1.VirtualMachineInstance, error) {
+	log.Printf("waiting for VMI \"%s/%s\" to be ready..\n", namespace, name)
 
 	return waitForVmiCondition(ctx, c, namespace, name, kvcorev1.VirtualMachineInstanceAgentConnected)
 }

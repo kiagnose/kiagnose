@@ -177,6 +177,54 @@ func TestCheckupSetupShouldCreateVMsWith(t *testing.T) {
 	}
 }
 
+func TestCheckupSetupShouldCreateTargetVMWith(t *testing.T) {
+	t.Run("source node anti-affinity when source node is specified", func(t *testing.T) {
+		const testSourceNode = "sourceNode.example.com"
+		testCheckupParams := config.CheckupParameters{
+			SourceNodeName:                       testSourceNode,
+			TargetNodeName:                       "",
+			NetworkAttachmentDefinitionName:      testNetAttachDefName,
+			NetworkAttachmentDefinitionNamespace: testNamespace,
+			SampleDurationSeconds:                testSampleDurationSeconds,
+			DesiredMaxLatencyMilliseconds:        0,
+		}
+		testClient := &clientStub{
+			returnNetAttachDef: newTestNetAttachDef("blah"),
+			vmiNodeNameMap: map[string]string{
+				checkup.SourceVmiName: testSourceNode,
+			},
+		}
+		testCheckup := checkup.New(testClient, testNamespace, testCheckupParams, &checkerStub{})
+
+		assert.NoError(t, testCheckup.Preflight())
+		assert.NoError(t, testCheckup.Setup(context.Background()))
+
+		expectedSourceNodeSelectorReq := k8scorev1.NodeSelectorRequirement{
+			Key:      k8scorev1.LabelHostname,
+			Operator: k8scorev1.NodeSelectorOpIn,
+			Values:   []string{testSourceNode},
+		}
+		expectedTargetVmiNodeAntiAffinityReq := k8scorev1.NodeSelectorRequirement{
+			Key:      k8scorev1.LabelHostname,
+			Operator: k8scorev1.NodeSelectorOpNotIn,
+			Values:   []string{testSourceNode},
+		}
+
+		assertVmiNodeAffinityRequestExist(t, testClient, checkup.SourceVmiName, expectedSourceNodeSelectorReq)
+		assertVmiNodeAffinityRequestExist(t, testClient, checkup.TargetVmiName, expectedTargetVmiNodeAntiAffinityReq)
+	})
+}
+
+func assertVmiNodeAffinityRequestExist(t *testing.T,
+	testClient *clientStub, vmiName string, expectedNodeAffinityReq k8scorev1.NodeSelectorRequirement) {
+	vmi, err := testClient.GetVirtualMachineInstance(testNamespace, vmiName)
+	assert.NoError(t, err)
+
+	nodeAffinity := vmi.Spec.Affinity.NodeAffinity
+	actualNodeAffinityRequirements := nodeAffinity.RequiredDuringSchedulingIgnoredDuringExecution.NodeSelectorTerms[0].MatchExpressions
+	assert.Equal(t, actualNodeAffinityRequirements, []k8scorev1.NodeSelectorRequirement{expectedNodeAffinityReq})
+}
+
 func newTestNetAttachDef(cniPluginName string) *netattdefv1.NetworkAttachmentDefinition {
 	return &netattdefv1.NetworkAttachmentDefinition{
 		Spec: netattdefv1.NetworkAttachmentDefinitionSpec{

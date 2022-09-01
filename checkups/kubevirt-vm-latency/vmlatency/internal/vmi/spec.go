@@ -24,7 +24,6 @@ import (
 	k8scorev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	k8smetav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-
 	kvcorev1 "kubevirt.io/api/core/v1"
 )
 
@@ -153,6 +152,29 @@ func newContainerDiskVolume(name, image string) kvcorev1.Volume {
 				Image: image,
 			},
 		},
+	}
+}
+
+// WithNodeAffinity adds node affinity rule of match-expression kind with the given requirement.
+func WithNodeAffinity(nodeSelectorRequirement *k8scorev1.NodeSelectorRequirement) Option {
+	return func(vmi *kvcorev1.VirtualMachineInstance) {
+		if nodeSelectorRequirement == nil {
+			return
+		}
+
+		term := []k8scorev1.NodeSelectorTerm{
+			{
+				MatchExpressions: []k8scorev1.NodeSelectorRequirement{*nodeSelectorRequirement},
+			},
+		}
+		affinityRule := &k8scorev1.Affinity{
+			NodeAffinity: &k8scorev1.NodeAffinity{
+				RequiredDuringSchedulingIgnoredDuringExecution: &k8scorev1.NodeSelector{
+					NodeSelectorTerms: term,
+				},
+			},
+		}
+		vmi.Spec.Affinity = affinityRule
 	}
 }
 

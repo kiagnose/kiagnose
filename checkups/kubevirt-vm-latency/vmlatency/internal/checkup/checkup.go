@@ -25,6 +25,8 @@ import (
 	"strings"
 	"time"
 
+	k8scorev1 "k8s.io/api/core/v1"
+
 	kvcorev1 "kubevirt.io/api/core/v1"
 
 	netattdefv1 "github.com/k8snetworkplumbingwg/network-attachment-definition-client/pkg/apis/k8s.cni.cncf.io/v1"
@@ -66,6 +68,9 @@ func (c *checkup) Preflight() error {
 	return nil
 }
 
+const SourceVmiName = "latency-check-source"
+const TargetVmiName = "latency-check-target"
+
 func (c *checkup) Setup(ctx context.Context) error {
 	const (
 		errMessagePrefix = "setup"
@@ -73,10 +78,8 @@ func (c *checkup) Setup(ctx context.Context) error {
 		defaultSetupTimeout = time.Minute * 10
 
 		networkName   = "net0"
-		sourceVmiName = "latency-check-source"
 		sourceVmiMac  = "02:00:00:01:00:01"
 		sourceVmiCidr = "192.168.100.10/24"
-		targetVmiName = "latency-check-target"
 		targetVmiMac  = "02:00:00:02:00:02"
 		targetVmiCidr = "192.168.100.20/24"
 	)
@@ -88,34 +91,67 @@ func (c *checkup) Setup(ctx context.Context) error {
 		return fmt.Errorf("%s: %v", errMessagePrefix, err)
 	}
 
-	sourceVmi := newLatencyCheckVmi(sourceVmiName, c.params.SourceNodeName, networkName, netAttachDef, sourceVmiMac, sourceVmiCidr)
-	targetVmi := newLatencyCheckVmi(targetVmiName, c.params.TargetNodeName, networkName, netAttachDef, targetVmiMac, targetVmiCidr)
-
-	if err = vmi.Start(c.client, c.namespace, sourceVmi); err != nil {
-		return fmt.Errorf("%s: %v", errMessagePrefix, err)
-	}
-
-	if err = vmi.Start(c.client, c.namespace, targetVmi); err != nil {
-		return fmt.Errorf("%s: %v", errMessagePrefix, err)
-	}
+	sourceVmi := newSourceLatencyCheckVmi(SourceVmiName, c.params.SourceNodeName, networkName, netAttachDef, sourceVmiMac, sourceVmiCidr)
 
 	waitCtx, cancel := context.WithTimeout(ctx, defaultSetupTimeout)
 	defer cancel()
-
-	if c.targetVM, err = vmi.WaitUntilReady(waitCtx, c.client, c.namespace, targetVmi.Name); err != nil {
+	if c.sourceVM, err = vmi.StartAndWaitUntilReady(waitCtx, c.client, c.namespace, sourceVmi); err != nil {
 		return fmt.Errorf("%s: %v", errMessagePrefix, err)
 	}
 
-	if c.sourceVM, err = vmi.WaitUntilReady(waitCtx, c.client, c.namespace, sourceVmi.Name); err != nil {
+	targetVmi := newTargetLatencyCheckVmi(
+		TargetVmiName, c.params.TargetNodeName, c.sourceVM.Status.NodeName, networkName, netAttachDef, targetVmiMac, targetVmiCidr)
+
+	if c.targetVM, err = vmi.StartAndWaitUntilReady(waitCtx, c.client, c.namespace, targetVmi); err != nil {
 		return fmt.Errorf("%s: %v", errMessagePrefix, err)
 	}
 
 	return nil
 }
 
+func newSourceLatencyCheckVmi(
+	name string,
+	sourceNodeName string,
+	networkName string, netAttachDef *netattdefv1.NetworkAttachmentDefinition,
+	macAddress, cidr string) *kvcorev1.VirtualMachineInstance {
+	var sourceNodeSelectorReq *k8scorev1.NodeSelectorRequirement
+	if sourceNodeName != "" {
+		sourceNodeSelectorReq = &k8scorev1.NodeSelectorRequirement{
+			Key:      k8scorev1.LabelHostname,
+			Operator: k8scorev1.NodeSelectorOpIn,
+			Values:   []string{sourceNodeName},
+		}
+	}
+
+	return newLatencyCheckVmi(name, sourceNodeSelectorReq, networkName, netAttachDef, macAddress, cidr)
+}
+
+func newTargetLatencyCheckVmi(
+	name string,
+	targetNodeName, sourceNodeName string,
+	networkName string, netAttachDef *netattdefv1.NetworkAttachmentDefinition,
+	macAddress, cidr string) *kvcorev1.VirtualMachineInstance {
+	var targetNodeSelectorReq *k8scorev1.NodeSelectorRequirement
+	if targetNodeName != "" {
+		targetNodeSelectorReq = &k8scorev1.NodeSelectorRequirement{
+			Key:      k8scorev1.LabelHostname,
+			Operator: k8scorev1.NodeSelectorOpIn,
+			Values:   []string{targetNodeName},
+		}
+	} else {
+		targetNodeSelectorReq = &k8scorev1.NodeSelectorRequirement{
+			Key:      k8scorev1.LabelHostname,
+			Operator: k8scorev1.NodeSelectorOpNotIn,
+			Values:   []string{sourceNodeName},
+		}
+	}
+
+	return newLatencyCheckVmi(name, targetNodeSelectorReq, networkName, netAttachDef, macAddress, cidr)
+}
+
 func newLatencyCheckVmi(
-	name,
-	nodeName,
+	name string,
+	nodeSelectorRequirements *k8scorev1.NodeSelectorRequirement,
 	networkName string, netAttachDef *netattdefv1.NetworkAttachmentDefinition,
 	macAddress, cidr string) *kvcorev1.VirtualMachineInstance {
 	networkData, _ := vmi.NewNetworkData(
@@ -133,7 +169,7 @@ func newLatencyCheckVmi(
 	}
 
 	return vmi.NewAlpine(name,
-		vmi.WithNodeSelector(nodeName),
+		vmi.WithNodeAffinity(nodeSelectorRequirements),
 		vmi.WithMultusNetwork(networkName, netAttachDef.Namespace+"/"+netAttachDef.Name),
 		vmi.WithInterface(vmiInterface),
 		vmi.WithCloudInitNoCloudNetworkData(networkData),
