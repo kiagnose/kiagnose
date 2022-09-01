@@ -20,7 +20,6 @@
 package latency
 
 import (
-	"context"
 	"fmt"
 	"strings"
 	"time"
@@ -64,15 +63,8 @@ func (l *Latency) Check(sourceVMI, targetVMI *kvcorev1.VirtualMachineInstance, s
 		return fmt.Errorf("%s: %v", errMessagePrefix, err)
 	}
 
-	const waitForStatusIPAddressTimeout = time.Minute * 5
-	ctx, cancel := context.WithTimeout(context.Background(), waitForStatusIPAddressTimeout)
-	defer cancel()
-	targetIPAddress, err := kubevmi.WaitForStatusIPAddress(ctx, l.client, targetVMI.Namespace, targetVMI.Name)
-	if err != nil {
-		return fmt.Errorf("%s: %v", errMessagePrefix, err)
-	}
-
 	const runCommandGracePeriod = time.Minute * 1
+	targetIPAddress := targetVMI.Status.Interfaces[0].IP
 	start := time.Now()
 	res, err := sourceVMIConsole.RunCommand(composePingCommand(targetIPAddress, sampleTime), sampleTime+runCommandGracePeriod)
 	pingTime := time.Since(start)

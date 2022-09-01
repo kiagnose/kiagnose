@@ -28,8 +28,6 @@ import (
 
 	assert "github.com/stretchr/testify/require"
 
-	k8scorev1 "k8s.io/api/core/v1"
-
 	kvcorev1 "kubevirt.io/api/core/v1"
 	"kubevirt.io/client-go/kubecli"
 
@@ -268,9 +266,8 @@ func (c *clientStub) CreateVirtualMachineInstance(_ string, v *kvcorev1.VirtualM
 		return nil, c.failCreateVmi
 	}
 
-	v.Status.Conditions = append(v.Status.Conditions, kvcorev1.VirtualMachineInstanceCondition{
-		Type:   kvcorev1.VirtualMachineInstanceAgentConnected,
-		Status: k8scorev1.ConditionTrue,
+	v.Status.Interfaces = append(v.Status.Interfaces, kvcorev1.VirtualMachineInstanceNetworkInterface{
+		IP: "0.0.0.0",
 	})
 
 	c.createdVmis[v.Name] = v
