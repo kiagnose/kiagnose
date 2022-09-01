@@ -32,6 +32,8 @@ KUBEVIRT_VERSION=${KUBEVIRT_VERSION:-v0.53.0}
 KUBEVIRT_USE_EMULATION=${KUBEVIRT_USE_EMULATION:-"false"}
 CNAO_VERSION=${CNAO_VERSION:-v0.74.0}
 
+BRIDGE_NAME=${BRIDGE_NAME:-br10}
+
 FRAMEWORK_IMAGE="quay.io/kiagnose/kiagnose:devel"
 CHECKUP_IMAGE="quay.io/kiagnose/kubevirt-vm-latency:devel"
 
@@ -149,11 +151,11 @@ spec:
   config: |
     {
       "cniVersion":"0.3.1",
-      "name": "br10",
+      "name": "${BRIDGE_NAME}",
       "plugins": [
           {
               "type": "cnv-bridge",
-              "bridge": "br10"
+              "bridge": "${BRIDGE_NAME}"
           }
       ]
     }

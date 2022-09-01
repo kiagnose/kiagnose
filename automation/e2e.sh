@@ -28,10 +28,15 @@ KIND_VERSION=${KIND_VERSION:-v0.14.0}
 KIND=${KIND:-$PWD/kind}
 CLUSTER_NAME=${CLUSTER_NAME:-kind}
 
+KOKO_VERSION=${KOKO_VERSION:-0.83}
+KOKO=${KOKO:-$PWD/koko}
+BRIDGE_NAME=${BRIDGE_NAME:-br10}
+VETH_NAME=${VETH_NAME:-link_${BRIDGE_NAME}}
+
 FRAMEWORK_IMAGE="quay.io/kiagnose/kiagnose:devel"
 
 options=$(getopt --options "" \
-    --long install-kind,install-kubectl,create-cluster,delete-cluster,deploy-kiagnose,help\
+    --long install-kind,install-kubectl,create-cluster,create-multi-node-cluster,delete-cluster,deploy-kiagnose,help\
     -- "${@}")
 eval set -- "$options"
 while true; do
@@ -45,6 +50,9 @@ while true; do
     --create-cluster)
         OPT_CREATE_CLUSTER=1
         ;;
+    --create-multi-node-cluster)
+        OPT_CREATE_MULTI_NODE_CLUSTER=1
+        ;;
     --delete-cluster)
         OPT_DELETE_CLUSTER=1
         ;;
@@ -53,7 +61,7 @@ while true; do
         ;;
     --help)
         set +x
-        echo "$0 [--install-kind] [--install-kubectl] [--create-cluster] [--delete-cluster] [--deploy-kiagnose]"
+        echo "$0 [--install-kind] [--install-kubectl] [--create-cluster] [--create-multi-node-cluster] [--delete-cluster] [--deploy-kiagnose]"
         exit
         ;;
     --)
@@ -98,6 +106,45 @@ if [ -n "${OPT_CREATE_CLUSTER}" ]; then
     else
         echo "Cluster '${CLUSTER_NAME}' already exists!"
     fi
+fi
+
+if [ -n "${OPT_CREATE_MULTI_NODE_CLUSTER}" ]; then
+    if ! ${KIND} get clusters | grep "${CLUSTER_NAME}"; then
+        cat <<EOF | ${KIND} create cluster --wait 2m --config -
+kind: Cluster
+apiVersion: kind.x-k8s.io/v1alpha4
+nodes:
+- role: control-plane
+- role: worker
+- role: worker
+EOF
+        echo "Waiting for the network to be ready..."
+        ${KUBECTL} wait --for=condition=ready pods --namespace=kube-system -l k8s-app=kube-dns --timeout=2m
+        echo "K8S cluster is up:"
+        ${KUBECTL} get nodes -o wide
+    else
+        echo "Cluster '${CLUSTER_NAME}' already exists!"
+    fi
+
+    if [ ! -f "${KOKO}" ]; then
+        curl -Lo "${KOKO}" https://github.com/redhat-nfvpe/koko/releases/download/v${KOKO_VERSION}/koko_${KOKO_VERSION}_linux_amd64
+        chmod +x "${KOKO}"
+        echo "koko installed successfully at ${KOKO}"
+    fi
+
+    echo "Interconnect worker nodes with veth pair, requires root privileges"
+    worker1="kind-worker"
+    worker2="kind-worker2"
+    worker1_pid=$(${CRI} inspect --format "{{ .State.Pid }}" "${worker1}")
+    worker2_pid=$(${CRI} inspect --format "{{ .State.Pid }}" "${worker2}")
+    sudo ${KOKO} -p "${worker1_pid},${VETH_NAME}" -p "${worker2_pid},${VETH_NAME}"
+
+    echo "Establish connectivity between worker nodes over bridge network"
+    for node in "${worker1}" "${worker2}"; do
+      ${CRI} exec ${node} ip link add ${BRIDGE_NAME} type bridge
+      ${CRI} exec ${node} ip link set ${VETH_NAME} master ${BRIDGE_NAME}
+      ${CRI} exec ${node} ip link set up ${BRIDGE_NAME}
+    done
 fi
 
 if [ -n "${OPT_DEPLOY_KIAGNOSE}" ]; then
