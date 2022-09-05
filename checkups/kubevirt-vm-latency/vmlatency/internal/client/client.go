@@ -57,12 +57,12 @@ func New() (*Client, error) {
 	return &Client{c, cniClient}, nil
 }
 
-func (c *Client) UpdateConfigMap(namespace, name string, date map[string]string) error {
+func (c *Client) UpdateConfigMap(namespace, name string, data map[string]string) error {
 	cm, err := c.KubevirtClient.CoreV1().ConfigMaps(namespace).Get(context.Background(), name, metav1.GetOptions{})
 	if err != nil {
 		return err
 	}
-	cm.Data = date
+	cm.Data = data
 
 	if _, err := c.KubevirtClient.CoreV1().ConfigMaps(namespace).Update(context.Background(), cm, metav1.UpdateOptions{}); err != nil {
 		return err
