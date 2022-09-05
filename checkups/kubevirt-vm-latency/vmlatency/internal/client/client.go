@@ -64,7 +64,7 @@ func (c *Client) UpdateConfigMap(namespace, name string, data map[string]string)
 	}
 	cm.Data = data
 
-	if _, err := c.KubevirtClient.CoreV1().ConfigMaps(namespace).Update(context.Background(), cm, metav1.UpdateOptions{}); err != nil {
+	if _, err = c.KubevirtClient.CoreV1().ConfigMaps(namespace).Update(context.Background(), cm, metav1.UpdateOptions{}); err != nil {
 		return err
 	}
 
