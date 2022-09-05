@@ -49,12 +49,9 @@ const (
 func TestCheckupSetupShouldFailWhen(t *testing.T) {
 	t.Run("NetworkAttachmentDefinition does not exist", func(t *testing.T) {
 		expectedError := errors.New("get netAttachDef test error")
-		testCheckup := checkup.New(
-			&clientStub{failGetNetAttachDef: expectedError},
-			testNamespace,
-			newTestsCheckupParameters(),
-			&checkerStub{},
-		)
+		testClient := newTestClient()
+		testClient.failGetNetAttachDef = expectedError
+		testCheckup := checkup.New(testClient, testNamespace, newTestsCheckupParameters(), &checkerStub{})
 
 		assert.NoError(t, testCheckup.Preflight())
 		assert.ErrorContains(t, testCheckup.Setup(context.Background()), expectedError.Error())
@@ -62,13 +59,10 @@ func TestCheckupSetupShouldFailWhen(t *testing.T) {
 
 	t.Run("failed to create a VM", func(t *testing.T) {
 		expectedError := errors.New("vmi create test error")
-		testClient := &clientStub{failCreateVmi: expectedError, returnNetAttachDef: &netattdefv1.NetworkAttachmentDefinition{}}
-		testCheckup := checkup.New(
-			testClient,
-			testNamespace,
-			newTestsCheckupParameters(),
-			&checkerStub{},
-		)
+		testClient := newTestClient()
+		testClient.failCreateVmi = expectedError
+		testClient.returnNetAttachDef = &netattdefv1.NetworkAttachmentDefinition{}
+		testCheckup := checkup.New(testClient, testNamespace, newTestsCheckupParameters(), &checkerStub{})
 
 		assert.NoError(t, testCheckup.Preflight())
 		assert.ErrorContains(t, testCheckup.Setup(context.Background()), expectedError.Error())
@@ -76,12 +70,10 @@ func TestCheckupSetupShouldFailWhen(t *testing.T) {
 
 	t.Run("VMs were not ready before timeout expiration", func(t *testing.T) {
 		expectedError := errors.New("timed out")
-		testCheckup := checkup.New(
-			&clientStub{failGetVmi: expectedError, returnNetAttachDef: &netattdefv1.NetworkAttachmentDefinition{}},
-			testNamespace,
-			newTestsCheckupParameters(),
-			&checkerStub{},
-		)
+		testClient := newTestClient()
+		testClient.failGetVmi = expectedError
+		testClient.returnNetAttachDef = &netattdefv1.NetworkAttachmentDefinition{}
+		testCheckup := checkup.New(testClient, testNamespace, newTestsCheckupParameters(), &checkerStub{})
 
 		testCtx, cancel := context.WithTimeout(context.Background(), testTimeout)
 		defer cancel()
@@ -93,13 +85,10 @@ func TestCheckupSetupShouldFailWhen(t *testing.T) {
 
 func TestCheckupTeardownShouldFailWhen(t *testing.T) {
 	t.Run("failed to delete a VM", func(t *testing.T) {
-		testClient := &clientStub{returnNetAttachDef: &netattdefv1.NetworkAttachmentDefinition{}}
-		testCheckup := checkup.New(
-			testClient,
-			testNamespace,
-			newTestsCheckupParameters(),
-			&checkerStub{},
-		)
+		testClient := newTestClient()
+		testClient.returnNetAttachDef = &netattdefv1.NetworkAttachmentDefinition{}
+		testCheckup := checkup.New(testClient, testNamespace, newTestsCheckupParameters(), &checkerStub{})
+
 		testCtx, cancel := context.WithTimeout(context.Background(), testTimeout)
 		defer cancel()
 
@@ -113,13 +102,9 @@ func TestCheckupTeardownShouldFailWhen(t *testing.T) {
 	})
 
 	t.Run("VMs were not disposed before timeout expiration", func(t *testing.T) {
-		testClient := &clientStub{returnNetAttachDef: &netattdefv1.NetworkAttachmentDefinition{}}
-		testCheckup := checkup.New(
-			testClient,
-			testNamespace,
-			newTestsCheckupParameters(),
-			&checkerStub{},
-		)
+		testClient := newTestClient()
+		testClient.returnNetAttachDef = &netattdefv1.NetworkAttachmentDefinition{}
+		testCheckup := checkup.New(testClient, testNamespace, newTestsCheckupParameters(), &checkerStub{})
 
 		assert.NoError(t, testCheckup.Preflight())
 		assert.NoError(t, testCheckup.Setup(context.Background()))
@@ -156,15 +141,9 @@ func TestCheckupSetupShouldCreateVMsWith(t *testing.T) {
 	}
 	for _, testCase := range testsCases {
 		t.Run(testCase.description, func(t *testing.T) {
-			testClient := &clientStub{
-				returnNetAttachDef: testCase.netAttachDef,
-			}
-			testCheckup := checkup.New(
-				testClient,
-				testNamespace,
-				newTestsCheckupParameters(),
-				&checkerStub{},
-			)
+			testClient := newTestClient()
+			testClient.returnNetAttachDef = testCase.netAttachDef
+			testCheckup := checkup.New(testClient, testNamespace, newTestsCheckupParameters(), &checkerStub{})
 
 			assert.NoError(t, testCheckup.Preflight())
 			assert.NoError(t, testCheckup.Setup(context.Background()))
@@ -196,6 +175,10 @@ func newTestsCheckupParameters() config.CheckupParameters {
 	}
 }
 
+func newTestClient() *clientStub {
+	return &clientStub{createdVmis: map[string]*kvcorev1.VirtualMachineInstance{}}
+}
+
 type clientStub struct {
 	createdVmis map[string]*kvcorev1.VirtualMachineInstance
 
@@ -214,10 +197,6 @@ func (c *clientStub) GetVirtualMachineInstance(_, name string) (*kvcorev1.Virtua
 func (c *clientStub) CreateVirtualMachineInstance(_ string, v *kvcorev1.VirtualMachineInstance) (*kvcorev1.VirtualMachineInstance, error) {
 	if c.failCreateVmi != nil {
 		return nil, c.failCreateVmi
-	}
-
-	if c.createdVmis == nil {
-		c.createdVmis = map[string]*kvcorev1.VirtualMachineInstance{}
 	}
 
 	v.Status.Conditions = append(v.Status.Conditions, kvcorev1.VirtualMachineInstanceCondition{
