@@ -32,21 +32,21 @@ type configMapUpdater interface {
 	UpdateConfigMap(string, string, map[string]string) error
 }
 
-type reporter struct {
+type Reporter struct {
 	client             configMapUpdater
 	configMapName      string
 	configMapNamespace string
 }
 
-func New(c configMapUpdater, configMapNamespace, configMapName string) *reporter {
-	return &reporter{
+func New(c configMapUpdater, configMapNamespace, configMapName string) *Reporter {
+	return &Reporter{
 		client:             c,
 		configMapNamespace: configMapNamespace,
 		configMapName:      configMapName,
 	}
 }
 
-func (r *reporter) Report(s status.Status) error {
+func (r *Reporter) Report(s status.Status) error {
 	data := formatStatus(s)
 
 	if raw, err := json.MarshalIndent(data, "", " "); err == nil {
