@@ -109,7 +109,9 @@ if [ -n "${OPT_CREATE_CLUSTER}" ]; then
 fi
 
 if [ -n "${OPT_CREATE_MULTI_NODE_CLUSTER}" ]; then
-    if ! ${KIND} get clusters | grep "${CLUSTER_NAME}"; then
+    if ${KIND} get clusters | grep "${CLUSTER_NAME}"; then
+        echo "Cluster '${CLUSTER_NAME}' already exists!"
+    else
         cat <<EOF | ${KIND} create cluster --wait 2m --config -
 kind: Cluster
 apiVersion: kind.x-k8s.io/v1alpha4
@@ -122,29 +124,27 @@ EOF
         ${KUBECTL} wait --for=condition=ready pods --namespace=kube-system -l k8s-app=kube-dns --timeout=2m
         echo "K8S cluster is up:"
         ${KUBECTL} get nodes -o wide
-    else
-        echo "Cluster '${CLUSTER_NAME}' already exists!"
+
+        if [ ! -f "${KOKO}" ]; then
+            curl -Lo "${KOKO}" https://github.com/redhat-nfvpe/koko/releases/download/v${KOKO_VERSION}/koko_${KOKO_VERSION}_linux_amd64
+            chmod +x "${KOKO}"
+            echo "koko installed successfully at ${KOKO}"
+        fi
+
+        echo "Interconnect worker nodes with veth pair, requires root privileges"
+        worker1="kind-worker"
+        worker2="kind-worker2"
+        worker1_pid=$(${CRI} inspect --format "{{ .State.Pid }}" "${worker1}")
+        worker2_pid=$(${CRI} inspect --format "{{ .State.Pid }}" "${worker2}")
+        sudo ${KOKO} -p "${worker1_pid},${VETH_NAME}" -p "${worker2_pid},${VETH_NAME}"
+
+        echo "Establish connectivity between worker nodes over bridge network"
+        for node in "${worker1}" "${worker2}"; do
+            ${CRI} exec ${node} ip link add ${BRIDGE_NAME} type bridge
+            ${CRI} exec ${node} ip link set ${VETH_NAME} master ${BRIDGE_NAME}
+            ${CRI} exec ${node} ip link set up ${BRIDGE_NAME}
+        done
     fi
-
-    if [ ! -f "${KOKO}" ]; then
-        curl -Lo "${KOKO}" https://github.com/redhat-nfvpe/koko/releases/download/v${KOKO_VERSION}/koko_${KOKO_VERSION}_linux_amd64
-        chmod +x "${KOKO}"
-        echo "koko installed successfully at ${KOKO}"
-    fi
-
-    echo "Interconnect worker nodes with veth pair, requires root privileges"
-    worker1="kind-worker"
-    worker2="kind-worker2"
-    worker1_pid=$(${CRI} inspect --format "{{ .State.Pid }}" "${worker1}")
-    worker2_pid=$(${CRI} inspect --format "{{ .State.Pid }}" "${worker2}")
-    sudo ${KOKO} -p "${worker1_pid},${VETH_NAME}" -p "${worker2_pid},${VETH_NAME}"
-
-    echo "Establish connectivity between worker nodes over bridge network"
-    for node in "${worker1}" "${worker2}"; do
-      ${CRI} exec ${node} ip link add ${BRIDGE_NAME} type bridge
-      ${CRI} exec ${node} ip link set ${VETH_NAME} master ${BRIDGE_NAME}
-      ${CRI} exec ${node} ip link set up ${BRIDGE_NAME}
-    done
 fi
 
 if [ -n "${OPT_DEPLOY_KIAGNOSE}" ]; then
