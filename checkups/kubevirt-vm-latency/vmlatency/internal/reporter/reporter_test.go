@@ -21,7 +21,10 @@ package reporter_test
 
 import (
 	"errors"
+	"fmt"
+	"strconv"
 	"testing"
+	"time"
 
 	assert "github.com/stretchr/testify/require"
 
@@ -51,10 +54,73 @@ func TestReportShouldFailWhen(t *testing.T) {
 	})
 }
 
-type configMapClientStub struct {
-	failUpdateConfigMap error
+func TestReportShouldSuccessfullyConvertResultValues(t *testing.T) {
+	const (
+		someFailureReason      = "some reason"
+		someOtherFailureReason = "some other reason"
+	)
+	testClient := &configMapClientStub{}
+	testReporter := reporter.New(testClient, testNamespace, testConfigMapName)
+
+	t.Run("on checkup successful completion", func(t *testing.T) {
+		checkupStatus := status.Status{
+			FailureReason: []string{},
+			Results: status.Results{
+				MinLatency:          1 * time.Minute,
+				AvgLatency:          2 * time.Minute,
+				MeasurementDuration: 3 * time.Minute,
+				MaxLatency:          4 * time.Minute,
+			},
+		}
+		assert.NoError(t, testReporter.Report(checkupStatus))
+
+		expectedReportData := map[string]string{
+			"status.result.minLatencyNanoSec":      fmt.Sprint(checkupStatus.MinLatency.Nanoseconds()),
+			"status.result.maxLatencyNanoSec":      fmt.Sprint(checkupStatus.MaxLatency.Nanoseconds()),
+			"status.result.avgLatencyNanoSec":      fmt.Sprint(checkupStatus.AvgLatency.Nanoseconds()),
+			"status.result.measurementDurationSec": fmt.Sprint(checkupStatus.MeasurementDuration.Seconds()),
+			"status.succeeded":                     strconv.FormatBool(true),
+			"status.failureReason":                 "",
+		}
+
+		assert.Equal(t, expectedReportData, testClient.configMapData)
+	})
+
+	t.Run("on checkup failure", func(t *testing.T) {
+		checkupStatus := status.Status{
+			FailureReason: []string{someFailureReason},
+		}
+		assert.NoError(t, testReporter.Report(checkupStatus))
+
+		expectedReportData := map[string]string{
+			"status.succeeded":     strconv.FormatBool(false),
+			"status.failureReason": someFailureReason,
+		}
+
+		assert.Equal(t, expectedReportData, testClient.configMapData)
+	})
+
+	t.Run("on checkup multiple failures", func(t *testing.T) {
+		checkupStatus := status.Status{
+			FailureReason: []string{someFailureReason, someOtherFailureReason},
+		}
+		assert.NoError(t, testReporter.Report(checkupStatus))
+
+		expectedReportData := map[string]string{
+			"status.succeeded":     strconv.FormatBool(false),
+			"status.failureReason": someFailureReason + ", " + someOtherFailureReason,
+		}
+
+		assert.Equal(t, expectedReportData, testClient.configMapData)
+	})
 }
 
-func (c configMapClientStub) UpdateConfigMap(_, _ string, _ map[string]string) error {
+type configMapClientStub struct {
+	failUpdateConfigMap error
+	configMapData       map[string]string
+}
+
+func (c *configMapClientStub) UpdateConfigMap(_, _ string, data map[string]string) error {
+	c.configMapData = data
 	return c.failUpdateConfigMap
 }
