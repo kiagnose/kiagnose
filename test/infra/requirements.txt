@@ -1,0 +1,30 @@
+# Base: centos:stream9
+
+# pytest
+attrs==22.1.0
+iniconfig==1.1.1
+packaging==21.3
+pluggy==1.0.0
+py==1.11.0
+pyparsing==3.0.9
+pytest==7.1.3
+tomli==2.0.1
+
+# linters
+## flake8
+flake8==5.0.4
+mccabe==0.7.0
+pycodestyle==2.9.1
+pyflakes==2.5.0
+
+## black (formatter)
+black==22.8.0
+click==8.1.3
+mypy-extensions==0.4.3
+pathspec==0.10.1
+platformdirs==2.5.2
+typing-extensions==4.3.0
+tomli==2.0.1
+
+# Kubernetes/Openshift client
+openshift-python-wrapper==4.12.1
