@@ -26,6 +26,8 @@ type Results struct {
 	AvgLatency          time.Duration
 	MaxLatency          time.Duration
 	MeasurementDuration time.Duration
+	SourceNode          string
+	TargetNode          string
 }
 
 type Status struct {

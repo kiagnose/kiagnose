@@ -110,6 +110,8 @@ func (c *checkup) Setup(ctx context.Context) error {
 		return fmt.Errorf("%s: %v", errMessagePrefix, err)
 	}
 
+	c.results.TargetNode = c.targetVM.Status.NodeName
+	c.results.SourceNode = c.sourceVM.Status.NodeName
 	return nil
 }
 
@@ -146,12 +148,10 @@ func (c *checkup) Run() error {
 		return fmt.Errorf("run: %v", err)
 	}
 
-	c.results = status.Results{
-		MinLatency:          c.checker.MinLatency(),
-		AvgLatency:          c.checker.AverageLatency(),
-		MaxLatency:          c.checker.MaxLatency(),
-		MeasurementDuration: c.checker.CheckDuration(),
-	}
+	c.results.MinLatency = c.checker.MinLatency()
+	c.results.AvgLatency = c.checker.AverageLatency()
+	c.results.MaxLatency = c.checker.MaxLatency()
+	c.results.MeasurementDuration = c.checker.CheckDuration()
 
 	actualMaxLatency := c.results.MaxLatency.Milliseconds()
 	maxLatencyDesired := int64(c.params.DesiredMaxLatencyMilliseconds)

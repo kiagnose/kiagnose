@@ -64,6 +64,8 @@ func formatStatus(s status.Status) map[string]string {
 		resultAvgLatencyKey          = "status.result.avgLatencyNanoSec"
 		resultMaxLatencyKey          = "status.result.maxLatencyNanoSec"
 		resultMeasurementDurationKey = "status.result.measurementDurationSec"
+		resultSourceNode             = "status.result.sourceNode"
+		resultTargetNode             = "status.result.targetNode"
 	)
 	data := map[string]string{}
 
@@ -77,6 +79,8 @@ func formatStatus(s status.Status) map[string]string {
 		data[resultAvgLatencyKey] = strconv.FormatInt(s.Results.AvgLatency.Nanoseconds(), base)
 		data[resultMaxLatencyKey] = strconv.FormatInt(s.Results.MaxLatency.Nanoseconds(), base)
 		data[resultMeasurementDurationKey] = strconv.FormatInt(int64(s.Results.MeasurementDuration.Seconds()), base)
+		data[resultSourceNode] = s.Results.SourceNode
+		data[resultTargetNode] = s.Results.TargetNode
 	}
 
 	return data
