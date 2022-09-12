@@ -81,10 +81,14 @@ The checkup is configured by the following parameters:
 | `network_attachment_definition_namespace`<br/>`network_attachment_definition_name` | `NetworkAttachmentDefinition` object on which <br/> the VMs are connected to and measure network latency.                    |
 | `sample_duration_seconds`                                                          | Network latency measurement sample time (optional).<br/> Default is 5 seconds.                                               |
 | `max_desired_latency_milliseconds`                                                 | Maximal network latency accepted, if the actual latency <br/> is higher the checkup will be considered as failed (optional). |
-| `source_node`<br/>`target_node`                                                    | Two ends in the of the network latency measurement (optional).                                                               |
+| `source_node`<br/>`target_node`                                                    | Two ends of the network latency measurement (optional).<br/> When used, specifying both is mandatory.                        |
 
 > **_Note_**:
 > `timeout` should be greater than `sample_duration_seconds`.
+
+> **_Note_**:
+> By default the checkup source and target VMs will be created in a way they won't end up on the same cluster node.</br>
+> Specifying both `source_node` and `target_node` will override this behaviour and each VM will be created on the desired node.
 
 ### Example
 ```yaml

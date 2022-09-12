@@ -62,6 +62,10 @@ var (
 	ErrInvalidNetworkName               = fmt.Errorf("%q environment variable is invalid", NetworkNameEnvVarName)
 	ErrNetworkNamespaceMissing          = fmt.Errorf("%q environment variable is missing", NetworkNamespaceEnvVarName)
 	ErrInvalidNetworkNamespace          = fmt.Errorf("%q environment variable is invalid", NetworkNamespaceEnvVarName)
+	ErrSourceNodeNameMissing            = fmt.Errorf("%q environment variable is missing", SourceNodeNameEnvVarName)
+	ErrInvalidSourceNodeName            = fmt.Errorf("%q environment variable is invalid", SourceNodeNameEnvVarName)
+	ErrTargetNodeNameMissing            = fmt.Errorf("%q environment variable is missing", TargetNodeNameEnvVarName)
+	ErrInvalidTargetNodeName            = fmt.Errorf("%q environment variable is invalid", TargetNodeNameEnvVarName)
 )
 
 const (
@@ -121,6 +125,10 @@ func New(env map[string]string) (Config, error) {
 		}
 	}
 
+	if err := validateNodeNames(env); err != nil {
+		return Config{}, err
+	}
+
 	return Config{
 		ResultsConfigMapName:      resultsConfigMapName,
 		ResultsConfigMapNamespace: resultsConfigMapNamespace,
@@ -133,4 +141,25 @@ func New(env map[string]string) (Config, error) {
 			DesiredMaxLatencyMilliseconds:        desiredMaxLatency,
 		},
 	}, nil
+}
+
+func validateNodeNames(env map[string]string) error {
+	sourceNodeName, sourceNodeNameExists := env[SourceNodeNameEnvVarName]
+	targetNodeName, targetNodeNameExists := env[TargetNodeNameEnvVarName]
+
+	switch {
+	case !sourceNodeNameExists && targetNodeNameExists:
+		return ErrSourceNodeNameMissing
+	case !targetNodeNameExists && sourceNodeNameExists:
+		return ErrTargetNodeNameMissing
+	case sourceNodeNameExists && targetNodeNameExists:
+		if sourceNodeName == "" {
+			return ErrInvalidSourceNodeName
+		}
+		if targetNodeName == "" {
+			return ErrInvalidTargetNodeName
+		}
+	}
+
+	return nil
 }

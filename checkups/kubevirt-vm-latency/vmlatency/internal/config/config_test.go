@@ -42,6 +42,8 @@ func TestCreateConfigFromEnvShould(t *testing.T) {
 		testNetAttachDefName              = "blue-net"
 		testDesiredMaxLatencyMilliseconds = 100
 		testSampleDurationSeconds         = 60
+		testSourceNodeName                = "worker1"
+		testTargetNodeName                = "worker2"
 	)
 
 	testCases := []configCreateTestCases{
@@ -80,6 +82,30 @@ func TestCreateConfigFromEnvShould(t *testing.T) {
 					NetworkAttachmentDefinitionName:      testNetAttachDefName,
 					NetworkAttachmentDefinitionNamespace: testNamespace,
 					SampleDurationSeconds:                testSampleDurationSeconds,
+				},
+				ResultsConfigMapName:      testResultConfigMapName,
+				ResultsConfigMapNamespace: testNamespace,
+			},
+		},
+		{
+			"set source and target nodes when both are specified",
+			map[string]string{
+				config.ResultsConfigMapNameEnvVarName:      testResultConfigMapName,
+				config.ResultsConfigMapNamespaceEnvVarName: testNamespace,
+				config.NetworkNameEnvVarName:               testNetAttachDefName,
+				config.NetworkNamespaceEnvVarName:          testNamespace,
+				config.SampleDurationSecondsEnvVarName:     fmt.Sprintf("%d", testSampleDurationSeconds),
+				config.SourceNodeNameEnvVarName:            testSourceNodeName,
+				config.TargetNodeNameEnvVarName:            testTargetNodeName,
+			},
+			config.Config{
+				CheckupParameters: config.CheckupParameters{
+					DesiredMaxLatencyMilliseconds:        config.DefaultDesiredMaxLatencyMilliseconds,
+					NetworkAttachmentDefinitionName:      testNetAttachDefName,
+					NetworkAttachmentDefinitionNamespace: testNamespace,
+					SampleDurationSeconds:                testSampleDurationSeconds,
+					SourceNodeName:                       testSourceNodeName,
+					TargetNodeName:                       testTargetNodeName,
 				},
 				ResultsConfigMapName:      testResultConfigMapName,
 				ResultsConfigMapNamespace: testNamespace,
@@ -188,6 +214,63 @@ func TestCreateConfigFromEnvShouldFailWhen(t *testing.T) {
 				config.ResultsConfigMapNamespaceEnvVarName: "default",
 				config.NetworkNameEnvVarName:               "blue-net",
 				config.NetworkNamespaceEnvVarName:          "",
+			},
+		},
+	}
+	for _, testCase := range testCases {
+		t.Run(testCase.description, func(t *testing.T) {
+			_, err := config.New(testCase.env)
+			assert.Equal(t, err, testCase.expectedError)
+		})
+	}
+}
+
+func TestCreateConfigFromEnvShouldFailWhenNodeNames(t *testing.T) {
+	testCases := []configCreateFallingTestCases{
+		{
+			"source node name is set but target node name isn't",
+			config.ErrTargetNodeNameMissing,
+			map[string]string{
+				config.ResultsConfigMapNameEnvVarName:      "results",
+				config.ResultsConfigMapNamespaceEnvVarName: "default",
+				config.NetworkNameEnvVarName:               "blue-net",
+				config.NetworkNamespaceEnvVarName:          "default",
+				config.SourceNodeNameEnvVarName:            "worker1",
+			},
+		},
+		{
+			"target node name is set but source node name isn't",
+			config.ErrSourceNodeNameMissing,
+			map[string]string{
+				config.ResultsConfigMapNameEnvVarName:      "results",
+				config.ResultsConfigMapNamespaceEnvVarName: "default",
+				config.NetworkNameEnvVarName:               "blue-net",
+				config.NetworkNamespaceEnvVarName:          "default",
+				config.TargetNodeNameEnvVarName:            "worker2",
+			},
+		},
+		{
+			"source node name is empty",
+			config.ErrInvalidSourceNodeName,
+			map[string]string{
+				config.ResultsConfigMapNameEnvVarName:      "results",
+				config.ResultsConfigMapNamespaceEnvVarName: "default",
+				config.NetworkNameEnvVarName:               "blue-net",
+				config.NetworkNamespaceEnvVarName:          "default",
+				config.SourceNodeNameEnvVarName:            "",
+				config.TargetNodeNameEnvVarName:            "worker2",
+			},
+		},
+		{
+			"target node name is empty",
+			config.ErrInvalidTargetNodeName,
+			map[string]string{
+				config.ResultsConfigMapNameEnvVarName:      "results",
+				config.ResultsConfigMapNamespaceEnvVarName: "default",
+				config.NetworkNameEnvVarName:               "blue-net",
+				config.NetworkNamespaceEnvVarName:          "default",
+				config.SourceNodeNameEnvVarName:            "worker1",
+				config.TargetNodeNameEnvVarName:            "",
 			},
 		},
 	}
