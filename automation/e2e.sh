@@ -94,6 +94,7 @@ if [ -n "${OPT_INSTALL_KUBECTL}" ]; then
         curl -Lo "${KUBECTL}" https://dl.k8s.io/release/"${KUBECTL_VERSION}"/bin/linux/amd64/kubectl
         chmod +x "${KUBECTL}"
         echo "kubectl installed successfully at ${KUBECTL}"
+        ${KUBECTL} version --client
     fi
 fi
 
