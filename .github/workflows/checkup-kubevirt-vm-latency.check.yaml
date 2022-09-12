@@ -75,7 +75,6 @@ jobs:
     name: e2e
     runs-on: ubuntu-latest
     env:
-      KUBECTL: /usr/local/bin/kubectl
       CRI: docker
       KUBEVIRT_USE_EMULATION: true
     steps:
