@@ -85,6 +85,7 @@ if [ -n "${OPT_INSTALL_KIND}" ]; then
         curl -Lo "${KIND}" https://kind.sigs.k8s.io/dl/"${KIND_VERSION}"/kind-linux-amd64
         chmod +x "${KIND}"
         echo "kind installed successfully at ${KIND}"
+        ${KIND} version
     fi
 fi
 
