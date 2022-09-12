@@ -70,6 +70,8 @@ func TestReportShouldSuccessfullyConvertResultValues(t *testing.T) {
 				AvgLatency:          2 * time.Minute,
 				MeasurementDuration: 3 * time.Minute,
 				MaxLatency:          4 * time.Minute,
+				TargetNode:          "a",
+				SourceNode:          "b",
 			},
 		}
 		assert.NoError(t, testReporter.Report(checkupStatus))
@@ -79,6 +81,8 @@ func TestReportShouldSuccessfullyConvertResultValues(t *testing.T) {
 			"status.result.maxLatencyNanoSec":      fmt.Sprint(checkupStatus.MaxLatency.Nanoseconds()),
 			"status.result.avgLatencyNanoSec":      fmt.Sprint(checkupStatus.AvgLatency.Nanoseconds()),
 			"status.result.measurementDurationSec": fmt.Sprint(checkupStatus.MeasurementDuration.Seconds()),
+			"status.result.targetNode":             checkupStatus.TargetNode,
+			"status.result.sourceNode":             checkupStatus.SourceNode,
 			"status.succeeded":                     strconv.FormatBool(true),
 			"status.failureReason":                 "",
 		}

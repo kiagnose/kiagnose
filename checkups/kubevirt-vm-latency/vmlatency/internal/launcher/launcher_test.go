@@ -38,6 +38,7 @@ import (
 	"github.com/kiagnose/kiagnose/checkups/kubevirt-vm-latency/vmlatency/internal/checkup"
 	"github.com/kiagnose/kiagnose/checkups/kubevirt-vm-latency/vmlatency/internal/config"
 	"github.com/kiagnose/kiagnose/checkups/kubevirt-vm-latency/vmlatency/internal/launcher"
+	"github.com/kiagnose/kiagnose/checkups/kubevirt-vm-latency/vmlatency/internal/reporter"
 	"github.com/kiagnose/kiagnose/checkups/kubevirt-vm-latency/vmlatency/internal/status"
 )
 
@@ -150,6 +151,32 @@ func TestLauncherShould(t *testing.T) {
 	})
 }
 
+func TestLauncherShouldSuccessfullyProduceStatusResults(t *testing.T) {
+	const testConfigMapName = "results"
+	const sourceNodeName = "worker1"
+	const targetNodeName = "worker2"
+	testClient := newFakeClient()
+	testReporter := reporter.New(testClient, k8scorev1.NamespaceDefault, testConfigMapName)
+	testCheckup := checkup.New(
+		testClient,
+		k8scorev1.NamespaceDefault,
+		config.CheckupParameters{
+			SourceNodeName: sourceNodeName,
+			TargetNodeName: targetNodeName,
+		},
+		&checkerStub{},
+	)
+	testLauncher := launcher.New(testCheckup, testReporter)
+
+	assert.NoError(t, testLauncher.Run())
+
+	expectedResults := status.Results{
+		SourceNode: sourceNodeName,
+		TargetNode: targetNodeName,
+	}
+	assert.Equal(t, testCheckup.Results(), expectedResults)
+}
+
 var (
 	errorPreflight = errors.New("preflight check error")
 	errorSetup     = errors.New("setup error")
@@ -227,6 +254,7 @@ func (c *fakeClient) CreateVirtualMachineInstance(
 			Status: k8scorev1.ConditionTrue,
 		},
 	)
+	vmi.Status.NodeName = vmi.Spec.NodeSelector[k8scorev1.LabelHostname]
 	c.vmiTracker[vmiKey(namespace, vmi.Name)] = vmi
 	return vmi, nil
 }
@@ -272,4 +300,8 @@ func (c *checkerStub) MaxLatency() time.Duration {
 
 func (c *checkerStub) CheckDuration() time.Duration {
 	return 0
+}
+
+func (c *fakeClient) UpdateConfigMap(_, _ string, _ map[string]string) error {
+	return nil
 }
