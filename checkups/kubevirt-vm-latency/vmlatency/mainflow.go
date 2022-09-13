@@ -26,6 +26,7 @@ import (
 	"github.com/kiagnose/kiagnose/checkups/kubevirt-vm-latency/vmlatency/internal/latency"
 	"github.com/kiagnose/kiagnose/checkups/kubevirt-vm-latency/vmlatency/internal/launcher"
 	"github.com/kiagnose/kiagnose/checkups/kubevirt-vm-latency/vmlatency/internal/reporter"
+	"github.com/kiagnose/kiagnose/checkups/kubevirt-vm-latency/vmlatency/internal/uidgenerator"
 )
 
 func Run(env map[string]string, namespace string) error {
@@ -40,7 +41,7 @@ func Run(env map[string]string, namespace string) error {
 	}
 
 	l := launcher.New(
-		checkup.New(c, namespace, cfg.CheckupParameters, latency.New(c)),
+		checkup.New(c, namespace, cfg.CheckupParameters, latency.New(c), uidgenerator.New()),
 		reporter.New(c, cfg.ResultsConfigMapNamespace, cfg.ResultsConfigMapName),
 	)
 	return l.Run()

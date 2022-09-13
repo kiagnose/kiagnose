@@ -52,7 +52,7 @@ func TestCheckupSetupShouldFailWhen(t *testing.T) {
 		expectedError := errors.New("get netAttachDef test error")
 		testClient := newTestClient()
 		testClient.failGetNetAttachDef = expectedError
-		testCheckup := checkup.New(testClient, testNamespace, newTestsCheckupParameters(), &checkerStub{})
+		testCheckup := checkup.New(testClient, testNamespace, newTestsCheckupParameters(), &checkerStub{}, &uidGeneratorStub{})
 
 		assert.NoError(t, testCheckup.Preflight())
 		assert.ErrorContains(t, testCheckup.Setup(context.Background()), expectedError.Error())
@@ -63,7 +63,7 @@ func TestCheckupSetupShouldFailWhen(t *testing.T) {
 		testClient := newTestClient()
 		testClient.failCreateVmi = expectedError
 		testClient.returnNetAttachDef = &netattdefv1.NetworkAttachmentDefinition{}
-		testCheckup := checkup.New(testClient, testNamespace, newTestsCheckupParameters(), &checkerStub{})
+		testCheckup := checkup.New(testClient, testNamespace, newTestsCheckupParameters(), &checkerStub{}, &uidGeneratorStub{})
 
 		assert.NoError(t, testCheckup.Preflight())
 		assert.ErrorContains(t, testCheckup.Setup(context.Background()), expectedError.Error())
@@ -74,7 +74,7 @@ func TestCheckupSetupShouldFailWhen(t *testing.T) {
 		testClient := newTestClient()
 		testClient.failGetVmi = expectedError
 		testClient.returnNetAttachDef = &netattdefv1.NetworkAttachmentDefinition{}
-		testCheckup := checkup.New(testClient, testNamespace, newTestsCheckupParameters(), &checkerStub{})
+		testCheckup := checkup.New(testClient, testNamespace, newTestsCheckupParameters(), &checkerStub{}, &uidGeneratorStub{})
 
 		testCtx, cancel := context.WithTimeout(context.Background(), testTimeout)
 		defer cancel()
@@ -88,7 +88,7 @@ func TestCheckupTeardownShouldFailWhen(t *testing.T) {
 	t.Run("failed to delete a VM", func(t *testing.T) {
 		testClient := newTestClient()
 		testClient.returnNetAttachDef = &netattdefv1.NetworkAttachmentDefinition{}
-		testCheckup := checkup.New(testClient, testNamespace, newTestsCheckupParameters(), &checkerStub{})
+		testCheckup := checkup.New(testClient, testNamespace, newTestsCheckupParameters(), &checkerStub{}, &uidGeneratorStub{})
 
 		testCtx, cancel := context.WithTimeout(context.Background(), testTimeout)
 		defer cancel()
@@ -105,7 +105,7 @@ func TestCheckupTeardownShouldFailWhen(t *testing.T) {
 	t.Run("VMs were not disposed before timeout expiration", func(t *testing.T) {
 		testClient := newTestClient()
 		testClient.returnNetAttachDef = &netattdefv1.NetworkAttachmentDefinition{}
-		testCheckup := checkup.New(testClient, testNamespace, newTestsCheckupParameters(), &checkerStub{})
+		testCheckup := checkup.New(testClient, testNamespace, newTestsCheckupParameters(), &checkerStub{}, &uidGeneratorStub{})
 
 		assert.NoError(t, testCheckup.Preflight())
 		assert.NoError(t, testCheckup.Setup(context.Background()))
@@ -144,7 +144,7 @@ func TestCheckupSetupShouldCreateVMsWith(t *testing.T) {
 		t.Run(testCase.description, func(t *testing.T) {
 			testClient := newTestClient()
 			testClient.returnNetAttachDef = testCase.netAttachDef
-			testCheckup := checkup.New(testClient, testNamespace, newTestsCheckupParameters(), &checkerStub{})
+			testCheckup := checkup.New(testClient, testNamespace, newTestsCheckupParameters(), &checkerStub{}, &uidGeneratorStub{})
 
 			assert.NoError(t, testCheckup.Preflight())
 			assert.NoError(t, testCheckup.Setup(context.Background()))
@@ -159,14 +159,17 @@ func TestCheckupSetupShouldCreateVMsWith(t *testing.T) {
 
 func TestCheckupSetupShouldCreateVMsWithPodAntiAffinity(t *testing.T) {
 	t.Run("when source and target nodes names are not specified", func(t *testing.T) {
+		testCheckupUID := "asd123"
+		affinityLabel := vmi.Label{Key: checkup.LabelLatencyCheckUID, Value: testCheckupUID}
+		testUIDGen := &uidGeneratorStub{uid: testCheckupUID}
 		testClient := newTestClient()
 		testClient.returnNetAttachDef = newTestNetAttachDef("")
-		testCheckup := checkup.New(testClient, testNamespace, config.CheckupParameters{}, &checkerStub{})
+		testCheckup := checkup.New(testClient, testNamespace, config.CheckupParameters{}, &checkerStub{}, testUIDGen)
 
 		assert.NoError(t, testCheckup.Preflight())
 		assert.NoError(t, testCheckup.Setup(context.Background()))
-		assertVmiPodAntiAffinityExist(t, testClient, checkup.SourceVmiName)
-		assertVmiPodAntiAffinityExist(t, testClient, checkup.TargetVmiName)
+		assertVmiPodAntiAffinityExist(t, testClient, checkup.SourceVmiName, affinityLabel)
+		assertVmiPodAntiAffinityExist(t, testClient, checkup.TargetVmiName, affinityLabel)
 		assertVmiNodeAffinityNotExist(t, testClient, checkup.SourceVmiName)
 		assertVmiNodeAffinityNotExist(t, testClient, checkup.TargetVmiName)
 	})
@@ -181,7 +184,7 @@ func TestCheckupSetupShouldCreateVMsWithNodeAffinity(t *testing.T) {
 		testClient := newTestClient()
 		testClient.returnNetAttachDef = newTestNetAttachDef("blah")
 		testCheckupParams := config.CheckupParameters{SourceNodeName: testSourceNode, TargetNodeName: testTargetNode}
-		testCheckup := checkup.New(testClient, testNamespace, testCheckupParams, &checkerStub{})
+		testCheckup := checkup.New(testClient, testNamespace, testCheckupParams, &checkerStub{}, &uidGeneratorStub{})
 
 		assert.NoError(t, testCheckup.Preflight())
 		assert.NoError(t, testCheckup.Setup(context.Background()))
@@ -192,11 +195,11 @@ func TestCheckupSetupShouldCreateVMsWithNodeAffinity(t *testing.T) {
 	})
 }
 
-func assertVmiPodAntiAffinityExist(t *testing.T, testClient *clientStub, vmiName string) {
+func assertVmiPodAntiAffinityExist(t *testing.T, testClient *clientStub, vmiName string, label vmi.Label) {
 	actualVmi, err := testClient.GetVirtualMachineInstance(testNamespace, vmiName)
 	assert.NoError(t, err)
 	assert.NotNil(t, actualVmi.Spec.Affinity.PodAntiAffinity)
-	expectedPodAntiAffinity := vmi.NewPodAntiAffinity(vmi.Label{Key: checkup.LabelLatencyCheckVM, Value: ""})
+	expectedPodAntiAffinity := vmi.NewPodAntiAffinity(label)
 	assert.Equal(t, expectedPodAntiAffinity, actualVmi.Spec.Affinity.PodAntiAffinity)
 }
 
@@ -312,4 +315,12 @@ func (c *checkerStub) MaxLatency() time.Duration {
 
 func (c *checkerStub) CheckDuration() time.Duration {
 	return 0
+}
+
+type uidGeneratorStub struct {
+	uid string
+}
+
+func (u *uidGeneratorStub) UID() string {
+	return u.uid
 }

@@ -49,6 +49,7 @@ func TestLauncherShouldFail(t *testing.T) {
 		k8scorev1.NamespaceDefault,
 		config.CheckupParameters{},
 		&checkerStub{checkFailure: errorCheck},
+		&uidGeneratorStub{},
 	)
 	testLauncher := launcher.New(testCheckup, reporterStub{})
 
@@ -62,6 +63,7 @@ func TestLauncherShouldRunSuccessfully(t *testing.T) {
 		k8scorev1.NamespaceDefault,
 		config.CheckupParameters{},
 		&checkerStub{},
+		&uidGeneratorStub{},
 	)
 	testLauncher := launcher.New(testCheckup, reporterStub{})
 
@@ -165,6 +167,7 @@ func TestLauncherShouldSuccessfullyProduceStatusResults(t *testing.T) {
 			TargetNodeName: targetNodeName,
 		},
 		&checkerStub{},
+		&uidGeneratorStub{},
 	)
 	testLauncher := launcher.New(testCheckup, testReporter)
 
@@ -313,4 +316,10 @@ func (c *checkerStub) CheckDuration() time.Duration {
 
 func (c *fakeClient) UpdateConfigMap(_, _ string, _ map[string]string) error {
 	return nil
+}
+
+type uidGeneratorStub struct{}
+
+func (u *uidGeneratorStub) UID() string {
+	return ""
 }

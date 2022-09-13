@@ -45,22 +45,28 @@ type checker interface {
 	CheckDuration() time.Duration
 }
 
-type checkup struct {
-	client    vmi.KubevirtVmisClient
-	namespace string
-	params    config.CheckupParameters
-	results   status.Results
-	sourceVM  *kvcorev1.VirtualMachineInstance
-	targetVM  *kvcorev1.VirtualMachineInstance
-	checker   checker
+type uidGenerator interface {
+	UID() string
 }
 
-func New(c vmi.KubevirtVmisClient, namespace string, params config.CheckupParameters, checker checker) *checkup {
+type checkup struct {
+	client       vmi.KubevirtVmisClient
+	namespace    string
+	params       config.CheckupParameters
+	results      status.Results
+	sourceVM     *kvcorev1.VirtualMachineInstance
+	targetVM     *kvcorev1.VirtualMachineInstance
+	checker      checker
+	uidGenerator uidGenerator
+}
+
+func New(c vmi.KubevirtVmisClient, namespace string, params config.CheckupParameters, checker checker, uidGen uidGenerator) *checkup {
 	return &checkup{
-		client:    c,
-		namespace: namespace,
-		params:    params,
-		checker:   checker,
+		client:       c,
+		namespace:    namespace,
+		params:       params,
+		checker:      checker,
+		uidGenerator: uidGen,
 	}
 }
 
@@ -69,9 +75,9 @@ func (c *checkup) Preflight() error {
 }
 
 const (
-	SourceVmiName       = "latency-check-source"
-	TargetVmiName       = "latency-check-target"
-	LabelLatencyCheckVM = "latency-check-vm"
+	SourceVmiName        = "latency-check-source"
+	TargetVmiName        = "latency-check-target"
+	LabelLatencyCheckUID = "latency-check/uid"
 )
 
 func (c *checkup) Setup(ctx context.Context) error {
@@ -93,9 +99,9 @@ func (c *checkup) Setup(ctx context.Context) error {
 	if err != nil {
 		return fmt.Errorf("%s: %v", errMessagePrefix, err)
 	}
-
-	sourceVmi := newLatencyCheckVmi(SourceVmiName, c.params.SourceNodeName, networkName, netAttachDef, sourceVmiMac, sourceVmiCidr)
-	targetVmi := newLatencyCheckVmi(TargetVmiName, c.params.TargetNodeName, networkName, netAttachDef, targetVmiMac, targetVmiCidr)
+	uid := c.uidGenerator.UID()
+	sourceVmi := newLatencyCheckVmi(uid, SourceVmiName, c.params.SourceNodeName, networkName, netAttachDef, sourceVmiMac, sourceVmiCidr)
+	targetVmi := newLatencyCheckVmi(uid, TargetVmiName, c.params.TargetNodeName, networkName, netAttachDef, targetVmiMac, targetVmiCidr)
 
 	if err = vmi.Start(c.client, c.namespace, sourceVmi); err != nil {
 		return fmt.Errorf("%s: %v", errMessagePrefix, err)
@@ -119,6 +125,7 @@ func (c *checkup) Setup(ctx context.Context) error {
 }
 
 func newLatencyCheckVmi(
+	uid,
 	name,
 	nodeName,
 	networkName string, netAttachDef *netattdefv1.NetworkAttachmentDefinition,
@@ -137,7 +144,7 @@ func newLatencyCheckVmi(
 		vmiInterface = vmi.NewInterface(networkName, vmi.WithMacAddress(macAddress), vmi.WithBridgeBinding())
 	}
 
-	vmLabel := vmi.Label{Key: LabelLatencyCheckVM, Value: ""}
+	vmLabel := vmi.Label{Key: LabelLatencyCheckUID, Value: uid}
 	var affinity *k8scorev1.Affinity
 	if nodeName != "" {
 		affinity = &k8scorev1.Affinity{NodeAffinity: vmi.NewNodeAffinity(nodeName)}
