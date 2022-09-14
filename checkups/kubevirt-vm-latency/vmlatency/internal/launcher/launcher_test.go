@@ -174,7 +174,7 @@ func TestLauncherShouldSuccessfullyProduceStatusResults(t *testing.T) {
 		SourceNode: sourceNodeName,
 		TargetNode: targetNodeName,
 	}
-	assert.Equal(t, testCheckup.Results(), expectedResults)
+	assert.Equal(t, expectedResults, testCheckup.Results())
 }
 
 var (
