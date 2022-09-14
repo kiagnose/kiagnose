@@ -48,15 +48,15 @@ func TestCreateConfigFromEnvShould(t *testing.T) {
 
 	testCases := []configCreateTestCases{
 		{
-			"set default sample duration when env var is missing",
-			map[string]string{
+			description: "set default sample duration when env var is missing",
+			env: map[string]string{
 				config.ResultsConfigMapNameEnvVarName:          testResultConfigMapName,
 				config.ResultsConfigMapNamespaceEnvVarName:     testNamespace,
 				config.NetworkNameEnvVarName:                   testNetAttachDefName,
 				config.NetworkNamespaceEnvVarName:              testNamespace,
 				config.DesiredMaxLatencyMillisecondsEnvVarName: fmt.Sprintf("%d", testDesiredMaxLatencyMilliseconds),
 			},
-			config.Config{
+			expectedConfig: config.Config{
 				CheckupParameters: config.CheckupParameters{
 					SampleDurationSeconds:                config.DefaultSampleDurationSeconds,
 					NetworkAttachmentDefinitionName:      testNetAttachDefName,
@@ -68,15 +68,15 @@ func TestCreateConfigFromEnvShould(t *testing.T) {
 			},
 		},
 		{
-			"set default desired max latency when env var is missing",
-			map[string]string{
+			description: "set default desired max latency when env var is missing",
+			env: map[string]string{
 				config.ResultsConfigMapNameEnvVarName:      testResultConfigMapName,
 				config.ResultsConfigMapNamespaceEnvVarName: testNamespace,
 				config.NetworkNameEnvVarName:               testNetAttachDefName,
 				config.NetworkNamespaceEnvVarName:          testNamespace,
 				config.SampleDurationSecondsEnvVarName:     fmt.Sprintf("%d", testSampleDurationSeconds),
 			},
-			config.Config{
+			expectedConfig: config.Config{
 				CheckupParameters: config.CheckupParameters{
 					DesiredMaxLatencyMilliseconds:        config.DefaultDesiredMaxLatencyMilliseconds,
 					NetworkAttachmentDefinitionName:      testNetAttachDefName,
@@ -88,8 +88,8 @@ func TestCreateConfigFromEnvShould(t *testing.T) {
 			},
 		},
 		{
-			"set source and target nodes when both are specified",
-			map[string]string{
+			description: "set source and target nodes when both are specified",
+			env: map[string]string{
 				config.ResultsConfigMapNameEnvVarName:      testResultConfigMapName,
 				config.ResultsConfigMapNamespaceEnvVarName: testNamespace,
 				config.NetworkNameEnvVarName:               testNetAttachDefName,
@@ -98,7 +98,7 @@ func TestCreateConfigFromEnvShould(t *testing.T) {
 				config.SourceNodeNameEnvVarName:            testSourceNodeName,
 				config.TargetNodeNameEnvVarName:            testTargetNodeName,
 			},
-			config.Config{
+			expectedConfig: config.Config{
 				CheckupParameters: config.CheckupParameters{
 					DesiredMaxLatencyMilliseconds:        config.DefaultDesiredMaxLatencyMilliseconds,
 					NetworkAttachmentDefinitionName:      testNetAttachDefName,
@@ -131,28 +131,28 @@ type configCreateFallingTestCases struct {
 func TestCreateConfigFromEnvShouldFailWhen(t *testing.T) {
 	testCases := []configCreateFallingTestCases{
 		{
-			"env is nil",
-			config.ErrInvalidEnv,
-			nil,
+			description:   "env is nil",
+			expectedError: config.ErrInvalidEnv,
+			env:           nil,
 		},
 		{
-			"env is empty",
-			config.ErrInvalidEnv,
-			map[string]string{},
+			description:   "env is empty",
+			expectedError: config.ErrInvalidEnv,
+			env:           map[string]string{},
 		},
 		{
-			"results ConfigMap name env var is missing",
-			config.ErrResultsConfigMapNameMissing,
-			map[string]string{
+			description:   "results ConfigMap name env var is missing",
+			expectedError: config.ErrResultsConfigMapNameMissing,
+			env: map[string]string{
 				config.ResultsConfigMapNamespaceEnvVarName: "default",
 				config.NetworkNameEnvVarName:               "blue-net",
 				config.NetworkNamespaceEnvVarName:          "default",
 			},
 		},
 		{
-			"results ConfigMap name env var value is not valid",
-			config.ErrInvalidResultsConfigMapName,
-			map[string]string{
+			description:   "results ConfigMap name env var value is not valid",
+			expectedError: config.ErrInvalidResultsConfigMapName,
+			env: map[string]string{
 				config.ResultsConfigMapNameEnvVarName:      "",
 				config.ResultsConfigMapNamespaceEnvVarName: "default",
 				config.NetworkNameEnvVarName:               "blue-net",
@@ -160,18 +160,18 @@ func TestCreateConfigFromEnvShouldFailWhen(t *testing.T) {
 			},
 		},
 		{
-			"results ConfigMap namespace env var is missing",
-			config.ErrResultsConfigMapNamespaceMissing,
-			map[string]string{
+			description:   "results ConfigMap namespace env var is missing",
+			expectedError: config.ErrResultsConfigMapNamespaceMissing,
+			env: map[string]string{
 				config.ResultsConfigMapNameEnvVarName: "results",
 				config.NetworkNameEnvVarName:          "blue-net",
 				config.NetworkNamespaceEnvVarName:     "default",
 			},
 		},
 		{
-			"results ConfigMap namespace env var value is not valid",
-			config.ErrInvalidResultsConfigMapNamespace,
-			map[string]string{
+			description:   "results ConfigMap namespace env var value is not valid",
+			expectedError: config.ErrInvalidResultsConfigMapNamespace,
+			env: map[string]string{
 				config.ResultsConfigMapNameEnvVarName:      "results",
 				config.ResultsConfigMapNamespaceEnvVarName: "",
 				config.NetworkNameEnvVarName:               "blue-net",
@@ -179,18 +179,18 @@ func TestCreateConfigFromEnvShouldFailWhen(t *testing.T) {
 			},
 		},
 		{
-			"network name env var is missing",
-			config.ErrNetworkNameMissing,
-			map[string]string{
+			description:   "network name env var is missing",
+			expectedError: config.ErrNetworkNameMissing,
+			env: map[string]string{
 				config.ResultsConfigMapNameEnvVarName:      "results",
 				config.ResultsConfigMapNamespaceEnvVarName: "default",
 				config.NetworkNamespaceEnvVarName:          "default",
 			},
 		},
 		{
-			"network name env var value is not valid",
-			config.ErrInvalidNetworkName,
-			map[string]string{
+			description:   "network name env var value is not valid",
+			expectedError: config.ErrInvalidNetworkName,
+			env: map[string]string{
 				config.ResultsConfigMapNameEnvVarName:      "results",
 				config.ResultsConfigMapNamespaceEnvVarName: "default",
 				config.NetworkNameEnvVarName:               "",
@@ -198,18 +198,18 @@ func TestCreateConfigFromEnvShouldFailWhen(t *testing.T) {
 			},
 		},
 		{
-			"network namespace env var is missing",
-			config.ErrNetworkNamespaceMissing,
-			map[string]string{
+			description:   "network namespace env var is missing",
+			expectedError: config.ErrNetworkNamespaceMissing,
+			env: map[string]string{
 				config.ResultsConfigMapNameEnvVarName:      "results",
 				config.ResultsConfigMapNamespaceEnvVarName: "default",
 				config.NetworkNameEnvVarName:               "blue-net",
 			},
 		},
 		{
-			"network namespace env var value is not valid",
-			config.ErrInvalidNetworkNamespace,
-			map[string]string{
+			description:   "network namespace env var value is not valid",
+			expectedError: config.ErrInvalidNetworkNamespace,
+			env: map[string]string{
 				config.ResultsConfigMapNameEnvVarName:      "results",
 				config.ResultsConfigMapNamespaceEnvVarName: "default",
 				config.NetworkNameEnvVarName:               "blue-net",
@@ -228,9 +228,9 @@ func TestCreateConfigFromEnvShouldFailWhen(t *testing.T) {
 func TestCreateConfigFromEnvShouldFailWhenNodeNames(t *testing.T) {
 	testCases := []configCreateFallingTestCases{
 		{
-			"source node name is set but target node name isn't",
-			config.ErrTargetNodeNameMissing,
-			map[string]string{
+			description:   "source node name is set but target node name isn't",
+			expectedError: config.ErrTargetNodeNameMissing,
+			env: map[string]string{
 				config.ResultsConfigMapNameEnvVarName:      "results",
 				config.ResultsConfigMapNamespaceEnvVarName: "default",
 				config.NetworkNameEnvVarName:               "blue-net",
@@ -239,9 +239,9 @@ func TestCreateConfigFromEnvShouldFailWhenNodeNames(t *testing.T) {
 			},
 		},
 		{
-			"target node name is set but source node name isn't",
-			config.ErrSourceNodeNameMissing,
-			map[string]string{
+			description:   "target node name is set but source node name isn't",
+			expectedError: config.ErrSourceNodeNameMissing,
+			env: map[string]string{
 				config.ResultsConfigMapNameEnvVarName:      "results",
 				config.ResultsConfigMapNamespaceEnvVarName: "default",
 				config.NetworkNameEnvVarName:               "blue-net",
@@ -250,9 +250,9 @@ func TestCreateConfigFromEnvShouldFailWhenNodeNames(t *testing.T) {
 			},
 		},
 		{
-			"source node name is empty",
-			config.ErrInvalidSourceNodeName,
-			map[string]string{
+			description:   "source node name is empty",
+			expectedError: config.ErrInvalidSourceNodeName,
+			env: map[string]string{
 				config.ResultsConfigMapNameEnvVarName:      "results",
 				config.ResultsConfigMapNamespaceEnvVarName: "default",
 				config.NetworkNameEnvVarName:               "blue-net",
@@ -262,9 +262,9 @@ func TestCreateConfigFromEnvShouldFailWhenNodeNames(t *testing.T) {
 			},
 		},
 		{
-			"target node name is empty",
-			config.ErrInvalidTargetNodeName,
-			map[string]string{
+			description:   "target node name is empty",
+			expectedError: config.ErrInvalidTargetNodeName,
+			env: map[string]string{
 				config.ResultsConfigMapNameEnvVarName:      "results",
 				config.ResultsConfigMapNamespaceEnvVarName: "default",
 				config.NetworkNameEnvVarName:               "blue-net",
@@ -285,9 +285,9 @@ func TestCreateConfigFromEnvShouldFailWhenNodeNames(t *testing.T) {
 func TestCreateConfigShouldFailWhenIntegerEnvVarsAreInvalid(t *testing.T) {
 	testCases := []configCreateFallingTestCases{
 		{
-			"sample duration is not valid integer",
-			strconv.ErrSyntax,
-			map[string]string{
+			description:   "sample duration is not valid integer",
+			expectedError: strconv.ErrSyntax,
+			env: map[string]string{
 				config.ResultsConfigMapNameEnvVarName:      "results",
 				config.ResultsConfigMapNamespaceEnvVarName: "default",
 				config.NetworkNameEnvVarName:               "blue-net",
@@ -296,9 +296,9 @@ func TestCreateConfigShouldFailWhenIntegerEnvVarsAreInvalid(t *testing.T) {
 			},
 		},
 		{
-			"desired max latency is too big",
-			strconv.ErrRange,
-			map[string]string{
+			description:   "desired max latency is too big",
+			expectedError: strconv.ErrRange,
+			env: map[string]string{
 				config.ResultsConfigMapNameEnvVarName:          "results",
 				config.ResultsConfigMapNamespaceEnvVarName:     "default",
 				config.NetworkNameEnvVarName:                   "blue-net",
