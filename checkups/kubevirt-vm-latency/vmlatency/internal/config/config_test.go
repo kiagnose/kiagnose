@@ -35,17 +35,17 @@ type configCreateTestCases struct {
 	expectedConfig config.Config
 }
 
-func TestCreateConfigFromEnvShould(t *testing.T) {
-	const (
-		testNamespace                     = "default"
-		testResultConfigMapName           = "result"
-		testNetAttachDefName              = "blue-net"
-		testDesiredMaxLatencyMilliseconds = 100
-		testSampleDurationSeconds         = 60
-		testSourceNodeName                = "worker1"
-		testTargetNodeName                = "worker2"
-	)
+const (
+	testNamespace                     = "default"
+	testResultConfigMapName           = "results"
+	testNetAttachDefName              = "blue-net"
+	testDesiredMaxLatencyMilliseconds = 100
+	testSampleDurationSeconds         = 60
+	testSourceNodeName                = "worker1"
+	testTargetNodeName                = "worker2"
+)
 
+func TestCreateConfigFromEnvShould(t *testing.T) {
 	testCases := []configCreateTestCases{
 		{
 			description: "set default sample duration when env var is missing",
@@ -144,9 +144,9 @@ func TestCreateConfigFromEnvShouldFailWhen(t *testing.T) {
 			description:   "results ConfigMap name env var is missing",
 			expectedError: config.ErrResultsConfigMapNameMissing,
 			env: map[string]string{
-				config.ResultsConfigMapNamespaceEnvVarName: "default",
-				config.NetworkNameEnvVarName:               "blue-net",
-				config.NetworkNamespaceEnvVarName:          "default",
+				config.ResultsConfigMapNamespaceEnvVarName: testNamespace,
+				config.NetworkNameEnvVarName:               testNetAttachDefName,
+				config.NetworkNamespaceEnvVarName:          testNamespace,
 			},
 		},
 		{
@@ -154,65 +154,65 @@ func TestCreateConfigFromEnvShouldFailWhen(t *testing.T) {
 			expectedError: config.ErrInvalidResultsConfigMapName,
 			env: map[string]string{
 				config.ResultsConfigMapNameEnvVarName:      "",
-				config.ResultsConfigMapNamespaceEnvVarName: "default",
-				config.NetworkNameEnvVarName:               "blue-net",
-				config.NetworkNamespaceEnvVarName:          "default",
+				config.ResultsConfigMapNamespaceEnvVarName: testNamespace,
+				config.NetworkNameEnvVarName:               testNetAttachDefName,
+				config.NetworkNamespaceEnvVarName:          testNamespace,
 			},
 		},
 		{
 			description:   "results ConfigMap namespace env var is missing",
 			expectedError: config.ErrResultsConfigMapNamespaceMissing,
 			env: map[string]string{
-				config.ResultsConfigMapNameEnvVarName: "results",
-				config.NetworkNameEnvVarName:          "blue-net",
-				config.NetworkNamespaceEnvVarName:     "default",
+				config.ResultsConfigMapNameEnvVarName: testResultConfigMapName,
+				config.NetworkNameEnvVarName:          testNetAttachDefName,
+				config.NetworkNamespaceEnvVarName:     testNamespace,
 			},
 		},
 		{
 			description:   "results ConfigMap namespace env var value is not valid",
 			expectedError: config.ErrInvalidResultsConfigMapNamespace,
 			env: map[string]string{
-				config.ResultsConfigMapNameEnvVarName:      "results",
+				config.ResultsConfigMapNameEnvVarName:      testResultConfigMapName,
 				config.ResultsConfigMapNamespaceEnvVarName: "",
-				config.NetworkNameEnvVarName:               "blue-net",
-				config.NetworkNamespaceEnvVarName:          "default",
+				config.NetworkNameEnvVarName:               testNetAttachDefName,
+				config.NetworkNamespaceEnvVarName:          testNamespace,
 			},
 		},
 		{
 			description:   "network name env var is missing",
 			expectedError: config.ErrNetworkNameMissing,
 			env: map[string]string{
-				config.ResultsConfigMapNameEnvVarName:      "results",
-				config.ResultsConfigMapNamespaceEnvVarName: "default",
-				config.NetworkNamespaceEnvVarName:          "default",
+				config.ResultsConfigMapNameEnvVarName:      testResultConfigMapName,
+				config.ResultsConfigMapNamespaceEnvVarName: testNamespace,
+				config.NetworkNamespaceEnvVarName:          testNamespace,
 			},
 		},
 		{
 			description:   "network name env var value is not valid",
 			expectedError: config.ErrInvalidNetworkName,
 			env: map[string]string{
-				config.ResultsConfigMapNameEnvVarName:      "results",
-				config.ResultsConfigMapNamespaceEnvVarName: "default",
+				config.ResultsConfigMapNameEnvVarName:      testResultConfigMapName,
+				config.ResultsConfigMapNamespaceEnvVarName: testNamespace,
 				config.NetworkNameEnvVarName:               "",
-				config.NetworkNamespaceEnvVarName:          "default",
+				config.NetworkNamespaceEnvVarName:          testNamespace,
 			},
 		},
 		{
 			description:   "network namespace env var is missing",
 			expectedError: config.ErrNetworkNamespaceMissing,
 			env: map[string]string{
-				config.ResultsConfigMapNameEnvVarName:      "results",
-				config.ResultsConfigMapNamespaceEnvVarName: "default",
-				config.NetworkNameEnvVarName:               "blue-net",
+				config.ResultsConfigMapNameEnvVarName:      testResultConfigMapName,
+				config.ResultsConfigMapNamespaceEnvVarName: testNamespace,
+				config.NetworkNameEnvVarName:               testNetAttachDefName,
 			},
 		},
 		{
 			description:   "network namespace env var value is not valid",
 			expectedError: config.ErrInvalidNetworkNamespace,
 			env: map[string]string{
-				config.ResultsConfigMapNameEnvVarName:      "results",
-				config.ResultsConfigMapNamespaceEnvVarName: "default",
-				config.NetworkNameEnvVarName:               "blue-net",
+				config.ResultsConfigMapNameEnvVarName:      testResultConfigMapName,
+				config.ResultsConfigMapNamespaceEnvVarName: testNamespace,
+				config.NetworkNameEnvVarName:               testNetAttachDefName,
 				config.NetworkNamespaceEnvVarName:          "",
 			},
 		},
@@ -231,45 +231,45 @@ func TestCreateConfigFromEnvShouldFailWhenNodeNames(t *testing.T) {
 			description:   "source node name is set but target node name isn't",
 			expectedError: config.ErrTargetNodeNameMissing,
 			env: map[string]string{
-				config.ResultsConfigMapNameEnvVarName:      "results",
-				config.ResultsConfigMapNamespaceEnvVarName: "default",
-				config.NetworkNameEnvVarName:               "blue-net",
-				config.NetworkNamespaceEnvVarName:          "default",
-				config.SourceNodeNameEnvVarName:            "worker1",
+				config.ResultsConfigMapNameEnvVarName:      testResultConfigMapName,
+				config.ResultsConfigMapNamespaceEnvVarName: testNamespace,
+				config.NetworkNameEnvVarName:               testNetAttachDefName,
+				config.NetworkNamespaceEnvVarName:          testNamespace,
+				config.SourceNodeNameEnvVarName:            testSourceNodeName,
 			},
 		},
 		{
 			description:   "target node name is set but source node name isn't",
 			expectedError: config.ErrSourceNodeNameMissing,
 			env: map[string]string{
-				config.ResultsConfigMapNameEnvVarName:      "results",
-				config.ResultsConfigMapNamespaceEnvVarName: "default",
-				config.NetworkNameEnvVarName:               "blue-net",
-				config.NetworkNamespaceEnvVarName:          "default",
-				config.TargetNodeNameEnvVarName:            "worker2",
+				config.ResultsConfigMapNameEnvVarName:      testResultConfigMapName,
+				config.ResultsConfigMapNamespaceEnvVarName: testNamespace,
+				config.NetworkNameEnvVarName:               testNetAttachDefName,
+				config.NetworkNamespaceEnvVarName:          testNamespace,
+				config.TargetNodeNameEnvVarName:            testTargetNodeName,
 			},
 		},
 		{
 			description:   "source node name is empty",
 			expectedError: config.ErrInvalidSourceNodeName,
 			env: map[string]string{
-				config.ResultsConfigMapNameEnvVarName:      "results",
-				config.ResultsConfigMapNamespaceEnvVarName: "default",
-				config.NetworkNameEnvVarName:               "blue-net",
-				config.NetworkNamespaceEnvVarName:          "default",
+				config.ResultsConfigMapNameEnvVarName:      testResultConfigMapName,
+				config.ResultsConfigMapNamespaceEnvVarName: testNamespace,
+				config.NetworkNameEnvVarName:               testNetAttachDefName,
+				config.NetworkNamespaceEnvVarName:          testNamespace,
 				config.SourceNodeNameEnvVarName:            "",
-				config.TargetNodeNameEnvVarName:            "worker2",
+				config.TargetNodeNameEnvVarName:            testTargetNodeName,
 			},
 		},
 		{
 			description:   "target node name is empty",
 			expectedError: config.ErrInvalidTargetNodeName,
 			env: map[string]string{
-				config.ResultsConfigMapNameEnvVarName:      "results",
-				config.ResultsConfigMapNamespaceEnvVarName: "default",
-				config.NetworkNameEnvVarName:               "blue-net",
-				config.NetworkNamespaceEnvVarName:          "default",
-				config.SourceNodeNameEnvVarName:            "worker1",
+				config.ResultsConfigMapNameEnvVarName:      testResultConfigMapName,
+				config.ResultsConfigMapNamespaceEnvVarName: testNamespace,
+				config.NetworkNameEnvVarName:               testNetAttachDefName,
+				config.NetworkNamespaceEnvVarName:          testNamespace,
+				config.SourceNodeNameEnvVarName:            testSourceNodeName,
 				config.TargetNodeNameEnvVarName:            "",
 			},
 		},
@@ -288,10 +288,10 @@ func TestCreateConfigShouldFailWhenIntegerEnvVarsAreInvalid(t *testing.T) {
 			description:   "sample duration is not valid integer",
 			expectedError: strconv.ErrSyntax,
 			env: map[string]string{
-				config.ResultsConfigMapNameEnvVarName:      "results",
-				config.ResultsConfigMapNamespaceEnvVarName: "default",
-				config.NetworkNameEnvVarName:               "blue-net",
-				config.NetworkNamespaceEnvVarName:          "default",
+				config.ResultsConfigMapNameEnvVarName:      testResultConfigMapName,
+				config.ResultsConfigMapNamespaceEnvVarName: testNamespace,
+				config.NetworkNameEnvVarName:               testNetAttachDefName,
+				config.NetworkNamespaceEnvVarName:          testNamespace,
 				config.SampleDurationSecondsEnvVarName:     "3rr0r",
 			},
 		},
@@ -299,10 +299,10 @@ func TestCreateConfigShouldFailWhenIntegerEnvVarsAreInvalid(t *testing.T) {
 			description:   "desired max latency is too big",
 			expectedError: strconv.ErrRange,
 			env: map[string]string{
-				config.ResultsConfigMapNameEnvVarName:          "results",
-				config.ResultsConfigMapNamespaceEnvVarName:     "default",
-				config.NetworkNameEnvVarName:                   "blue-net",
-				config.NetworkNamespaceEnvVarName:              "default",
+				config.ResultsConfigMapNameEnvVarName:          testResultConfigMapName,
+				config.ResultsConfigMapNamespaceEnvVarName:     testNamespace,
+				config.NetworkNameEnvVarName:                   testNetAttachDefName,
+				config.NetworkNamespaceEnvVarName:              testNamespace,
 				config.DesiredMaxLatencyMillisecondsEnvVarName: "39213801928309128309",
 			},
 		},
