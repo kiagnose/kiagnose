@@ -34,6 +34,7 @@ The checkup should expect the following environment variables:
 
 | Environment Variable Name    | Description                 | Remarks                                                      |
 |------------------------------|-----------------------------|--------------------------------------------------------------|
+| `CHECKUP_UID`                | Checkup UID                 | Could be used by a checkup to name child objects             |
 | `RESULT_CONFIGMAP_NAMESPACE` | Results ConfigMap Namespace | Used by the underlying Pod need to write the checkup results |
 | `RESULT_CONFIGMAP_NAME`      | Results ConfigMap name      | Used by the underlying Pod need to write the checkup results |
 

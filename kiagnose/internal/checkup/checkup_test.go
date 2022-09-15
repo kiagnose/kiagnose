@@ -56,6 +56,7 @@ const (
 
 	testTargetNs           = "target-ns"
 	testCheckupName        = "checkup1"
+	testCheckupUID         = "0123456789"
 	testImage              = "framework:v1"
 	testTimeout            = time.Minute
 	testServiceAccountName = "test-sa"
@@ -89,6 +90,7 @@ func TestSetupInTargetNamespaceShouldSucceedWith(t *testing.T) {
 				testTargetNs,
 				testCheckupName,
 				&config.Config{
+					UID:                testCheckupUID,
 					Image:              testImage,
 					Timeout:            testTimeout,
 					ServiceAccountName: testServiceAccountName,
@@ -137,7 +139,7 @@ func TestSetupInTargetNamespaceShouldFailWhen(t *testing.T) {
 				testClient,
 				testTargetNs,
 				testCheckupName,
-				&config.Config{Image: testImage, Timeout: testTimeout, ServiceAccountName: testServiceAccountName},
+				&config.Config{UID: testCheckupUID, Image: testImage, Timeout: testTimeout, ServiceAccountName: testServiceAccountName},
 			)
 
 			assert.ErrorContains(t, testCheckup.Setup(), expectedErr)
@@ -161,7 +163,7 @@ func TestTeardownInTargetNamespaceShouldSucceed(t *testing.T) {
 		testClient,
 		testTargetNs,
 		testCheckupName,
-		&config.Config{Image: testImage, Timeout: testTimeout, ServiceAccountName: testServiceAccountName},
+		&config.Config{UID: testCheckupUID, Image: testImage, Timeout: testTimeout, ServiceAccountName: testServiceAccountName},
 	)
 
 	assert.NoError(t, testCheckup.Setup())
@@ -212,7 +214,7 @@ func TestTeardownInTargetNamespaceShouldFailWhen(t *testing.T) {
 				testClient,
 				testTargetNs,
 				testCheckupName,
-				&config.Config{Image: testImage, Timeout: testTimeout, ServiceAccountName: testServiceAccountName},
+				&config.Config{UID: testCheckupUID, Image: testImage, Timeout: testTimeout, ServiceAccountName: testServiceAccountName},
 			)
 
 			assert.NoError(t, testCheckup.Setup())
@@ -254,7 +256,13 @@ func TestCheckupRunShouldCreateAJob(t *testing.T) {
 				testClient,
 				testTargetNs,
 				testCheckupName,
-				&config.Config{Image: testImage, Timeout: testTimeout, ServiceAccountName: testServiceAccountName, EnvVars: testCase.envVars},
+				&config.Config{
+					UID:                testCheckupUID,
+					Image:              testImage,
+					Timeout:            testTimeout,
+					ServiceAccountName: testServiceAccountName,
+					EnvVars:            testCase.envVars,
+				},
 			)
 
 			checkupJobName := checkup.NameJob(testCheckupName)
@@ -266,6 +274,7 @@ func TestCheckupRunShouldCreateAJob(t *testing.T) {
 
 			expectedResultsConfigMapName := checkup.NameResultsConfigMap(testCheckupName)
 			expectedEnvVars := []corev1.EnvVar{
+				{Name: checkup.UIDEnvVarName, Value: testCheckupUID},
 				{Name: checkup.ResultsConfigMapNameEnvVarName, Value: expectedResultsConfigMapName},
 				{Name: checkup.ResultsConfigMapNameEnvVarNamespace, Value: testTargetNs},
 			}
@@ -308,7 +317,7 @@ func TestCheckupRunShouldSucceed(t *testing.T) {
 				testClient,
 				testTargetNs,
 				testCheckupName,
-				&config.Config{Image: testImage, Timeout: testTimeout, ServiceAccountName: testServiceAccountName},
+				&config.Config{UID: testCheckupUID, Image: testImage, Timeout: testTimeout, ServiceAccountName: testServiceAccountName},
 			)
 
 			checkupJobName := checkup.NameJob(testCheckupName)
@@ -349,7 +358,7 @@ func TestCheckupRunShouldFailWhen(t *testing.T) {
 			testClient,
 			testTargetNs,
 			testCheckupName,
-			&config.Config{Image: testImage, Timeout: testTimeout, ServiceAccountName: testServiceAccountName},
+			&config.Config{UID: testCheckupUID, Image: testImage, Timeout: testTimeout, ServiceAccountName: testServiceAccountName},
 		)
 
 		assert.NoError(t, testCheckup.Setup())
@@ -364,7 +373,7 @@ func TestCheckupRunShouldFailWhen(t *testing.T) {
 			testClient,
 			testTargetNs,
 			testCheckupName,
-			&config.Config{Image: testImage, Timeout: testTimeout, ServiceAccountName: testServiceAccountName},
+			&config.Config{UID: testCheckupUID, Image: testImage, Timeout: testTimeout, ServiceAccountName: testServiceAccountName},
 		)
 
 		assert.NoError(t, testCheckup.Setup())
@@ -380,7 +389,7 @@ func TestCheckupRunShouldFailWhen(t *testing.T) {
 			testClient,
 			testTargetNs,
 			testCheckupName,
-			&config.Config{Image: testImage, Timeout: time.Nanosecond, ServiceAccountName: testServiceAccountName},
+			&config.Config{UID: testCheckupUID, Image: testImage, Timeout: time.Nanosecond, ServiceAccountName: testServiceAccountName},
 		)
 
 		assert.NoError(t, testCheckup.Setup())
@@ -397,7 +406,7 @@ func TestCheckupRunShouldFailWhen(t *testing.T) {
 			testClient,
 			testTargetNs,
 			testCheckupName,
-			&config.Config{Image: testImage, Timeout: time.Second, ServiceAccountName: testServiceAccountName},
+			&config.Config{UID: testCheckupUID, Image: testImage, Timeout: time.Second, ServiceAccountName: testServiceAccountName},
 		)
 
 		checkupJobName := checkup.NameJob(testCheckupName)
