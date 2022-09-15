@@ -177,6 +177,8 @@ data:
   status.result.maxLatencyNanoSec: "244000"
   status.result.measurementDurationSec: "5"
   status.result.minLatencyNanoSec: "135000"
+  status.result.sourceNode: "worker1"
+  status.result.targetNode: "worker2"
 ```
 
 When the checkup is finished, the checkup ConfigMap is updated with the following results:
@@ -191,6 +193,8 @@ When the checkup is finished, the checkup ConfigMap is updated with the followin
 | `status.result.avgLatencyNanoSec`      | Average latency value [nanoseconds].                 |
 | `status.result.maxLatencyNanoSec`      | Maximal latency value [nanoseconds].                 |
 | `status.result.measurementDurationSec` | Actual latency measurement time [seconds].           |
+| `status.result.sourceNode`             | Actual source node                                   |
+| `status.result.targetNode`             | Actual target node                                   |
 
 In case of successful execution the following results are expected:
 ```yaml
