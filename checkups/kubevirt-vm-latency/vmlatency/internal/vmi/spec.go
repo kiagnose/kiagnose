@@ -110,8 +110,10 @@ func multusNetwork(name, netAttachDefName string) kvcorev1.Network {
 	}
 }
 
-// WithCloudInitNoCloudNetworkData adds cloud-init no-cloud network data.
-func WithCloudInitNoCloudNetworkData(networkData string) Option {
+// WithCloudInitNoCloudNetworkData adds cloud-init no-cloud network data with the given options.
+func WithCloudInitNoCloudNetworkData(opts ...networkDataOption) Option {
+	networkData, _ := NewNetworkData(opts...)
+
 	return func(vmi *kvcorev1.VirtualMachineInstance) {
 		const volumeName = "cloudinit"
 		vmi.Spec.Volumes = append(vmi.Spec.Volumes, newCloudinitVolumeWithNetworkData(volumeName, networkData))

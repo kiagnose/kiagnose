@@ -124,13 +124,6 @@ func newLatencyCheckVmi(
 	nodeName,
 	networkName string, netAttachDef *netattdefv1.NetworkAttachmentDefinition,
 	macAddress, cidr string) *kvcorev1.VirtualMachineInstance {
-	networkData, _ := vmi.NewNetworkData(
-		vmi.WithEthernet(networkName,
-			vmi.WithAddresses(cidr),
-			vmi.WithMatchingMAC(macAddress),
-		),
-	)
-
 	var vmiInterface kvcorev1.Interface
 	if netattachdef.IsSriov(netAttachDef) {
 		vmiInterface = vmi.NewInterface(networkName, vmi.WithMacAddress(macAddress), vmi.WithSriovBinding())
@@ -151,7 +144,12 @@ func newLatencyCheckVmi(
 		vmi.WithAffinity(affinity),
 		vmi.WithMultusNetwork(networkName, netAttachDef.Namespace+"/"+netAttachDef.Name),
 		vmi.WithInterface(vmiInterface),
-		vmi.WithCloudInitNoCloudNetworkData(networkData),
+		vmi.WithCloudInitNoCloudNetworkData(
+			vmi.WithEthernet(networkName,
+				vmi.WithAddresses(cidr),
+				vmi.WithMatchingMAC(macAddress),
+			),
+		),
 	)
 }
 
