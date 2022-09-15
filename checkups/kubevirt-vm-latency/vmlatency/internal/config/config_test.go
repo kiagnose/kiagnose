@@ -140,46 +140,6 @@ func TestCreateConfigFromEnvShouldFailWhen(t *testing.T) {
 			expectedError: config.ErrInvalidEnv,
 			env:           map[string]string{},
 		},
-		{
-			description:   "results ConfigMap name env var value is not valid",
-			expectedError: config.ErrInvalidResultsConfigMapName,
-			env: map[string]string{
-				config.ResultsConfigMapNameEnvVarName:      "",
-				config.ResultsConfigMapNamespaceEnvVarName: testNamespace,
-				config.NetworkNameEnvVarName:               testNetAttachDefName,
-				config.NetworkNamespaceEnvVarName:          testNamespace,
-			},
-		},
-		{
-			description:   "results ConfigMap namespace env var value is not valid",
-			expectedError: config.ErrInvalidResultsConfigMapNamespace,
-			env: map[string]string{
-				config.ResultsConfigMapNameEnvVarName:      testResultConfigMapName,
-				config.ResultsConfigMapNamespaceEnvVarName: "",
-				config.NetworkNameEnvVarName:               testNetAttachDefName,
-				config.NetworkNamespaceEnvVarName:          testNamespace,
-			},
-		},
-		{
-			description:   "network name env var value is not valid",
-			expectedError: config.ErrInvalidNetworkName,
-			env: map[string]string{
-				config.ResultsConfigMapNameEnvVarName:      testResultConfigMapName,
-				config.ResultsConfigMapNamespaceEnvVarName: testNamespace,
-				config.NetworkNameEnvVarName:               "",
-				config.NetworkNamespaceEnvVarName:          testNamespace,
-			},
-		},
-		{
-			description:   "network namespace env var value is not valid",
-			expectedError: config.ErrInvalidNetworkNamespace,
-			env: map[string]string{
-				config.ResultsConfigMapNameEnvVarName:      testResultConfigMapName,
-				config.ResultsConfigMapNamespaceEnvVarName: testNamespace,
-				config.NetworkNameEnvVarName:               testNetAttachDefName,
-				config.NetworkNamespaceEnvVarName:          "",
-			},
-		},
 	}
 	for _, testCase := range testCases {
 		t.Run(testCase.description, func(t *testing.T) {
@@ -229,6 +189,57 @@ func TestCreateConfigFromEnvShouldFailWhenMandatoryEnvVarsAreMissing(t *testing.
 		},
 	}
 
+	for _, testCase := range testCases {
+		t.Run(testCase.description, func(t *testing.T) {
+			_, err := config.New(testCase.env)
+			assert.Equal(t, err, testCase.expectedError)
+		})
+	}
+}
+
+func TestCreateConfigFromEnvShouldFailWhenMandatoryEnvVarsAreInvalid(t *testing.T) {
+	testCases := []configCreateFallingTestCases{
+		{
+			description:   "results ConfigMap name env var value is not valid",
+			expectedError: config.ErrInvalidResultsConfigMapName,
+			env: map[string]string{
+				config.ResultsConfigMapNameEnvVarName:      "",
+				config.ResultsConfigMapNamespaceEnvVarName: testNamespace,
+				config.NetworkNameEnvVarName:               testNetAttachDefName,
+				config.NetworkNamespaceEnvVarName:          testNamespace,
+			},
+		},
+		{
+			description:   "results ConfigMap namespace env var value is not valid",
+			expectedError: config.ErrInvalidResultsConfigMapNamespace,
+			env: map[string]string{
+				config.ResultsConfigMapNameEnvVarName:      testResultConfigMapName,
+				config.ResultsConfigMapNamespaceEnvVarName: "",
+				config.NetworkNameEnvVarName:               testNetAttachDefName,
+				config.NetworkNamespaceEnvVarName:          testNamespace,
+			},
+		},
+		{
+			description:   "network name env var value is not valid",
+			expectedError: config.ErrInvalidNetworkName,
+			env: map[string]string{
+				config.ResultsConfigMapNameEnvVarName:      testResultConfigMapName,
+				config.ResultsConfigMapNamespaceEnvVarName: testNamespace,
+				config.NetworkNameEnvVarName:               "",
+				config.NetworkNamespaceEnvVarName:          testNamespace,
+			},
+		},
+		{
+			description:   "network namespace env var value is not valid",
+			expectedError: config.ErrInvalidNetworkNamespace,
+			env: map[string]string{
+				config.ResultsConfigMapNameEnvVarName:      testResultConfigMapName,
+				config.ResultsConfigMapNamespaceEnvVarName: testNamespace,
+				config.NetworkNameEnvVarName:               testNetAttachDefName,
+				config.NetworkNamespaceEnvVarName:          "",
+			},
+		},
+	}
 	for _, testCase := range testCases {
 		t.Run(testCase.description, func(t *testing.T) {
 			_, err := config.New(testCase.env)
