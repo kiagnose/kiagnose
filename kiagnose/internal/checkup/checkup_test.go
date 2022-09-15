@@ -266,6 +266,7 @@ func TestCheckupRunShouldCreateAJob(t *testing.T) {
 
 			expectedResultsConfigMapName := checkup.NameResultsConfigMap(testCheckupName)
 			expectedEnvVars := []corev1.EnvVar{
+				{Name: checkup.NameEnvVarName, Value: testCheckupName},
 				{Name: checkup.ResultsConfigMapNameEnvVarName, Value: expectedResultsConfigMapName},
 				{Name: checkup.ResultsConfigMapNameEnvVarNamespace, Value: testTargetNs},
 			}

@@ -50,6 +50,7 @@ type Checkup struct {
 }
 
 const (
+	NameEnvVarName                      = "CHECKUP_NAME"
 	ResultsConfigMapNameEnvVarName      = "RESULT_CONFIGMAP_NAME"
 	ResultsConfigMapNameEnvVarNamespace = "RESULT_CONFIGMAP_NAMESPACE"
 )
@@ -67,6 +68,7 @@ func New(c kubernetes.Interface, targetNsName, name string, checkupConfig *confi
 	}
 
 	checkupEnvVars := []corev1.EnvVar{
+		{Name: NameEnvVarName, Value: name},
 		{Name: ResultsConfigMapNameEnvVarName, Value: resultsConfigMapName},
 		{Name: ResultsConfigMapNameEnvVarNamespace, Value: targetNsName},
 	}
