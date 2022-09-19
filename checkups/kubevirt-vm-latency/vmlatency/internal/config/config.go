@@ -54,13 +54,9 @@ type Config struct {
 
 var (
 	ErrInvalidEnv                       = errors.New("environment is invalid")
-	ErrResultsConfigMapNameMissing      = fmt.Errorf("%q environment variable is missing", ResultsConfigMapNameEnvVarName)
 	ErrInvalidResultsConfigMapName      = fmt.Errorf("%q environment variable is invalid", ResultsConfigMapNameEnvVarName)
-	ErrResultsConfigMapNamespaceMissing = fmt.Errorf("%q environment variable is missing", ResultsConfigMapNamespaceEnvVarName)
 	ErrInvalidResultsConfigMapNamespace = fmt.Errorf("%q environment variable is invalid", ResultsConfigMapNamespaceEnvVarName)
-	ErrNetworkNameMissing               = fmt.Errorf("%q environment variable is missing", NetworkNameEnvVarName)
 	ErrInvalidNetworkName               = fmt.Errorf("%q environment variable is invalid", NetworkNameEnvVarName)
-	ErrNetworkNamespaceMissing          = fmt.Errorf("%q environment variable is missing", NetworkNamespaceEnvVarName)
 	ErrInvalidNetworkNamespace          = fmt.Errorf("%q environment variable is invalid", NetworkNamespaceEnvVarName)
 	ErrSourceNodeNameMissing            = fmt.Errorf("%q environment variable is missing", SourceNodeNameEnvVarName)
 	ErrInvalidSourceNodeName            = fmt.Errorf("%q environment variable is invalid", SourceNodeNameEnvVarName)
@@ -78,34 +74,22 @@ func New(env map[string]string) (Config, error) {
 		return Config{}, ErrInvalidEnv
 	}
 
-	resultsConfigMapName, exists := env[ResultsConfigMapNameEnvVarName]
-	if !exists {
-		return Config{}, ErrResultsConfigMapNameMissing
-	}
+	resultsConfigMapName := env[ResultsConfigMapNameEnvVarName]
 	if resultsConfigMapName == "" {
 		return Config{}, ErrInvalidResultsConfigMapName
 	}
 
-	resultsConfigMapNamespace, exists := env[ResultsConfigMapNamespaceEnvVarName]
-	if !exists {
-		return Config{}, ErrResultsConfigMapNamespaceMissing
-	}
+	resultsConfigMapNamespace := env[ResultsConfigMapNamespaceEnvVarName]
 	if resultsConfigMapNamespace == "" {
 		return Config{}, ErrInvalidResultsConfigMapNamespace
 	}
 
-	networkName, exists := env[NetworkNameEnvVarName]
-	if !exists {
-		return Config{}, ErrNetworkNameMissing
-	}
+	networkName := env[NetworkNameEnvVarName]
 	if networkName == "" {
 		return Config{}, ErrInvalidNetworkName
 	}
 
-	networkNamespace, exists := env[NetworkNamespaceEnvVarName]
-	if !exists {
-		return Config{}, ErrNetworkNamespaceMissing
-	}
+	networkNamespace := env[NetworkNamespaceEnvVarName]
 	if networkNamespace == "" {
 		return Config{}, ErrInvalidNetworkNamespace
 	}

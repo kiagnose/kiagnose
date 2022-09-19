@@ -153,7 +153,7 @@ func TestCreateConfigFromEnvShouldFailWhenMandatoryEnvVarsAreMissing(t *testing.
 	testCases := []configCreateFallingTestCases{
 		{
 			description:   "results ConfigMap name env var is missing",
-			expectedError: config.ErrResultsConfigMapNameMissing,
+			expectedError: config.ErrInvalidResultsConfigMapName,
 			env: map[string]string{
 				config.ResultsConfigMapNamespaceEnvVarName: testNamespace,
 				config.NetworkNameEnvVarName:               testNetAttachDefName,
@@ -162,7 +162,7 @@ func TestCreateConfigFromEnvShouldFailWhenMandatoryEnvVarsAreMissing(t *testing.
 		},
 		{
 			description:   "results ConfigMap namespace env var is missing",
-			expectedError: config.ErrResultsConfigMapNamespaceMissing,
+			expectedError: config.ErrInvalidResultsConfigMapNamespace,
 			env: map[string]string{
 				config.ResultsConfigMapNameEnvVarName: testResultConfigMapName,
 				config.NetworkNameEnvVarName:          testNetAttachDefName,
@@ -171,7 +171,7 @@ func TestCreateConfigFromEnvShouldFailWhenMandatoryEnvVarsAreMissing(t *testing.
 		},
 		{
 			description:   "network name env var is missing",
-			expectedError: config.ErrNetworkNameMissing,
+			expectedError: config.ErrInvalidNetworkName,
 			env: map[string]string{
 				config.ResultsConfigMapNameEnvVarName:      testResultConfigMapName,
 				config.ResultsConfigMapNamespaceEnvVarName: testNamespace,
@@ -180,7 +180,7 @@ func TestCreateConfigFromEnvShouldFailWhenMandatoryEnvVarsAreMissing(t *testing.
 		},
 		{
 			description:   "network namespace env var is missing",
-			expectedError: config.ErrNetworkNamespaceMissing,
+			expectedError: config.ErrInvalidNetworkNamespace,
 			env: map[string]string{
 				config.ResultsConfigMapNameEnvVarName:      testResultConfigMapName,
 				config.ResultsConfigMapNamespaceEnvVarName: testNamespace,
