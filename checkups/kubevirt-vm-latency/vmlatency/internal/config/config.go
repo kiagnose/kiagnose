@@ -27,6 +27,7 @@ import (
 )
 
 const (
+	CheckupNameEnvVarName                   = "CHECKUP_NAME"
 	ResultsConfigMapNamespaceEnvVarName     = "RESULT_CONFIGMAP_NAMESPACE"
 	ResultsConfigMapNameEnvVarName          = "RESULT_CONFIGMAP_NAME"
 	NetworkNamespaceEnvVarName              = "NETWORK_ATTACHMENT_DEFINITION_NAMESPACE"
@@ -47,6 +48,7 @@ type CheckupParameters struct {
 }
 
 type Config struct {
+	CheckupName               string
 	ResultsConfigMapName      string
 	ResultsConfigMapNamespace string
 	CheckupParameters
@@ -54,6 +56,7 @@ type Config struct {
 
 var (
 	ErrInvalidEnv                             = errors.New("environment is invalid")
+	ErrInvalidCheckupName                     = fmt.Errorf("%q environment variable is invalid", CheckupNameEnvVarName)
 	ErrInvalidResultsConfigMapName            = fmt.Errorf("%q environment variable is invalid", ResultsConfigMapNameEnvVarName)
 	ErrInvalidResultsConfigMapNamespace       = fmt.Errorf("%q environment variable is invalid", ResultsConfigMapNamespaceEnvVarName)
 	ErrInvalidNetworkName                     = fmt.Errorf("%q environment variable is invalid", NetworkNameEnvVarName)
@@ -72,6 +75,7 @@ func New(env map[string]string) (Config, error) {
 	}
 
 	newConfig := Config{
+		CheckupName:               env[CheckupNameEnvVarName],
 		ResultsConfigMapName:      env[ResultsConfigMapNameEnvVarName],
 		ResultsConfigMapNamespace: env[ResultsConfigMapNamespaceEnvVarName],
 		CheckupParameters: CheckupParameters{
@@ -107,6 +111,10 @@ func New(env map[string]string) (Config, error) {
 }
 
 func (c Config) validate() error {
+	if c.CheckupName == "" {
+		return ErrInvalidCheckupName
+	}
+
 	if c.ResultsConfigMapName == "" {
 		return ErrInvalidResultsConfigMapName
 	}
