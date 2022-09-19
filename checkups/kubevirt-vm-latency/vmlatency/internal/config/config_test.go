@@ -36,6 +36,7 @@ type configCreateTestCases struct {
 }
 
 const (
+	testCheckupUID                    = "0123456789"
 	testNamespace                     = "default"
 	testResultConfigMapName           = "results"
 	testNetAttachDefName              = "blue-net"
@@ -50,6 +51,7 @@ func TestCreateConfigFromEnvShould(t *testing.T) {
 		{
 			description: "set default sample duration when env var is missing",
 			env: map[string]string{
+				config.CheckupUIDEnvVarName:                    testCheckupUID,
 				config.ResultsConfigMapNameEnvVarName:          testResultConfigMapName,
 				config.ResultsConfigMapNamespaceEnvVarName:     testNamespace,
 				config.NetworkNameEnvVarName:                   testNetAttachDefName,
@@ -63,6 +65,7 @@ func TestCreateConfigFromEnvShould(t *testing.T) {
 					NetworkAttachmentDefinitionNamespace: testNamespace,
 					DesiredMaxLatencyMilliseconds:        testDesiredMaxLatencyMilliseconds,
 				},
+				CheckupUID:                testCheckupUID,
 				ResultsConfigMapName:      testResultConfigMapName,
 				ResultsConfigMapNamespace: testNamespace,
 			},
@@ -70,6 +73,7 @@ func TestCreateConfigFromEnvShould(t *testing.T) {
 		{
 			description: "set default desired max latency when env var is missing",
 			env: map[string]string{
+				config.CheckupUIDEnvVarName:                testCheckupUID,
 				config.ResultsConfigMapNameEnvVarName:      testResultConfigMapName,
 				config.ResultsConfigMapNamespaceEnvVarName: testNamespace,
 				config.NetworkNameEnvVarName:               testNetAttachDefName,
@@ -83,6 +87,7 @@ func TestCreateConfigFromEnvShould(t *testing.T) {
 					NetworkAttachmentDefinitionNamespace: testNamespace,
 					SampleDurationSeconds:                testSampleDurationSeconds,
 				},
+				CheckupUID:                testCheckupUID,
 				ResultsConfigMapName:      testResultConfigMapName,
 				ResultsConfigMapNamespace: testNamespace,
 			},
@@ -90,6 +95,7 @@ func TestCreateConfigFromEnvShould(t *testing.T) {
 		{
 			description: "set source and target nodes when both are specified",
 			env: map[string]string{
+				config.CheckupUIDEnvVarName:                testCheckupUID,
 				config.ResultsConfigMapNameEnvVarName:      testResultConfigMapName,
 				config.ResultsConfigMapNamespaceEnvVarName: testNamespace,
 				config.NetworkNameEnvVarName:               testNetAttachDefName,
@@ -107,6 +113,7 @@ func TestCreateConfigFromEnvShould(t *testing.T) {
 					SourceNodeName:                       testSourceNodeName,
 					TargetNodeName:                       testTargetNodeName,
 				},
+				CheckupUID:                testCheckupUID,
 				ResultsConfigMapName:      testResultConfigMapName,
 				ResultsConfigMapNamespace: testNamespace,
 			},
@@ -152,9 +159,20 @@ func TestCreateConfigFromEnvShouldFailWhen(t *testing.T) {
 func TestCreateConfigFromEnvShouldFailWhenMandatoryEnvVarsAreMissing(t *testing.T) {
 	testCases := []configCreateFallingTestCases{
 		{
+			description:   "Checkup UID env var is missing",
+			expectedError: config.ErrInvalidCheckupUID,
+			env: map[string]string{
+				config.ResultsConfigMapNameEnvVarName:      testResultConfigMapName,
+				config.ResultsConfigMapNamespaceEnvVarName: testNamespace,
+				config.NetworkNameEnvVarName:               testNetAttachDefName,
+				config.NetworkNamespaceEnvVarName:          testNamespace,
+			},
+		},
+		{
 			description:   "results ConfigMap name env var is missing",
 			expectedError: config.ErrInvalidResultsConfigMapName,
 			env: map[string]string{
+				config.CheckupUIDEnvVarName:                testCheckupUID,
 				config.ResultsConfigMapNamespaceEnvVarName: testNamespace,
 				config.NetworkNameEnvVarName:               testNetAttachDefName,
 				config.NetworkNamespaceEnvVarName:          testNamespace,
@@ -164,6 +182,7 @@ func TestCreateConfigFromEnvShouldFailWhenMandatoryEnvVarsAreMissing(t *testing.
 			description:   "results ConfigMap namespace env var is missing",
 			expectedError: config.ErrInvalidResultsConfigMapNamespace,
 			env: map[string]string{
+				config.CheckupUIDEnvVarName:           testCheckupUID,
 				config.ResultsConfigMapNameEnvVarName: testResultConfigMapName,
 				config.NetworkNameEnvVarName:          testNetAttachDefName,
 				config.NetworkNamespaceEnvVarName:     testNamespace,
@@ -173,6 +192,7 @@ func TestCreateConfigFromEnvShouldFailWhenMandatoryEnvVarsAreMissing(t *testing.
 			description:   "network name env var is missing",
 			expectedError: config.ErrInvalidNetworkName,
 			env: map[string]string{
+				config.CheckupUIDEnvVarName:                testCheckupUID,
 				config.ResultsConfigMapNameEnvVarName:      testResultConfigMapName,
 				config.ResultsConfigMapNamespaceEnvVarName: testNamespace,
 				config.NetworkNamespaceEnvVarName:          testNamespace,
@@ -182,6 +202,7 @@ func TestCreateConfigFromEnvShouldFailWhenMandatoryEnvVarsAreMissing(t *testing.
 			description:   "network namespace env var is missing",
 			expectedError: config.ErrInvalidNetworkNamespace,
 			env: map[string]string{
+				config.CheckupUIDEnvVarName:                testCheckupUID,
 				config.ResultsConfigMapNameEnvVarName:      testResultConfigMapName,
 				config.ResultsConfigMapNamespaceEnvVarName: testNamespace,
 				config.NetworkNameEnvVarName:               testNetAttachDefName,
@@ -200,9 +221,21 @@ func TestCreateConfigFromEnvShouldFailWhenMandatoryEnvVarsAreMissing(t *testing.
 func TestCreateConfigFromEnvShouldFailWhenMandatoryEnvVarsAreInvalid(t *testing.T) {
 	testCases := []configCreateFallingTestCases{
 		{
+			description:   "Checkup UID env var value is not valid",
+			expectedError: config.ErrInvalidCheckupUID,
+			env: map[string]string{
+				config.CheckupUIDEnvVarName:                "",
+				config.ResultsConfigMapNameEnvVarName:      testResultConfigMapName,
+				config.ResultsConfigMapNamespaceEnvVarName: testNamespace,
+				config.NetworkNameEnvVarName:               testNetAttachDefName,
+				config.NetworkNamespaceEnvVarName:          testNamespace,
+			},
+		},
+		{
 			description:   "results ConfigMap name env var value is not valid",
 			expectedError: config.ErrInvalidResultsConfigMapName,
 			env: map[string]string{
+				config.CheckupUIDEnvVarName:                testCheckupUID,
 				config.ResultsConfigMapNameEnvVarName:      "",
 				config.ResultsConfigMapNamespaceEnvVarName: testNamespace,
 				config.NetworkNameEnvVarName:               testNetAttachDefName,
@@ -213,6 +246,7 @@ func TestCreateConfigFromEnvShouldFailWhenMandatoryEnvVarsAreInvalid(t *testing.
 			description:   "results ConfigMap namespace env var value is not valid",
 			expectedError: config.ErrInvalidResultsConfigMapNamespace,
 			env: map[string]string{
+				config.CheckupUIDEnvVarName:                testCheckupUID,
 				config.ResultsConfigMapNameEnvVarName:      testResultConfigMapName,
 				config.ResultsConfigMapNamespaceEnvVarName: "",
 				config.NetworkNameEnvVarName:               testNetAttachDefName,
@@ -223,6 +257,7 @@ func TestCreateConfigFromEnvShouldFailWhenMandatoryEnvVarsAreInvalid(t *testing.
 			description:   "network name env var value is not valid",
 			expectedError: config.ErrInvalidNetworkName,
 			env: map[string]string{
+				config.CheckupUIDEnvVarName:                testCheckupUID,
 				config.ResultsConfigMapNameEnvVarName:      testResultConfigMapName,
 				config.ResultsConfigMapNamespaceEnvVarName: testNamespace,
 				config.NetworkNameEnvVarName:               "",
@@ -233,6 +268,7 @@ func TestCreateConfigFromEnvShouldFailWhenMandatoryEnvVarsAreInvalid(t *testing.
 			description:   "network namespace env var value is not valid",
 			expectedError: config.ErrInvalidNetworkNamespace,
 			env: map[string]string{
+				config.CheckupUIDEnvVarName:                testCheckupUID,
 				config.ResultsConfigMapNameEnvVarName:      testResultConfigMapName,
 				config.ResultsConfigMapNamespaceEnvVarName: testNamespace,
 				config.NetworkNameEnvVarName:               testNetAttachDefName,
@@ -254,6 +290,7 @@ func TestCreateConfigFromEnvShouldFailWhenNodeNames(t *testing.T) {
 			description:   "source node name is set but target node name isn't",
 			expectedError: config.ErrIllegalSourceAndTargetNodesCombination,
 			env: map[string]string{
+				config.CheckupUIDEnvVarName:                testCheckupUID,
 				config.ResultsConfigMapNameEnvVarName:      testResultConfigMapName,
 				config.ResultsConfigMapNamespaceEnvVarName: testNamespace,
 				config.NetworkNameEnvVarName:               testNetAttachDefName,
@@ -265,6 +302,7 @@ func TestCreateConfigFromEnvShouldFailWhenNodeNames(t *testing.T) {
 			description:   "target node name is set but source node name isn't",
 			expectedError: config.ErrIllegalSourceAndTargetNodesCombination,
 			env: map[string]string{
+				config.CheckupUIDEnvVarName:                testCheckupUID,
 				config.ResultsConfigMapNameEnvVarName:      testResultConfigMapName,
 				config.ResultsConfigMapNamespaceEnvVarName: testNamespace,
 				config.NetworkNameEnvVarName:               testNetAttachDefName,
@@ -276,6 +314,7 @@ func TestCreateConfigFromEnvShouldFailWhenNodeNames(t *testing.T) {
 			description:   "source node name is empty",
 			expectedError: config.ErrIllegalSourceAndTargetNodesCombination,
 			env: map[string]string{
+				config.CheckupUIDEnvVarName:                testCheckupUID,
 				config.ResultsConfigMapNameEnvVarName:      testResultConfigMapName,
 				config.ResultsConfigMapNamespaceEnvVarName: testNamespace,
 				config.NetworkNameEnvVarName:               testNetAttachDefName,
@@ -288,6 +327,7 @@ func TestCreateConfigFromEnvShouldFailWhenNodeNames(t *testing.T) {
 			description:   "target node name is empty",
 			expectedError: config.ErrIllegalSourceAndTargetNodesCombination,
 			env: map[string]string{
+				config.CheckupUIDEnvVarName:                testCheckupUID,
 				config.ResultsConfigMapNameEnvVarName:      testResultConfigMapName,
 				config.ResultsConfigMapNamespaceEnvVarName: testNamespace,
 				config.NetworkNameEnvVarName:               testNetAttachDefName,
@@ -311,6 +351,7 @@ func TestCreateConfigShouldFailWhenIntegerEnvVarsAreInvalid(t *testing.T) {
 			description:   "sample duration is not valid integer",
 			expectedError: strconv.ErrSyntax,
 			env: map[string]string{
+				config.CheckupUIDEnvVarName:                testCheckupUID,
 				config.ResultsConfigMapNameEnvVarName:      testResultConfigMapName,
 				config.ResultsConfigMapNamespaceEnvVarName: testNamespace,
 				config.NetworkNameEnvVarName:               testNetAttachDefName,
@@ -322,6 +363,7 @@ func TestCreateConfigShouldFailWhenIntegerEnvVarsAreInvalid(t *testing.T) {
 			description:   "desired max latency is too big",
 			expectedError: strconv.ErrRange,
 			env: map[string]string{
+				config.CheckupUIDEnvVarName:                    testCheckupUID,
 				config.ResultsConfigMapNameEnvVarName:          testResultConfigMapName,
 				config.ResultsConfigMapNamespaceEnvVarName:     testNamespace,
 				config.NetworkNameEnvVarName:                   testNetAttachDefName,
