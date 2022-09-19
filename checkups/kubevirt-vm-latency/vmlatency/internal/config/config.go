@@ -53,15 +53,12 @@ type Config struct {
 }
 
 var (
-	ErrInvalidEnv                       = errors.New("environment is invalid")
-	ErrInvalidResultsConfigMapName      = fmt.Errorf("%q environment variable is invalid", ResultsConfigMapNameEnvVarName)
-	ErrInvalidResultsConfigMapNamespace = fmt.Errorf("%q environment variable is invalid", ResultsConfigMapNamespaceEnvVarName)
-	ErrInvalidNetworkName               = fmt.Errorf("%q environment variable is invalid", NetworkNameEnvVarName)
-	ErrInvalidNetworkNamespace          = fmt.Errorf("%q environment variable is invalid", NetworkNamespaceEnvVarName)
-	ErrSourceNodeNameMissing            = fmt.Errorf("%q environment variable is missing", SourceNodeNameEnvVarName)
-	ErrInvalidSourceNodeName            = fmt.Errorf("%q environment variable is invalid", SourceNodeNameEnvVarName)
-	ErrTargetNodeNameMissing            = fmt.Errorf("%q environment variable is missing", TargetNodeNameEnvVarName)
-	ErrInvalidTargetNodeName            = fmt.Errorf("%q environment variable is invalid", TargetNodeNameEnvVarName)
+	ErrInvalidEnv                             = errors.New("environment is invalid")
+	ErrInvalidResultsConfigMapName            = fmt.Errorf("%q environment variable is invalid", ResultsConfigMapNameEnvVarName)
+	ErrInvalidResultsConfigMapNamespace       = fmt.Errorf("%q environment variable is invalid", ResultsConfigMapNamespaceEnvVarName)
+	ErrInvalidNetworkName                     = fmt.Errorf("%q environment variable is invalid", NetworkNameEnvVarName)
+	ErrInvalidNetworkNamespace                = fmt.Errorf("%q environment variable is invalid", NetworkNamespaceEnvVarName)
+	ErrIllegalSourceAndTargetNodesCombination = errors.New("illegal source and target nodes combination")
 )
 
 const (
@@ -74,24 +71,15 @@ func New(env map[string]string) (Config, error) {
 		return Config{}, ErrInvalidEnv
 	}
 
-	resultsConfigMapName := env[ResultsConfigMapNameEnvVarName]
-	if resultsConfigMapName == "" {
-		return Config{}, ErrInvalidResultsConfigMapName
-	}
-
-	resultsConfigMapNamespace := env[ResultsConfigMapNamespaceEnvVarName]
-	if resultsConfigMapNamespace == "" {
-		return Config{}, ErrInvalidResultsConfigMapNamespace
-	}
-
-	networkName := env[NetworkNameEnvVarName]
-	if networkName == "" {
-		return Config{}, ErrInvalidNetworkName
-	}
-
-	networkNamespace := env[NetworkNamespaceEnvVarName]
-	if networkNamespace == "" {
-		return Config{}, ErrInvalidNetworkNamespace
+	newConfig := Config{
+		ResultsConfigMapName:      env[ResultsConfigMapNameEnvVarName],
+		ResultsConfigMapNamespace: env[ResultsConfigMapNamespaceEnvVarName],
+		CheckupParameters: CheckupParameters{
+			NetworkAttachmentDefinitionName:      env[NetworkNameEnvVarName],
+			NetworkAttachmentDefinitionNamespace: env[NetworkNamespaceEnvVarName],
+			TargetNodeName:                       env[TargetNodeNameEnvVarName],
+			SourceNodeName:                       env[SourceNodeNameEnvVarName],
+		},
 	}
 
 	var err error
@@ -101,6 +89,7 @@ func New(env map[string]string) (Config, error) {
 			return Config{}, fmt.Errorf("%q environment variable is invalid: %v", SampleDurationSecondsEnvVarName, err)
 		}
 	}
+	newConfig.SampleDurationSeconds = sampleDuration
 
 	desiredMaxLatency := DefaultDesiredMaxLatencyMilliseconds
 	if value, exists := env[DesiredMaxLatencyMillisecondsEnvVarName]; exists {
@@ -108,41 +97,36 @@ func New(env map[string]string) (Config, error) {
 			return Config{}, fmt.Errorf("%q environment variable is invalid: %v", DesiredMaxLatencyMillisecondsEnvVarName, err)
 		}
 	}
+	newConfig.DesiredMaxLatencyMilliseconds = desiredMaxLatency
 
-	if err := validateNodeNames(env); err != nil {
+	if err := newConfig.validate(); err != nil {
 		return Config{}, err
 	}
 
-	return Config{
-		ResultsConfigMapName:      resultsConfigMapName,
-		ResultsConfigMapNamespace: resultsConfigMapNamespace,
-		CheckupParameters: CheckupParameters{
-			NetworkAttachmentDefinitionName:      networkName,
-			NetworkAttachmentDefinitionNamespace: networkNamespace,
-			TargetNodeName:                       env[TargetNodeNameEnvVarName],
-			SourceNodeName:                       env[SourceNodeNameEnvVarName],
-			SampleDurationSeconds:                sampleDuration,
-			DesiredMaxLatencyMilliseconds:        desiredMaxLatency,
-		},
-	}, nil
+	return newConfig, nil
 }
 
-func validateNodeNames(env map[string]string) error {
-	sourceNodeName, sourceNodeNameExists := env[SourceNodeNameEnvVarName]
-	targetNodeName, targetNodeNameExists := env[TargetNodeNameEnvVarName]
+func (c Config) validate() error {
+	if c.ResultsConfigMapName == "" {
+		return ErrInvalidResultsConfigMapName
+	}
 
-	switch {
-	case !sourceNodeNameExists && targetNodeNameExists:
-		return ErrSourceNodeNameMissing
-	case !targetNodeNameExists && sourceNodeNameExists:
-		return ErrTargetNodeNameMissing
-	case sourceNodeNameExists && targetNodeNameExists:
-		if sourceNodeName == "" {
-			return ErrInvalidSourceNodeName
-		}
-		if targetNodeName == "" {
-			return ErrInvalidTargetNodeName
-		}
+	if c.ResultsConfigMapNamespace == "" {
+		return ErrInvalidResultsConfigMapNamespace
+	}
+
+	if c.NetworkAttachmentDefinitionName == "" {
+		return ErrInvalidNetworkName
+	}
+
+	if c.NetworkAttachmentDefinitionNamespace == "" {
+		return ErrInvalidNetworkNamespace
+	}
+
+	if c.SourceNodeName == "" && c.TargetNodeName != "" {
+		return ErrIllegalSourceAndTargetNodesCombination
+	} else if c.SourceNodeName != "" && c.TargetNodeName == "" {
+		return ErrIllegalSourceAndTargetNodesCombination
 	}
 
 	return nil

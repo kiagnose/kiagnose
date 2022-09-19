@@ -252,7 +252,7 @@ func TestCreateConfigFromEnvShouldFailWhenNodeNames(t *testing.T) {
 	testCases := []configCreateFallingTestCases{
 		{
 			description:   "source node name is set but target node name isn't",
-			expectedError: config.ErrTargetNodeNameMissing,
+			expectedError: config.ErrIllegalSourceAndTargetNodesCombination,
 			env: map[string]string{
 				config.ResultsConfigMapNameEnvVarName:      testResultConfigMapName,
 				config.ResultsConfigMapNamespaceEnvVarName: testNamespace,
@@ -263,7 +263,7 @@ func TestCreateConfigFromEnvShouldFailWhenNodeNames(t *testing.T) {
 		},
 		{
 			description:   "target node name is set but source node name isn't",
-			expectedError: config.ErrSourceNodeNameMissing,
+			expectedError: config.ErrIllegalSourceAndTargetNodesCombination,
 			env: map[string]string{
 				config.ResultsConfigMapNameEnvVarName:      testResultConfigMapName,
 				config.ResultsConfigMapNamespaceEnvVarName: testNamespace,
@@ -274,7 +274,7 @@ func TestCreateConfigFromEnvShouldFailWhenNodeNames(t *testing.T) {
 		},
 		{
 			description:   "source node name is empty",
-			expectedError: config.ErrInvalidSourceNodeName,
+			expectedError: config.ErrIllegalSourceAndTargetNodesCombination,
 			env: map[string]string{
 				config.ResultsConfigMapNameEnvVarName:      testResultConfigMapName,
 				config.ResultsConfigMapNamespaceEnvVarName: testNamespace,
@@ -286,7 +286,7 @@ func TestCreateConfigFromEnvShouldFailWhenNodeNames(t *testing.T) {
 		},
 		{
 			description:   "target node name is empty",
-			expectedError: config.ErrInvalidTargetNodeName,
+			expectedError: config.ErrIllegalSourceAndTargetNodesCombination,
 			env: map[string]string{
 				config.ResultsConfigMapNameEnvVarName:      testResultConfigMapName,
 				config.ResultsConfigMapNamespaceEnvVarName: testNamespace,
