@@ -79,7 +79,6 @@ func (c *checkup) Setup(ctx context.Context) error {
 
 		defaultSetupTimeout = time.Minute * 10
 
-		networkName   = "net0"
 		sourceVmiMac  = "02:00:00:01:00:01"
 		sourceVmiCidr = "192.168.100.10/24"
 		targetVmiMac  = "02:00:00:02:00:02"
@@ -93,8 +92,8 @@ func (c *checkup) Setup(ctx context.Context) error {
 		return fmt.Errorf("%s: %v", errMessagePrefix, err)
 	}
 
-	sourceVmi := newLatencyCheckVmi(SourceVmiName, c.params.SourceNodeName, networkName, netAttachDef, sourceVmiMac, sourceVmiCidr)
-	targetVmi := newLatencyCheckVmi(TargetVmiName, c.params.TargetNodeName, networkName, netAttachDef, targetVmiMac, targetVmiCidr)
+	sourceVmi := newLatencyCheckVmi(SourceVmiName, c.params.SourceNodeName, netAttachDef, sourceVmiMac, sourceVmiCidr)
+	targetVmi := newLatencyCheckVmi(TargetVmiName, c.params.TargetNodeName, netAttachDef, targetVmiMac, targetVmiCidr)
 
 	if err = vmi.Start(c.client, c.namespace, sourceVmi); err != nil {
 		return fmt.Errorf("%s: %v", errMessagePrefix, err)
@@ -120,9 +119,11 @@ func (c *checkup) Setup(ctx context.Context) error {
 
 func newLatencyCheckVmi(
 	name,
-	nodeName,
-	networkName string, netAttachDef *netattdefv1.NetworkAttachmentDefinition,
+	nodeName string,
+	netAttachDef *netattdefv1.NetworkAttachmentDefinition,
 	macAddress, cidr string) *kvcorev1.VirtualMachineInstance {
+	const networkName = "net0"
+
 	vmLabel := vmi.Label{Key: LabelLatencyCheckVM, Value: ""}
 	var affinity *k8scorev1.Affinity
 	if nodeName != "" {
