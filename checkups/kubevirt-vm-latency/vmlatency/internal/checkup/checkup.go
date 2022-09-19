@@ -32,7 +32,6 @@ import (
 	netattdefv1 "github.com/k8snetworkplumbingwg/network-attachment-definition-client/pkg/apis/k8s.cni.cncf.io/v1"
 
 	"github.com/kiagnose/kiagnose/checkups/kubevirt-vm-latency/vmlatency/internal/config"
-	"github.com/kiagnose/kiagnose/checkups/kubevirt-vm-latency/vmlatency/internal/netattachdef"
 	"github.com/kiagnose/kiagnose/checkups/kubevirt-vm-latency/vmlatency/internal/status"
 	"github.com/kiagnose/kiagnose/checkups/kubevirt-vm-latency/vmlatency/internal/vmi"
 )
@@ -124,13 +123,6 @@ func newLatencyCheckVmi(
 	nodeName,
 	networkName string, netAttachDef *netattdefv1.NetworkAttachmentDefinition,
 	macAddress, cidr string) *kvcorev1.VirtualMachineInstance {
-	var vmiInterface kvcorev1.Interface
-	if netattachdef.IsSriov(netAttachDef) {
-		vmiInterface = vmi.NewInterface(networkName, vmi.WithMacAddress(macAddress), vmi.WithSriovBinding())
-	} else {
-		vmiInterface = vmi.NewInterface(networkName, vmi.WithMacAddress(macAddress), vmi.WithBridgeBinding())
-	}
-
 	vmLabel := vmi.Label{Key: LabelLatencyCheckVM, Value: ""}
 	var affinity *k8scorev1.Affinity
 	if nodeName != "" {
@@ -143,9 +135,14 @@ func newLatencyCheckVmi(
 		vmi.WithLabels(vmLabel),
 		vmi.WithAffinity(affinity),
 		vmi.WithMultusNetwork(networkName, netAttachDef.Namespace+"/"+netAttachDef.Name),
-		vmi.WithInterface(vmiInterface),
+		vmi.WithInterface(
+			networkName,
+			vmi.WithMacAddress(macAddress),
+			vmi.WithBindingFromNetAttachDef(netAttachDef),
+		),
 		vmi.WithCloudInitNoCloudNetworkData(
-			vmi.WithEthernet(networkName,
+			vmi.WithEthernet(
+				networkName,
 				vmi.WithAddresses(cidr),
 				vmi.WithMatchingMAC(macAddress),
 			),

@@ -26,6 +26,10 @@ import (
 	k8smetav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	kvcorev1 "kubevirt.io/api/core/v1"
+
+	netattachdefv1 "github.com/k8snetworkplumbingwg/network-attachment-definition-client/pkg/apis/k8s.cni.cncf.io/v1"
+
+	"github.com/kiagnose/kiagnose/checkups/kubevirt-vm-latency/vmlatency/internal/netattachdef"
 )
 
 // Option represents an action that enables an option.
@@ -162,19 +166,19 @@ func newContainerDiskVolume(name, image string) kvcorev1.Volume {
 	}
 }
 
-// WithInterface adds an interface.
-func WithInterface(iface kvcorev1.Interface) Option {
+// WithInterface adds new interface based on the specified With* options..
+func WithInterface(name string, opts ...interfaceOption) Option {
 	return func(vmi *kvcorev1.VirtualMachineInstance) {
-		vmi.Spec.Domain.Devices.Interfaces = append(vmi.Spec.Domain.Devices.Interfaces, iface)
+		vmi.Spec.Domain.Devices.Interfaces = append(vmi.Spec.Domain.Devices.Interfaces, newInterface(name, opts...))
 	}
 }
 
 // interfaceOption represents an action that enables an option on a VMI interface.
 type interfaceOption func(vmi *kvcorev1.Interface)
 
-// NewInterface instantiates a new VMI interface configuration,
+// newInterface instantiates a new VMI interface configuration,
 // building its properties based on the specified With* options.
-func NewInterface(name string, opts ...interfaceOption) kvcorev1.Interface {
+func newInterface(name string, opts ...interfaceOption) kvcorev1.Interface {
 	iface := &kvcorev1.Interface{Name: name}
 
 	for _, f := range opts {
@@ -184,28 +188,22 @@ func NewInterface(name string, opts ...interfaceOption) kvcorev1.Interface {
 	return *iface
 }
 
+// WithBindingFromNetAttachDef realize which binding the interface should be conditioned with according to the given
+// NetworkAttachmentDefinition network config.
+func WithBindingFromNetAttachDef(netAttachDef *netattachdefv1.NetworkAttachmentDefinition) interfaceOption {
+	return func(iface *kvcorev1.Interface) {
+		if netattachdef.IsSriov(netAttachDef) {
+			iface.InterfaceBindingMethod = kvcorev1.InterfaceBindingMethod{SRIOV: &kvcorev1.InterfaceSRIOV{}}
+		} else {
+			iface.InterfaceBindingMethod = kvcorev1.InterfaceBindingMethod{Bridge: &kvcorev1.InterfaceBridge{}}
+		}
+	}
+}
+
 // WithMacAddress set the interface with custom MAC address.
 func WithMacAddress(macAddress string) interfaceOption {
 	return func(iface *kvcorev1.Interface) {
 		iface.MacAddress = macAddress
-	}
-}
-
-// WithSriovBinding set the interface with SR-IOV binding method.
-func WithSriovBinding() interfaceOption {
-	return func(iface *kvcorev1.Interface) {
-		iface.InterfaceBindingMethod = kvcorev1.InterfaceBindingMethod{
-			SRIOV: &kvcorev1.InterfaceSRIOV{},
-		}
-	}
-}
-
-// WithBridgeBinding set the interface with bridge binding method.
-func WithBridgeBinding() interfaceOption {
-	return func(iface *kvcorev1.Interface) {
-		iface.InterfaceBindingMethod = kvcorev1.InterfaceBindingMethod{
-			Bridge: &kvcorev1.InterfaceBridge{},
-		}
 	}
 }
 
