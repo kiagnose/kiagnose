@@ -48,6 +48,7 @@ type checker interface {
 type checkup struct {
 	client    vmi.KubevirtVmisClient
 	namespace string
+	name      string
 	params    config.CheckupParameters
 	results   status.Results
 	sourceVM  *kvcorev1.VirtualMachineInstance
@@ -55,10 +56,11 @@ type checkup struct {
 	checker   checker
 }
 
-func New(c vmi.KubevirtVmisClient, namespace string, params config.CheckupParameters, checker checker) *checkup {
+func New(c vmi.KubevirtVmisClient, namespace, name string, params config.CheckupParameters, checker checker) *checkup {
 	return &checkup{
 		client:    c,
 		namespace: namespace,
+		name:      name,
 		params:    params,
 		checker:   checker,
 	}
@@ -69,8 +71,8 @@ func (c *checkup) Preflight() error {
 }
 
 const (
-	SourceVmiName       = "latency-check-source"
-	TargetVmiName       = "latency-check-target"
+	SourceVmiNameSuffix = "latency-check-source"
+	TargetVmiNameSuffix = "latency-check-target"
 	LabelLatencyCheckVM = "latency-check-vm"
 )
 
@@ -94,8 +96,10 @@ func (c *checkup) Setup(ctx context.Context) error {
 		return fmt.Errorf("%s: %v", errMessagePrefix, err)
 	}
 
-	sourceVmi := newLatencyCheckVmi(SourceVmiName, c.params.SourceNodeName, networkName, netAttachDef, sourceVmiMac, sourceVmiCidr)
-	targetVmi := newLatencyCheckVmi(TargetVmiName, c.params.TargetNodeName, networkName, netAttachDef, targetVmiMac, targetVmiCidr)
+	sourceVMIName := NameVMI(c.name, SourceVmiNameSuffix)
+	targetVMIName := NameVMI(c.name, TargetVmiNameSuffix)
+	sourceVmi := newLatencyCheckVmi(sourceVMIName, c.params.SourceNodeName, networkName, netAttachDef, sourceVmiMac, sourceVmiCidr)
+	targetVmi := newLatencyCheckVmi(targetVMIName, c.params.TargetNodeName, networkName, netAttachDef, targetVmiMac, targetVmiCidr)
 
 	if err = vmi.Start(c.client, c.namespace, sourceVmi); err != nil {
 		return fmt.Errorf("%s: %v", errMessagePrefix, err)
@@ -211,4 +215,8 @@ func (c *checkup) Teardown(waitCtx context.Context) error {
 
 func (c *checkup) Results() status.Results {
 	return c.results
+}
+
+func NameVMI(name, suffix string) string {
+	return fmt.Sprintf("%s-%s", name, suffix)
 }
