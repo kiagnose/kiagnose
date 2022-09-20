@@ -46,6 +46,7 @@ type checker interface {
 
 type checkup struct {
 	client    vmi.KubevirtVmisClient
+	uid       string
 	namespace string
 	params    config.CheckupParameters
 	results   status.Results
@@ -54,9 +55,10 @@ type checkup struct {
 	checker   checker
 }
 
-func New(c vmi.KubevirtVmisClient, namespace string, params config.CheckupParameters, checker checker) *checkup {
+func New(c vmi.KubevirtVmisClient, uid, namespace string, params config.CheckupParameters, checker checker) *checkup {
 	return &checkup{
 		client:    c,
+		uid:       uid,
 		namespace: namespace,
 		params:    params,
 		checker:   checker,
@@ -68,9 +70,9 @@ func (c *checkup) Preflight() error {
 }
 
 const (
-	SourceVmiName       = "latency-check-source"
-	TargetVmiName       = "latency-check-target"
-	LabelLatencyCheckVM = "latency-check-vm"
+	SourceVmiName        = "latency-check-source"
+	TargetVmiName        = "latency-check-target"
+	LabelLatencyCheckUID = "latency-check/uid"
 )
 
 func (c *checkup) Setup(ctx context.Context) error {
@@ -92,8 +94,8 @@ func (c *checkup) Setup(ctx context.Context) error {
 		return fmt.Errorf("%s: %v", errMessagePrefix, err)
 	}
 
-	sourceVmi := newLatencyCheckVmi(SourceVmiName, c.params.SourceNodeName, netAttachDef, sourceVmiMac, sourceVmiCidr)
-	targetVmi := newLatencyCheckVmi(TargetVmiName, c.params.TargetNodeName, netAttachDef, targetVmiMac, targetVmiCidr)
+	sourceVmi := newLatencyCheckVmi(c.uid, SourceVmiName, c.params.SourceNodeName, netAttachDef, sourceVmiMac, sourceVmiCidr)
+	targetVmi := newLatencyCheckVmi(c.uid, TargetVmiName, c.params.TargetNodeName, netAttachDef, targetVmiMac, targetVmiCidr)
 
 	if err = vmi.Start(c.client, c.namespace, sourceVmi); err != nil {
 		return fmt.Errorf("%s: %v", errMessagePrefix, err)
@@ -118,13 +120,14 @@ func (c *checkup) Setup(ctx context.Context) error {
 }
 
 func newLatencyCheckVmi(
+	uid,
 	name,
 	nodeName string,
 	netAttachDef *netattdefv1.NetworkAttachmentDefinition,
 	macAddress, cidr string) *kvcorev1.VirtualMachineInstance {
 	const networkName = "net0"
 
-	vmLabel := vmi.Label{Key: LabelLatencyCheckVM, Value: ""}
+	vmLabel := vmi.Label{Key: LabelLatencyCheckUID, Value: uid}
 	var affinity *k8scorev1.Affinity
 	if nodeName != "" {
 		affinity = &k8scorev1.Affinity{NodeAffinity: vmi.NewNodeAffinity(nodeName)}

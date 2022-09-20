@@ -40,7 +40,7 @@ func Run(env map[string]string, namespace string) error {
 	}
 
 	l := launcher.New(
-		checkup.New(c, namespace, cfg.CheckupParameters, latency.New(c)),
+		checkup.New(c, cfg.CheckupUID, namespace, cfg.CheckupParameters, latency.New(c)),
 		reporter.New(c, cfg.ResultsConfigMapNamespace, cfg.ResultsConfigMapName),
 	)
 	return l.Run()

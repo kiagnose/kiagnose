@@ -42,10 +42,13 @@ import (
 	"github.com/kiagnose/kiagnose/checkups/kubevirt-vm-latency/vmlatency/internal/status"
 )
 
+const testCheckupUID = "0123456789"
+
 func TestLauncherShouldFail(t *testing.T) {
 	testClient := newFakeClient()
 	testCheckup := checkup.New(
 		testClient,
+		testCheckupUID,
 		k8scorev1.NamespaceDefault,
 		config.CheckupParameters{},
 		&checkerStub{checkFailure: errorCheck},
@@ -59,6 +62,7 @@ func TestLauncherShouldRunSuccessfully(t *testing.T) {
 	testClient := newFakeClient()
 	testCheckup := checkup.New(
 		testClient,
+		testCheckupUID,
 		k8scorev1.NamespaceDefault,
 		config.CheckupParameters{},
 		&checkerStub{},
@@ -159,6 +163,7 @@ func TestLauncherShouldSuccessfullyProduceStatusResults(t *testing.T) {
 	testReporter := reporter.New(testClient, k8scorev1.NamespaceDefault, testConfigMapName)
 	testCheckup := checkup.New(
 		testClient,
+		testCheckupUID,
 		k8scorev1.NamespaceDefault,
 		config.CheckupParameters{
 			SourceNodeName: sourceNodeName,
