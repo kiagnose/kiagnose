@@ -39,6 +39,7 @@ import (
 )
 
 const (
+	testCheckupUID            = "0123456789"
 	testNamespace             = "default"
 	testNetAttachDefName      = "blue-net"
 	testSampleDurationSeconds = 1
@@ -50,7 +51,7 @@ func TestCheckupSetupShouldFailWhen(t *testing.T) {
 		expectedError := errors.New("get netAttachDef test error")
 		testClient := newTestClient()
 		testClient.failGetNetAttachDef = expectedError
-		testCheckup := checkup.New(testClient, testNamespace, newTestsCheckupParameters(), &checkerStub{})
+		testCheckup := checkup.New(testClient, testCheckupUID, testNamespace, newTestsCheckupParameters(), &checkerStub{})
 
 		assert.NoError(t, testCheckup.Preflight())
 		assert.ErrorContains(t, testCheckup.Setup(context.Background()), expectedError.Error())
@@ -61,7 +62,7 @@ func TestCheckupSetupShouldFailWhen(t *testing.T) {
 		testClient := newTestClient()
 		testClient.failCreateVmi = expectedError
 		testClient.returnNetAttachDef = &netattdefv1.NetworkAttachmentDefinition{}
-		testCheckup := checkup.New(testClient, testNamespace, newTestsCheckupParameters(), &checkerStub{})
+		testCheckup := checkup.New(testClient, testCheckupUID, testNamespace, newTestsCheckupParameters(), &checkerStub{})
 
 		assert.NoError(t, testCheckup.Preflight())
 		assert.ErrorContains(t, testCheckup.Setup(context.Background()), expectedError.Error())
@@ -72,7 +73,7 @@ func TestCheckupSetupShouldFailWhen(t *testing.T) {
 		testClient := newTestClient()
 		testClient.failGetVmi = expectedError
 		testClient.returnNetAttachDef = &netattdefv1.NetworkAttachmentDefinition{}
-		testCheckup := checkup.New(testClient, testNamespace, newTestsCheckupParameters(), &checkerStub{})
+		testCheckup := checkup.New(testClient, testCheckupUID, testNamespace, newTestsCheckupParameters(), &checkerStub{})
 
 		testCtx, cancel := context.WithTimeout(context.Background(), testTimeout)
 		defer cancel()
@@ -86,7 +87,7 @@ func TestCheckupTeardownShouldFailWhen(t *testing.T) {
 	t.Run("failed to delete a VM", func(t *testing.T) {
 		testClient := newTestClient()
 		testClient.returnNetAttachDef = &netattdefv1.NetworkAttachmentDefinition{}
-		testCheckup := checkup.New(testClient, testNamespace, newTestsCheckupParameters(), &checkerStub{})
+		testCheckup := checkup.New(testClient, testCheckupUID, testNamespace, newTestsCheckupParameters(), &checkerStub{})
 
 		testCtx, cancel := context.WithTimeout(context.Background(), testTimeout)
 		defer cancel()
@@ -103,7 +104,7 @@ func TestCheckupTeardownShouldFailWhen(t *testing.T) {
 	t.Run("VMs were not disposed before timeout expiration", func(t *testing.T) {
 		testClient := newTestClient()
 		testClient.returnNetAttachDef = &netattdefv1.NetworkAttachmentDefinition{}
-		testCheckup := checkup.New(testClient, testNamespace, newTestsCheckupParameters(), &checkerStub{})
+		testCheckup := checkup.New(testClient, testCheckupUID, testNamespace, newTestsCheckupParameters(), &checkerStub{})
 
 		assert.NoError(t, testCheckup.Preflight())
 		assert.NoError(t, testCheckup.Setup(context.Background()))
@@ -142,7 +143,7 @@ func TestCheckupSetupShouldCreateVMsWith(t *testing.T) {
 		t.Run(testCase.description, func(t *testing.T) {
 			testClient := newTestClient()
 			testClient.returnNetAttachDef = testCase.netAttachDef
-			testCheckup := checkup.New(testClient, testNamespace, newTestsCheckupParameters(), &checkerStub{})
+			testCheckup := checkup.New(testClient, testCheckupUID, testNamespace, newTestsCheckupParameters(), &checkerStub{})
 
 			assert.NoError(t, testCheckup.Preflight())
 			assert.NoError(t, testCheckup.Setup(context.Background()))
@@ -159,7 +160,7 @@ func TestCheckupSetupShouldCreateVMsWithPodAntiAffinity(t *testing.T) {
 	t.Run("when source and target nodes names are not specified", func(t *testing.T) {
 		testClient := newTestClient()
 		testClient.returnNetAttachDef = newTestNetAttachDef("")
-		testCheckup := checkup.New(testClient, testNamespace, config.CheckupParameters{}, &checkerStub{})
+		testCheckup := checkup.New(testClient, testCheckupUID, testNamespace, config.CheckupParameters{}, &checkerStub{})
 
 		assert.NoError(t, testCheckup.Preflight())
 		assert.NoError(t, testCheckup.Setup(context.Background()))
@@ -179,7 +180,7 @@ func TestCheckupSetupShouldCreateVMsWithNodeAffinity(t *testing.T) {
 		testClient := newTestClient()
 		testClient.returnNetAttachDef = newTestNetAttachDef("blah")
 		testCheckupParams := config.CheckupParameters{SourceNodeName: testSourceNode, TargetNodeName: testTargetNode}
-		testCheckup := checkup.New(testClient, testNamespace, testCheckupParams, &checkerStub{})
+		testCheckup := checkup.New(testClient, testCheckupUID, testNamespace, testCheckupParams, &checkerStub{})
 
 		assert.NoError(t, testCheckup.Preflight())
 		assert.NoError(t, testCheckup.Setup(context.Background()))
@@ -194,7 +195,7 @@ func assertVmiPodAntiAffinityExist(t *testing.T, testClient *clientStub, vmiName
 	actualVmi, err := testClient.GetVirtualMachineInstance(testNamespace, vmiName)
 	assert.NoError(t, err)
 	assert.NotNil(t, actualVmi.Spec.Affinity.PodAntiAffinity)
-	expectedPodAntiAffinity := vmi.NewPodAntiAffinity(vmi.Label{Key: checkup.LabelLatencyCheckVM, Value: ""})
+	expectedPodAntiAffinity := vmi.NewPodAntiAffinity(vmi.Label{Key: checkup.LabelLatencyCheckUID, Value: testCheckupUID})
 	assert.Equal(t, expectedPodAntiAffinity, actualVmi.Spec.Affinity.PodAntiAffinity)
 }
 
