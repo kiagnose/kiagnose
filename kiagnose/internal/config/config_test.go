@@ -38,6 +38,7 @@ import (
 const (
 	configMapNamespace = "target-ns"
 	configMapName      = "cm1"
+	configMapUID       = "0123456789"
 
 	imageName               = "registry:5000/echo-checkup:latest"
 	timeoutValue            = "1m"
@@ -64,6 +65,7 @@ func TestReadFromConfigMapShouldSucceed(t *testing.T) {
 				types.ServiceAccountNameKey: serviceAccountNameValue,
 			},
 			expectedConfig: &config.Config{
+				UID:                configMapUID,
 				Image:              imageName,
 				Timeout:            stringToDurationMustParse(timeoutValue),
 				ServiceAccountName: serviceAccountNameValue,
@@ -79,6 +81,7 @@ func TestReadFromConfigMapShouldSucceed(t *testing.T) {
 				types.ParamNameKeyPrefix + param2Key: param2Value,
 			},
 			expectedConfig: &config.Config{
+				UID:                configMapUID,
 				Image:              imageName,
 				Timeout:            stringToDurationMustParse(timeoutValue),
 				ServiceAccountName: serviceAccountNameValue,
@@ -211,6 +214,7 @@ func newConfigMap(namespace, name string, data map[string]string) *corev1.Config
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      name,
 			Namespace: namespace,
+			UID:       configMapUID,
 		},
 		Data: data,
 	}

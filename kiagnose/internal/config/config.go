@@ -37,6 +37,7 @@ var (
 )
 
 type Config struct {
+	UID                string
 	Image              string
 	Timeout            time.Duration
 	ServiceAccountName string
@@ -64,6 +65,7 @@ func ReadFromConfigMap(client kubernetes.Interface, configMapNamespace, configMa
 	}
 
 	return &Config{
+		UID:                string(configMap.UID),
 		Image:              parser.Image,
 		Timeout:            parser.Timeout,
 		ServiceAccountName: parser.ServiceAccountName,
