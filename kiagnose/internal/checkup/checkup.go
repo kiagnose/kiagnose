@@ -22,6 +22,7 @@ package checkup
 import (
 	"errors"
 	"fmt"
+	"log"
 	"strings"
 	"time"
 
@@ -133,6 +134,20 @@ func (c *Checkup) Run() error {
 
 func (c *Checkup) Results() (results.Results, error) {
 	return results.ReadFromConfigMap(c.client, c.resultConfigMap.Namespace, c.resultConfigMap.Name)
+}
+
+func (c *Checkup) Logs() error {
+	if c.job == nil {
+		return fmt.Errorf("job is nil")
+	}
+
+	var err error
+	var logs string
+	if logs, err = job.GetLogs(c.client, c.job); err != nil {
+		return err
+	}
+	log.Printf("checkup job %q Logs:\n%s\n", c.job.Name, logs)
+	return nil
 }
 
 func (c *Checkup) SetTeardownTimeout(duration time.Duration) {

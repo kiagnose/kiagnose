@@ -113,6 +113,33 @@ func DeleteAndWait(client kubernetes.Interface, job *batchv1.Job, timeout time.D
 	return err
 }
 
+func GetLogs(client kubernetes.Interface, job *batchv1.Job) (string, error) {
+	jobPodName, err := getPodNameByJob(client, job.Name, job.Namespace)
+	if err != nil {
+		return "", err
+	}
+	rawLogs, err := client.CoreV1().Pods(job.Namespace).GetLogs(jobPodName, &corev1.PodLogOptions{}).DoRaw(context.Background())
+	if err != nil {
+		return "", fmt.Errorf("failed to find job's %s/%s pod: %v", job.Namespace, job.Name, err)
+	}
+
+	return string(rawLogs), nil
+}
+
+func getPodNameByJob(client kubernetes.Interface, jobName, jobNamespace string) (string, error) {
+	const JobNameLabel = "job-name"
+	jobLabel := k8slabels.Set{JobNameLabel: jobName}
+	podList, err := client.CoreV1().Pods(jobNamespace).List(context.Background(), metav1.ListOptions{LabelSelector: jobLabel.String()})
+	if err != nil {
+		return "", err
+	}
+
+	if len(podList.Items) != 1 {
+		return "", fmt.Errorf("failed to find job's pod: found %d pods for Job %s/%s", len(podList.Items), jobNamespace, jobName)
+	}
+	return podList.Items[0].Name, nil
+}
+
 func batchJobFinished(event k8swatch.Event) (bool, error) {
 	j, ok := event.Object.(*batchv1.Job)
 	if !ok {
