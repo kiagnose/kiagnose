@@ -21,6 +21,8 @@ set -e
 
 ARGCOUNT=$#
 
+CRI=${CRI:-podman}
+
 SCRIPT_PATH=$(dirname $(realpath -s $0))
 
 KUBECTL=${KUBECTL:-$PWD/kubectl}
@@ -39,7 +41,7 @@ ECHO_SERVICE_ACCOUNT_NAME=echo-sa
 TARGET_NAMESPACE="echo-checkup-e2e-test"
 
 options=$(getopt --options "" \
-    --long deploy-checkup,run-tests,clean-run,help\
+    --long deploy-checkup,run-tests,clean-run,run-tests-py,help\
     -- "${@}")
 eval set -- "$options"
 while true; do
@@ -50,12 +52,15 @@ while true; do
     --run-tests)
         OPT_RUN_TEST=1
         ;;
+    --run-tests-py)
+        OPT_RUN_TEST_PY=1
+        ;;
     --clean-run)
         OPT_CLEAN_RUN=1
         ;;
     --help)
         set +x
-        echo -n "$0 [--deploy-checkup] [--run-tests] [--clean-run]"
+        echo -n "$0 [--deploy-checkup] [--run-tests] [--clean-run] [--run-tests-py]"
         exit
         ;;
     --)
@@ -146,4 +151,9 @@ fi
 if [ -n "${OPT_CLEAN_RUN}" ];then
   ${KUBECTL} delete job ${KIAGNOSE_JOB} -n ${KIAGNOSE_NAMESPACE} --ignore-not-found
   ${KUBECTL} delete configmap ${ECHO_CONFIGMAP} -n ${TARGET_NAMESPACE} --ignore-not-found
+fi
+
+if [ -n "${OPT_RUN_TEST_PY}" ]; then
+    test -t 1 && USE_TTY="t"
+    ${CRI} run -i${USE_TTY} --rm --net=host -v "${PWD}":/workspace/kiagnose:Z -v "${HOME}"/.kube:/root/.kube:ro,Z kiagnose-e2e-test pytest -v ./test/e2e/echo
 fi

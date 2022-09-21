@@ -21,6 +21,8 @@ set -e
 
 ARGCOUNT=$#
 
+CRI=${CRI:-podman}
+
 KUBECTL_VERSION=${KUBECTL_VERSION:-v1.24.0}
 KUBECTL=${KUBECTL:-$PWD/kubectl}
 
@@ -36,7 +38,7 @@ VETH_NAME=${VETH_NAME:-link_${BRIDGE_NAME}}
 FRAMEWORK_IMAGE="quay.io/kiagnose/kiagnose:devel"
 
 options=$(getopt --options "" \
-    --long install-kind,install-kubectl,create-cluster,create-multi-node-cluster,delete-cluster,deploy-kiagnose,help\
+    --long install-kind,install-kubectl,create-cluster,create-multi-node-cluster,delete-cluster,deploy-kiagnose,load-kiagnose-image,build-test-image,help\
     -- "${@}")
 eval set -- "$options"
 while true; do
@@ -59,9 +61,15 @@ while true; do
     --deploy-kiagnose)
         OPT_DEPLOY_KIAGNOSE=1
         ;;
+    --load-kiagnose-image)
+        OPT_LOAD_KIAGNOSE_IMAGE=1
+        ;;
+    --build-test-image)
+        OPT_BUILD_TEST_IMAGE=1
+        ;;
     --help)
         set +x
-        echo "$0 [--install-kind] [--install-kubectl] [--create-cluster] [--create-multi-node-cluster] [--delete-cluster] [--deploy-kiagnose]"
+        echo "$0 [--install-kind] [--install-kubectl] [--create-cluster] [--create-multi-node-cluster] [--delete-cluster] [--deploy-kiagnose] [--load-kiagnose-image] [--build-test-image]"
         exit
         ;;
     --)
@@ -152,6 +160,17 @@ fi
 if [ -n "${OPT_DEPLOY_KIAGNOSE}" ]; then
   ${KIND} load docker-image "${FRAMEWORK_IMAGE}" --name "${CLUSTER_NAME}"
   ${KUBECTL} apply -f manifests/kiagnose.yaml
+fi
+
+if [ -n "${OPT_LOAD_KIAGNOSE_IMAGE}" ]; then
+  ${KIND} load docker-image "${FRAMEWORK_IMAGE}" --name "${CLUSTER_NAME}"
+  # When using podman, an indirect approach needs to be taken:
+  # ${CRI} save "${FRAMEWORK_IMAGE}" -o /tmp/kiagnose-image.tar
+  # ${KIND} load image-archive /tmp/kiagnose-image.tar
+fi
+
+if [ -n "${OPT_BUILD_TEST_IMAGE}" ]; then
+  ${CRI} build -f ./test/infra/Dockerfile -t kiagnose-e2e-test ./test/infra
 fi
 
 if [ -n "${OPT_DELETE_CLUSTER}" ]; then
