@@ -256,6 +256,10 @@ func (s checkupStub) Results() (results.Results, error) {
 	return s.results, nil
 }
 
+func (s checkupStub) Logs() error {
+	return nil
+}
+
 func (s checkupStub) Teardown() error {
 	return s.failTeardown
 }

@@ -21,6 +21,7 @@ package launcher
 
 import (
 	"errors"
+	"log"
 	"strings"
 	"time"
 
@@ -32,6 +33,7 @@ type workload interface {
 	Setup() error
 	Run() error
 	Results() (results.Results, error)
+	Logs() error
 	Teardown() error
 }
 
@@ -81,6 +83,10 @@ func (l Launcher) Run() (runErr error) {
 	}
 
 	defer func() {
+		if err := l.checkup.Logs(); err != nil {
+			log.Printf("failed to collect logs: %v", err)
+		}
+
 		if err := l.checkup.Teardown(); err != nil {
 			errorPool = append(errorPool, err)
 		}
