@@ -122,9 +122,11 @@ func (c *Checkup) Run() error {
 		return fmt.Errorf("%s: %v", errPrefix, err)
 	}
 
-	if c.job, err = job.WaitForJobToFinish(c.client, c.job, c.jobTimeout); err != nil {
+	var updatedJob *batchv1.Job
+	if updatedJob, err = job.WaitForJobToFinish(c.client, c.job, c.jobTimeout); err != nil {
 		return fmt.Errorf("%s: %v", errPrefix, err)
 	}
+	c.job = updatedJob
 
 	return nil
 }

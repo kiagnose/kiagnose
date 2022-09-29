@@ -369,7 +369,7 @@ func TestCheckupRunShouldFailWhen(t *testing.T) {
 
 		assert.NoError(t, testCheckup.Setup())
 		assert.ErrorContains(t, testCheckup.Run(), "initial RV \"\" is not supported")
-		assert.NoError(t, testCheckup.Teardown())
+		assert.ErrorContains(t, testCheckup.Teardown(), "initial RV \"\" is not supported")
 	})
 
 	t.Run("Job wont finish on time", func(t *testing.T) {
@@ -385,6 +385,7 @@ func TestCheckupRunShouldFailWhen(t *testing.T) {
 
 		assert.NoError(t, testCheckup.Setup())
 		assert.ErrorContains(t, testCheckup.Run(), wait.ErrWaitTimeout.Error())
+		testClient.injectWatchWithJobDeleteEvent(testCheckupName)
 		assert.NoError(t, testCheckup.Teardown())
 	})
 
@@ -405,6 +406,7 @@ func TestCheckupRunShouldFailWhen(t *testing.T) {
 
 		assert.NoError(t, testCheckup.Setup())
 		assert.ErrorContains(t, testCheckup.Run(), wait.ErrWaitTimeout.Error())
+		testClient.injectWatchWithJobDeleteEvent(testCheckupName)
 		assert.NoError(t, testCheckup.Teardown())
 	})
 }
