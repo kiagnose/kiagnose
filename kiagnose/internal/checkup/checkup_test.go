@@ -171,7 +171,7 @@ func TestTeardownInTargetNamespaceShouldSucceed(t *testing.T) {
 	testClient.injectJobWatchEvent(newJobWithCondition(checkupJobName, completeTrueJobCondition))
 	assert.NoError(t, testCheckup.Run())
 
-	testClient.injectWatchWithJobDeleteEvent(testTargetNs, checkupJobName)
+	testClient.injectWatchWithJobDeleteEvent(checkupJobName)
 	assert.NoError(t, testCheckup.Teardown())
 
 	assertNamespaceExists(t, testClient.Clientset, testTargetNs)
@@ -279,7 +279,7 @@ func TestCheckupRunShouldCreateAJob(t *testing.T) {
 			actualJob.ResourceVersion = ""
 			assert.Equal(t, actualJob, expectedJob)
 
-			testClient.injectWatchWithJobDeleteEvent(testTargetNs, checkupJobName)
+			testClient.injectWatchWithJobDeleteEvent(checkupJobName)
 			assert.NoError(t, testCheckup.Teardown())
 		})
 	}
@@ -317,7 +317,7 @@ func TestCheckupRunShouldSucceed(t *testing.T) {
 			assert.NoError(t, testCheckup.Setup())
 			assert.NoError(t, testCheckup.Run())
 
-			testClient.injectWatchWithJobDeleteEvent(testTargetNs, checkupJobName)
+			testClient.injectWatchWithJobDeleteEvent(checkupJobName)
 			assert.NoError(t, testCheckup.Teardown())
 		})
 	}
@@ -510,13 +510,13 @@ func (c *testsClient) injectJobWatchEvent(job *batchv1.Job) {
 	c.PrependWatchReactor(jobResource, watchReactionFn)
 }
 
-func (c *testsClient) injectWatchWithJobDeleteEvent(namespace, name string) {
+func (c *testsClient) injectWatchWithJobDeleteEvent(name string) {
 	watchReactionFn := func(action clienttesting.Action) (bool, watch.Interface, error) {
 		watcher := watch.NewRaceFreeFake()
 		watcher.Delete(&batchv1.Job{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:            name,
-				Namespace:       namespace,
+				Namespace:       testTargetNs,
 				ResourceVersion: "123",
 			},
 		})
