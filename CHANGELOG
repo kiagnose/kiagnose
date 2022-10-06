@@ -1,4 +1,21 @@
 # Changelog
+## [0.2.0] - 2022-10-06
+### Breaking Changes
+ - Removed ephemeral namespace feature
+ - Use user-supplied ServiceAccount object instead of binding ClusterRoles
+ - VM latency checkup: Source and target nodes should now be both unspecified or both specified
+ - VM latency checkup: Missing environment variables are treated as invalid
+ - VM latency checkup: Require `CHECKUP_UID` environment variable
+
+### New Features
+ - Added ability to execute checkups in a pre-existing namespace
+ - Checkup objects are named after the user-supplied ConfigMap
+ - Checkup log collection: checkup logs are concatenated to Kiagnose's log
+ - Base images: upgraded to `ubi-minimal:8.6-941`
+ - VM latency checkup: Ensure VMs are not scheduled on the same node by default
+ - VM latency checkup: Setup time is now faster due to setup optimization
+ - VM latency checkup: Source and target VMIs are labeled with the user-supplied CM's UID
+ - VM latency checkup: Tested node names are now reported (Issue #113)
 
 ## [0.1.0] - 2022-06-22
 ### New Features
