@@ -37,7 +37,6 @@ BRIDGE_NAME=${BRIDGE_NAME:-br10}
 FRAMEWORK_IMAGE="quay.io/kiagnose/kiagnose:devel"
 CHECKUP_IMAGE="quay.io/kiagnose/kubevirt-vm-latency:devel"
 
-KIAGNOSE_NAMESPACE=kiagnose
 KIAGNOSE_JOB=kubevirt-vm-latency-checkup
 VM_LATENCY_CONFIGMAP=kubevirt-vm-latency-checkup
 VM_LATENCY_SERVICE_ACCOUNT_NAME=kubevirt-vm-latency-checkup-sa
@@ -172,19 +171,19 @@ if [ -n "${OPT_DEPLOY_CHECKUP}" ]; then
 fi
 
 if [ -n "${OPT_RUN_TEST}" ]; then
-     cat <<EOF | ${KUBECTL} apply -f -
+     ${KUBECTL} apply -n ${TARGET_NAMESPACE} -f ./manifests/kiagnose.yaml
+
+     cat <<EOF | ${KUBECTL} apply -n ${TARGET_NAMESPACE} -f -
 ---
 apiVersion: v1
 kind: ServiceAccount
 metadata:
   name: ${VM_LATENCY_SERVICE_ACCOUNT_NAME}
-  namespace: ${TARGET_NAMESPACE}
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: Role
 metadata:
   name: kubevirt-vm-latency-checker
-  namespace: ${TARGET_NAMESPACE}
 rules:
 - apiGroups: ["kubevirt.io"]
   resources: ["virtualmachineinstances"]
@@ -200,7 +199,6 @@ apiVersion: rbac.authorization.k8s.io/v1
 kind: RoleBinding
 metadata:
   name: kubevirt-vm-latency-checker
-  namespace: ${TARGET_NAMESPACE}
 subjects:
 - kind: ServiceAccount
   name: ${VM_LATENCY_SERVICE_ACCOUNT_NAME}
@@ -213,13 +211,12 @@ EOF
     echo
     echo "Deploy ConfigMap with input data: "
     echo
-    cat <<EOF | ${KUBECTL} apply -f -
+    cat <<EOF | ${KUBECTL} apply -n ${TARGET_NAMESPACE} -f -
 ---
 apiVersion: v1
 kind: ConfigMap
 metadata:
   name: ${VM_LATENCY_CONFIGMAP}
-  namespace: ${TARGET_NAMESPACE}
 data:
   spec.image: ${CHECKUP_IMAGE}
   spec.timeout: 10m
@@ -233,13 +230,12 @@ EOF
     echo
     echo "Deploy and run kiagnose job: "
     echo
-    cat <<EOF | ${KUBECTL} apply -f -
+    cat <<EOF | ${KUBECTL} apply -n ${TARGET_NAMESPACE} -f -
 ---
 apiVersion: batch/v1
 kind: Job
 metadata:
   name: ${KIAGNOSE_JOB}
-  namespace: ${KIAGNOSE_NAMESPACE}
 spec:
   backoffLimit: 0
   template:
@@ -256,7 +252,7 @@ spec:
               value: ${VM_LATENCY_CONFIGMAP}
 EOF
 
-    ${KUBECTL} wait --for=condition=complete --timeout=10m job.batch/${KIAGNOSE_JOB} -n ${KIAGNOSE_NAMESPACE}
+    ${KUBECTL} wait --for=condition=complete --timeout=10m job.batch/${KIAGNOSE_JOB} -n ${TARGET_NAMESPACE}
 
     echo
     echo "Result:"
@@ -272,6 +268,6 @@ EOF
 fi
 
 if [ -n "${OPT_CLEAN_RUN}" ];then
-  ${KUBECTL} delete job ${KIAGNOSE_JOB} -n ${KIAGNOSE_NAMESPACE} --ignore-not-found
+  ${KUBECTL} delete job ${KIAGNOSE_JOB} -n ${TARGET_NAMESPACE} --ignore-not-found
   ${KUBECTL} delete configmap ${VM_LATENCY_CONFIGMAP} -n ${TARGET_NAMESPACE} --ignore-not-found
 fi
