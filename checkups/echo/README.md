@@ -11,13 +11,12 @@ This is an example checkup, used as a reference for creating more realistic chec
 
 The checkup requires only a ServiceAccount:
 ```bash
-cat <<EOF | kubectl apply -f -
+cat <<EOF | kubectl apply -n <target-namespace> -f -
 ---
 apiVersion: v1
 kind: ServiceAccount
 metadata:
   name: echo-checkup-sa
-  namespace: <target-namespace>
 EOF
 ```
 
@@ -27,12 +26,11 @@ In the user-supplied `ConfigMap` object, specify an arbitrary string as the valu
 
 In order to configure the checkup:
 ```bash
-cat <<EOF | kubectl apply -f -
+cat <<EOF | kubectl apply -n <target-namespace> -f -
 apiVersion: v1
 kind: ConfigMap
 metadata:
   name: echo-checkup-config
-  namespace: <target-namespace>
 data:
   spec.image: quay.io/kiagnose/echo-checkup:main
   spec.timeout: 1m
@@ -47,12 +45,11 @@ In order to execute the checkup:
 
 1. Apply the Kiagnose job:
 ```bash
-cat <<EOF | kubectl apply -f -
+cat <<EOF | kubectl apply -n <target-namespace> -f -
 apiVersion: batch/v1
 kind: Job
 metadata:
   name: echo-checkup1
-  namespace: kiagnose
 spec:
   backoffLimit: 0
   template:
@@ -73,7 +70,7 @@ EOF
 
 2. Wait for the Kiagnose Job to finish:
 ```bash
-kubectl wait --for=condition=complete --timeout=70s job/echo-checkup1 -n kiagnose
+kubectl wait --for=condition=complete --timeout=70s job/echo-checkup1 -n <target-namespace>
 ```
 
 ### Results Retrieval
@@ -121,7 +118,7 @@ metadata:
 
 Remove the Kiagnose Job and the ConfigMap object when the logs and the results are no longer needed:
 ```bash
-kubectl delete job.batch/echo-checkup1 -n kiagnose
+kubectl delete job.batch/echo-checkup1 -n <target-namespace>
 kubectl delete configmap echo-checkup-config -n <target-namespace>
 ```
 
