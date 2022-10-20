@@ -12,7 +12,7 @@ Kiagnose passes user-supplied configuration to the checkup, and reports the chec
 ## Prerequisites
 In order to use Kiagnose you should have:
 1. A running Kubernetes cluster.
-2. Admin privileges on this cluster.
+2. Namespace-Admin privileges on this cluster.
 3. [kubectl](https://kubernetes.io/docs/tasks/tools/#kubectl) utility.
 
 ## Kiagnose Installation
@@ -63,12 +63,14 @@ The user can configure the following under the `data` field:
 
 Example configuration:
 
+> **_NOTE:_** `metadata.namespace` field is optional.
+
 ```yaml
 apiVersion: v1
 kind: ConfigMap
 metadata:
   name: example-checkup-config
-  namespace: <target namespace>
+  namespace: <target-namespace>
 data:
   spec.image: my-registry/example-checkup:main
   spec.timeout: 5m
@@ -90,6 +92,8 @@ The Kiagnose Job acts as a "short-lived" controller, and controls the checkup li
 
 Apply a Kiagnose Job using the following manifest file:
 
+> **_NOTE:_** `metadata.namespace` field is optional.
+
 > **_NOTE:_** The `CONFIGMAP_NAMESPACE` and `CONFIGMAP_NAME` environment variables should point to the previously applied ConfigMap object.
  
 ```yaml
@@ -97,7 +101,7 @@ apiVersion: batch/v1
 kind: Job
 metadata:
   name: example-checkup
-  namespace: kiagnose
+  namespace: <target-namespace>
 spec:
   backoffLimit: 0
   template:
@@ -110,7 +114,7 @@ spec:
           imagePullPolicy: Always
           env:
             - name: CONFIGMAP_NAMESPACE
-              value: <target namespace>
+              value: <target-namespace>
             - name: CONFIGMAP_NAME
               value: example-checkup-config
 ```
@@ -156,12 +160,12 @@ data:
 
 In order to read the Kiagnose's logs (during or after its execution):
 ```bash
-kubectl logs job.batch/<Kiagnose-job-name> -n kiagnose
+kubectl logs job.batch/<Kiagnose-job-name> -n <target-namespace>
 ```
 
 Remove the Kiagnose Job and the ConfigMap object when the logs and the results are no longer needed:
 ```bash
-kubectl delete job.batch/<Kiagnose-job-name> -n kiagnose
+kubectl delete job.batch/<Kiagnose-job-name> -n <target-namespace>
 kubectl delete configmap <ConfigMap name> -n <target-namespace>
 ```
 
