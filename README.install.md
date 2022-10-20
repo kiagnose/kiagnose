@@ -1,6 +1,6 @@
 # Kiagnose Installation
 
-In order to install Kiagnose on your cluster:
+In order to install Kiagnose on your namespace:
 
 1. Clone this repository:
 
@@ -8,25 +8,24 @@ In order to install Kiagnose on your cluster:
 git clone https://github.com/kiagnose/kiagnose.git
 ```
 
-2. Apply the following manifest from the project root directory (as a `cluster-admin` user):
+2. Apply the following manifest from the project root directory to the desired target namespace:
 
 ```bash
-kubectl apply -f ./manifests/kiagnose.yaml
+kubectl apply -f ./manifests/kiagnose.yaml -n <target-namespace>
 ```
 
 This manifest contains the following objects:
 
-- `kiagnose` [Namespace](https://kubernetes.io/docs/concepts/overview/working-with-objects/namespaces/) object.
 - `kiagnose` [ServiceAccount](https://kubernetes.io/docs/reference/access-authn-authz/rbac/#service-account-permissions)
   object.
-- `kiagnose` [ClusterRole](https://kubernetes.io/docs/reference/access-authn-authz/rbac/#role-and-clusterrole)
-  and [ClusterRoleBinding](https://kubernetes.io/docs/reference/access-authn-authz/rbac/#rolebinding-and-clusterrolebinding)
+- `kiagnose` [Role](https://kubernetes.io/docs/reference/access-authn-authz/rbac/#role-and-clusterrole)
+  and [RoleBinding](https://kubernetes.io/docs/reference/access-authn-authz/rbac/#rolebinding-and-clusterrolebinding)
   objects.
 
 # Kiagnose Removal
 
-1. Delete the objects contained in the following manifest from the project root directory (as a `cluster-admin` user):
+1. Delete the objects contained in the following manifest from the project root directory:
 
 ```bash
-kubectl delete -f ./manifests/kiagnose.yaml
+kubectl delete -f ./manifests/kiagnose.yaml  -n <target-namespace>
 ```
