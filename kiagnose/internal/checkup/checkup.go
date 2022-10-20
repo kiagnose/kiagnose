@@ -259,7 +259,7 @@ func NameResultsConfigMapWriterRole(checkupName string) string {
 }
 
 func NameJob(checkupName string) string {
-	return checkupName
+	return checkupName + "-checkup"
 }
 
 func concentrateErrors(errs []error) error {
