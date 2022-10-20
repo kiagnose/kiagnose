@@ -31,7 +31,6 @@ CLUSTER_NAME=${CLUSTER_NAME:-kind}
 FRAMEWORK_IMAGE="quay.io/kiagnose/kiagnose:devel"
 CHECKUP_IMAGE="quay.io/kiagnose/echo-checkup:devel"
 
-KIAGNOSE_NAMESPACE=kiagnose
 KIAGNOSE_JOB=echo-checkup
 ECHO_CONFIGMAP=echo-checkup
 ECHO_SERVICE_ACCOUNT_NAME=echo-sa
@@ -82,25 +81,25 @@ fi
 if [ -n "${OPT_RUN_TEST}" ]; then
     ${KUBECTL} create namespace ${TARGET_NAMESPACE}
 
-    cat <<EOF | ${KUBECTL} apply -f -
+    ${KUBECTL} apply -n ${TARGET_NAMESPACE} -f ./manifests/kiagnose.yaml
+
+    cat <<EOF | ${KUBECTL} apply -n ${TARGET_NAMESPACE} -f -
 ---
 apiVersion: v1
 kind: ServiceAccount
 metadata:
   name: ${ECHO_SERVICE_ACCOUNT_NAME}
-  namespace: ${TARGET_NAMESPACE}
 EOF
 
     echo
     echo "Deploy ConfigMap with input data: "
     echo
-    cat <<EOF | ${KUBECTL} apply -f -
+    cat <<EOF | ${KUBECTL} apply -n ${TARGET_NAMESPACE} -f -
 ---
 apiVersion: v1
 kind: ConfigMap
 metadata:
   name: ${ECHO_CONFIGMAP}
-  namespace: ${TARGET_NAMESPACE}
 data:
   spec.image: ${CHECKUP_IMAGE}
   spec.timeout: 1m
@@ -111,13 +110,12 @@ EOF
     echo
     echo "Deploy and run kiagnose job: "
     echo
-    cat <<EOF | ${KUBECTL} apply -f -
+    cat <<EOF | ${KUBECTL} apply -n ${TARGET_NAMESPACE} -f -
 ---
 apiVersion: batch/v1
 kind: Job
 metadata:
   name: ${KIAGNOSE_JOB}
-  namespace: ${KIAGNOSE_NAMESPACE}
 spec:
   backoffLimit: 0
   template:
@@ -134,7 +132,7 @@ spec:
               value: ${ECHO_CONFIGMAP}
 EOF
 
-    ${KUBECTL} wait --for=condition=complete --timeout=10m job.batch/${KIAGNOSE_JOB} -n ${KIAGNOSE_NAMESPACE}
+    ${KUBECTL} wait --for=condition=complete --timeout=10m job.batch/${KIAGNOSE_JOB} -n ${TARGET_NAMESPACE}
 
      echo
      echo "Result:"
@@ -144,6 +142,6 @@ EOF
 fi
 
 if [ -n "${OPT_CLEAN_RUN}" ];then
-  ${KUBECTL} delete job ${KIAGNOSE_JOB} -n ${KIAGNOSE_NAMESPACE} --ignore-not-found
+  ${KUBECTL} delete job ${KIAGNOSE_JOB} -n ${TARGET_NAMESPACE} --ignore-not-found
   ${KUBECTL} delete configmap ${ECHO_CONFIGMAP} -n ${TARGET_NAMESPACE} --ignore-not-found
 fi
