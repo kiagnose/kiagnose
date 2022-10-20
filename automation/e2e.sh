@@ -151,7 +151,6 @@ fi
 
 if [ -n "${OPT_DEPLOY_KIAGNOSE}" ]; then
   ${KIND} load docker-image "${FRAMEWORK_IMAGE}" --name "${CLUSTER_NAME}"
-  ${KUBECTL} apply -f manifests/kiagnose.yaml
 fi
 
 if [ -n "${OPT_DELETE_CLUSTER}" ]; then
