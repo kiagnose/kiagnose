@@ -31,19 +31,17 @@ The default binding method is `bridge`.
 ## Permissions
 The checkup requires some additional permissions in order to operate:
 ```bash
-cat <<EOF | kubectl apply -f -
+cat <<EOF | kubectl apply -n <target-namespace> -f -
 ---
 apiVersion: v1
 kind: ServiceAccount
 metadata:
   name: vm-latency-checkup-sa
-  namespace: <target-namespace>
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: Role
 metadata:
   name: kubevirt-vm-latency-checker
-  namespace: <target-namespace>
 rules:
 - apiGroups: ["kubevirt.io"]
   resources: ["virtualmachineinstances"]
@@ -59,7 +57,6 @@ apiVersion: rbac.authorization.k8s.io/v1
 kind: RoleBinding
 metadata:
   name: kubevirt-vm-latency-checker
-  namespace: <target-namespace>
 subjects:
 - kind: ServiceAccount
   name: vm-latency-checkup-sa
@@ -91,14 +88,13 @@ The checkup is configured by the following parameters:
 > Specifying both `source_node` and `target_node` will override this behaviour and each VM will be created on the desired node.
 
 ### Example
-```yaml
-cat <<EOF | kubectl apply -f -
+```bash
+cat <<EOF | kubectl apply -n <target-namespace> -f -
 ---
 apiVersion: v1
 kind: ConfigMap
 metadata:
   name: kubevirt-vm-latency-checkup-config
-  namespace: <target-namespace>
 data:
   spec.image: quay.io/kiagnose/kubevirt-vm-latency:main
   spec.timeout: 5m
@@ -114,14 +110,13 @@ EOF
 
 ## How to run
 The checkup can be executed with a Batch Job: 
-```yaml
-cat <<EOF | kubectl apply -f -
+```bash
+cat <<EOF | kubectl apply -n <target-namespace> -f -
 ---
 apiVersion: batch/v1
 kind: Job
 metadata:
   name: kubevirt-vm-latency-checkup
-  namespace: kiagnose
 spec:
   backoffLimit: 0
   template:
@@ -144,7 +139,7 @@ EOF
 
 Wait for the checkup to finish:
 ```bash
-kubectl wait job kubevirt-vm-latency-checkup -n kiagnose --for condition=complete --timeout 6m
+kubectl wait job kubevirt-vm-latency-checkup -n <target-namespace> --for condition=complete --timeout 6m
 ```
 
 ## Results
@@ -216,7 +211,7 @@ status.failureReason: "run: failed to run check: failed due to connectivity issu
 
 ## Clean up
 ```bash
-kubectl delete job -n kiagnose kubevirt-vm-latency-checkup
+kubectl delete job -n <target-namespace> kubevirt-vm-latency-checkup
 kubectl delete config-map -n <target-namespace> kubevirt-vm-latency-checkup-config
 ```
 Once the checkup is finished it's safe to remove the ClusterRole:
