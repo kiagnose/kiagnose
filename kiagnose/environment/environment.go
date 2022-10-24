@@ -17,14 +17,14 @@
  *
  */
 
-package main
+package environment
 
 import (
 	"os"
 	"strings"
 )
 
-func envToMap(rawEnv []string) map[string]string {
+func EnvToMap(rawEnv []string) map[string]string {
 	const requiredElementsCount = 2
 
 	env := map[string]string{}
@@ -41,7 +41,7 @@ func envToMap(rawEnv []string) map[string]string {
 	return env
 }
 
-func readNamespaceFile() (string, error) {
+func ReadNamespaceFile() (string, error) {
 	const namespaceFile = "/var/run/secrets/kubernetes.io/serviceaccount/namespace"
 
 	ns, err := os.ReadFile(namespaceFile)

@@ -17,27 +17,37 @@
  *
  */
 
-package main
+package environment
 
 import (
-	"log"
 	"os"
-
-	"github.com/kiagnose/kiagnose/kiagnose/environment"
-
-	"github.com/kiagnose/kiagnose/checkups/kubevirt-vm-latency/vmlatency"
+	"strings"
 )
 
-func main() {
-	const errMessagePrefix = "Kubevirt VM latency checkup failed"
-	env := environment.EnvToMap(os.Environ())
+func EnvToMap(rawEnv []string) map[string]string {
+	const requiredElementsCount = 2
 
-	workingNamespace, err := environment.ReadNamespaceFile()
+	env := map[string]string{}
+
+	for _, entry := range rawEnv {
+		splitKeyValue := strings.Split(entry, "=")
+		if len(splitKeyValue) != requiredElementsCount {
+			continue
+		}
+
+		env[splitKeyValue[0]] = splitKeyValue[1]
+	}
+
+	return env
+}
+
+func ReadNamespaceFile() (string, error) {
+	const namespaceFile = "/var/run/secrets/kubernetes.io/serviceaccount/namespace"
+
+	ns, err := os.ReadFile(namespaceFile)
 	if err != nil {
-		log.Fatalf("%s: %v\n", errMessagePrefix, err)
+		return "", err
 	}
 
-	if err := vmlatency.Run(env, workingNamespace); err != nil {
-		log.Fatalf("%s: %v\n", errMessagePrefix, err)
-	}
+	return string(ns), nil
 }
