@@ -6,6 +6,7 @@ require (
 	github.com/containernetworking/cni v1.1.1
 	github.com/google/goexpect v0.0.0-20210430020637-ab937bf7fd6f
 	github.com/k8snetworkplumbingwg/network-attachment-definition-client v0.0.0-20191119172530-79f836b90111
+	github.com/kiagnose/kiagnose v0.0.0-00010101000000-000000000000
 	github.com/stretchr/testify v1.7.1
 	k8s.io/api v0.23.5
 	k8s.io/client-go v12.0.0+incompatible
@@ -20,6 +21,8 @@ require (
 )
 
 replace k8s.io/client-go => k8s.io/client-go v0.23.5
+
+replace github.com/kiagnose/kiagnose => ../../
 
 require (
 	github.com/coreos/prometheus-operator v0.38.0 // indirect
