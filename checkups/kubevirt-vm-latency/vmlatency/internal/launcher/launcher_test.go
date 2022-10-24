@@ -83,21 +83,6 @@ func TestLauncherShould(t *testing.T) {
 		assert.ErrorContains(t, testLauncher.Run(), errorReport.Error())
 	})
 
-	t.Run("fail when preflight is failing", func(t *testing.T) {
-		testLauncher := launcher.New(checkupStub{failPreflight: errorPreflight}, reporterStub{})
-		assert.ErrorContains(t, testLauncher.Run(), errorPreflight.Error())
-	})
-
-	t.Run("fail when preflight and report are failing", func(t *testing.T) {
-		testLauncher := launcher.New(
-			checkupStub{failPreflight: errorPreflight},
-			reporterStub{failReport: errorReport},
-		)
-		err := testLauncher.Run()
-		assert.ErrorContains(t, err, errorPreflight.Error())
-		assert.ErrorContains(t, err, errorReport.Error())
-	})
-
 	t.Run("fail when setup is failing", func(t *testing.T) {
 		testLauncher := launcher.New(checkupStub{failSetup: errorSetup}, reporterStub{})
 		assert.ErrorContains(t, testLauncher.Run(), errorSetup.Error())
@@ -183,22 +168,16 @@ func TestLauncherShouldSuccessfullyProduceStatusResults(t *testing.T) {
 }
 
 var (
-	errorPreflight = errors.New("preflight check error")
-	errorSetup     = errors.New("setup error")
-	errorRun       = errors.New("run error")
-	errorTeardown  = errors.New("teardown error")
-	errorReport    = errors.New("report error")
+	errorSetup    = errors.New("setup error")
+	errorRun      = errors.New("run error")
+	errorTeardown = errors.New("teardown error")
+	errorReport   = errors.New("report error")
 )
 
 type checkupStub struct {
-	failPreflight error
-	failSetup     error
-	failRun       error
-	failTeardown  error
-}
-
-func (s checkupStub) Preflight() error {
-	return s.failPreflight
+	failSetup    error
+	failRun      error
+	failTeardown error
 }
 
 func (s checkupStub) Setup(_ context.Context) error {

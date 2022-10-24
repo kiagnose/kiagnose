@@ -28,7 +28,6 @@ import (
 )
 
 type checkup interface {
-	Preflight() error
 	Setup(ctx context.Context) error
 	Run() error
 	Teardown(ctx context.Context) error
@@ -61,11 +60,6 @@ func (l launcher) Run() (runErr error) {
 		}
 		runErr = failureReason(runStatus)
 	}()
-
-	if err := l.checkup.Preflight(); err != nil {
-		runStatus.FailureReason = append(runStatus.FailureReason, err.Error())
-		return err
-	}
 
 	if err := l.checkup.Setup(context.Background()); err != nil {
 		runStatus.FailureReason = append(runStatus.FailureReason, err.Error())

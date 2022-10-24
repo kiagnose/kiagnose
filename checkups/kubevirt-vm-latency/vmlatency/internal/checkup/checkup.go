@@ -65,10 +65,6 @@ func New(c vmi.KubevirtVmisClient, uid, namespace string, params config.CheckupP
 	}
 }
 
-func (c *checkup) Preflight() error {
-	return nil
-}
-
 const (
 	SourceVmiName        = "latency-check-source"
 	TargetVmiName        = "latency-check-target"
