@@ -35,7 +35,7 @@ import (
 
 	"github.com/kiagnose/kiagnose/kiagnose/internal/configmap"
 	"github.com/kiagnose/kiagnose/kiagnose/internal/reporter"
-	"github.com/kiagnose/kiagnose/kiagnose/internal/status"
+	"github.com/kiagnose/kiagnose/kiagnose/status"
 	"github.com/kiagnose/kiagnose/kiagnose/types"
 )
 
