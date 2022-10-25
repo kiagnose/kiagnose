@@ -29,7 +29,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 
-	"github.com/kiagnose/kiagnose/kiagnose/internal/configmap"
+	"github.com/kiagnose/kiagnose/kiagnose/configmap"
 	"github.com/kiagnose/kiagnose/kiagnose/status"
 	"github.com/kiagnose/kiagnose/kiagnose/types"
 )
