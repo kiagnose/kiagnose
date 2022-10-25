@@ -24,7 +24,7 @@ import (
 	"github.com/kiagnose/kiagnose/kiagnose/internal/client"
 	"github.com/kiagnose/kiagnose/kiagnose/internal/config"
 	"github.com/kiagnose/kiagnose/kiagnose/internal/launcher"
-	"github.com/kiagnose/kiagnose/kiagnose/internal/reporter"
+	"github.com/kiagnose/kiagnose/kiagnose/reporter"
 )
 
 func Run(env map[string]string) error {
