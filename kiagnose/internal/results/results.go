@@ -26,7 +26,7 @@ import (
 
 	"k8s.io/client-go/kubernetes"
 
-	"github.com/kiagnose/kiagnose/kiagnose/internal/configmap"
+	"github.com/kiagnose/kiagnose/kiagnose/configmap"
 )
 
 const (

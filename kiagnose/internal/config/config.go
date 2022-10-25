@@ -27,7 +27,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/client-go/kubernetes"
 
-	"github.com/kiagnose/kiagnose/kiagnose/internal/configmap"
+	"github.com/kiagnose/kiagnose/kiagnose/configmap"
 	"github.com/kiagnose/kiagnose/kiagnose/types"
 )
 
