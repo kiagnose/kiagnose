@@ -42,8 +42,8 @@ import (
 	"k8s.io/client-go/kubernetes/fake"
 	clienttesting "k8s.io/client-go/testing"
 
+	"github.com/kiagnose/kiagnose/kiagnose/config"
 	"github.com/kiagnose/kiagnose/kiagnose/internal/checkup"
-	"github.com/kiagnose/kiagnose/kiagnose/internal/config"
 )
 
 const (
