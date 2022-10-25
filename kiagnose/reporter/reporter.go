@@ -53,6 +53,10 @@ func New(client kubernetes.Interface, configMapNamespace, configMapName string) 
 	}
 }
 
+func (r *Reporter) HasData() bool {
+	return r.configMap.Data != nil
+}
+
 func (r *Reporter) Report(statusData status.Status) error {
 	if r.configMap.Data == nil {
 		configMap, err := configmap.Get(r.client, r.configMap.Namespace, r.configMap.Name)

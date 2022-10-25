@@ -90,3 +90,12 @@ func paramsToEnvVars(params map[string]string) []corev1.EnvVar {
 
 	return envVars
 }
+
+func EnvVarsToParams(envVars []corev1.EnvVar) map[string]string {
+	params := map[string]string{}
+	for _, v := range envVars {
+		params[v.Name] = v.Value
+	}
+
+	return params
+}
