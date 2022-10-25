@@ -36,7 +36,7 @@ import (
 	"github.com/kiagnose/kiagnose/kiagnose/internal/launcher"
 	"github.com/kiagnose/kiagnose/kiagnose/internal/reporter"
 	"github.com/kiagnose/kiagnose/kiagnose/internal/results"
-	"github.com/kiagnose/kiagnose/kiagnose/internal/status"
+	"github.com/kiagnose/kiagnose/kiagnose/status"
 	"github.com/kiagnose/kiagnose/kiagnose/types"
 )
 
