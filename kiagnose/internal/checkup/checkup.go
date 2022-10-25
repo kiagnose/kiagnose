@@ -33,9 +33,9 @@ import (
 
 	"k8s.io/client-go/kubernetes"
 
+	"github.com/kiagnose/kiagnose/kiagnose/config"
 	"github.com/kiagnose/kiagnose/kiagnose/configmap"
 	"github.com/kiagnose/kiagnose/kiagnose/internal/checkup/job"
-	"github.com/kiagnose/kiagnose/kiagnose/internal/config"
 	"github.com/kiagnose/kiagnose/kiagnose/internal/rbac"
 	"github.com/kiagnose/kiagnose/kiagnose/internal/results"
 )
