@@ -26,7 +26,7 @@ import (
 	"time"
 
 	"github.com/kiagnose/kiagnose/kiagnose/internal/results"
-	"github.com/kiagnose/kiagnose/kiagnose/internal/status"
+	"github.com/kiagnose/kiagnose/kiagnose/status"
 )
 
 type workload interface {
