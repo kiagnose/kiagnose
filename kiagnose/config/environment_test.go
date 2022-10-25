@@ -24,7 +24,7 @@ import (
 
 	assert "github.com/stretchr/testify/require"
 
-	"github.com/kiagnose/kiagnose/kiagnose/internal/config"
+	"github.com/kiagnose/kiagnose/kiagnose/config"
 )
 
 func TestConfigMapFullNameShouldSucceed(t *testing.T) {

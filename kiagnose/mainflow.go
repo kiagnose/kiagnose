@@ -20,9 +20,9 @@
 package kiagnose
 
 import (
+	"github.com/kiagnose/kiagnose/kiagnose/config"
 	"github.com/kiagnose/kiagnose/kiagnose/internal/checkup"
 	"github.com/kiagnose/kiagnose/kiagnose/internal/client"
-	"github.com/kiagnose/kiagnose/kiagnose/internal/config"
 	"github.com/kiagnose/kiagnose/kiagnose/internal/launcher"
 	"github.com/kiagnose/kiagnose/kiagnose/reporter"
 )
