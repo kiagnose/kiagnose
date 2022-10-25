@@ -36,9 +36,7 @@ type configCreateTestCases struct {
 }
 
 const (
-	testCheckupUID                    = "0123456789"
 	testNamespace                     = "default"
-	testResultConfigMapName           = "results"
 	testNetAttachDefName              = "blue-net"
 	testDesiredMaxLatencyMilliseconds = 100
 	testSampleDurationSeconds         = 60
@@ -51,71 +49,47 @@ func TestCreateConfigFromEnvShould(t *testing.T) {
 		{
 			description: "set default sample duration when env var is missing",
 			env: map[string]string{
-				config.CheckupUIDEnvVarName:                    testCheckupUID,
-				config.ResultsConfigMapNameEnvVarName:          testResultConfigMapName,
-				config.ResultsConfigMapNamespaceEnvVarName:     testNamespace,
 				config.NetworkNameEnvVarName:                   testNetAttachDefName,
 				config.NetworkNamespaceEnvVarName:              testNamespace,
 				config.DesiredMaxLatencyMillisecondsEnvVarName: fmt.Sprintf("%d", testDesiredMaxLatencyMilliseconds),
 			},
 			expectedConfig: config.Config{
-				CheckupParameters: config.CheckupParameters{
-					SampleDurationSeconds:                config.DefaultSampleDurationSeconds,
-					NetworkAttachmentDefinitionName:      testNetAttachDefName,
-					NetworkAttachmentDefinitionNamespace: testNamespace,
-					DesiredMaxLatencyMilliseconds:        testDesiredMaxLatencyMilliseconds,
-				},
-				CheckupUID:                testCheckupUID,
-				ResultsConfigMapName:      testResultConfigMapName,
-				ResultsConfigMapNamespace: testNamespace,
+				SampleDurationSeconds:                config.DefaultSampleDurationSeconds,
+				NetworkAttachmentDefinitionName:      testNetAttachDefName,
+				NetworkAttachmentDefinitionNamespace: testNamespace,
+				DesiredMaxLatencyMilliseconds:        testDesiredMaxLatencyMilliseconds,
 			},
 		},
 		{
 			description: "set default desired max latency when env var is missing",
 			env: map[string]string{
-				config.CheckupUIDEnvVarName:                testCheckupUID,
-				config.ResultsConfigMapNameEnvVarName:      testResultConfigMapName,
-				config.ResultsConfigMapNamespaceEnvVarName: testNamespace,
-				config.NetworkNameEnvVarName:               testNetAttachDefName,
-				config.NetworkNamespaceEnvVarName:          testNamespace,
-				config.SampleDurationSecondsEnvVarName:     fmt.Sprintf("%d", testSampleDurationSeconds),
+				config.NetworkNameEnvVarName:           testNetAttachDefName,
+				config.NetworkNamespaceEnvVarName:      testNamespace,
+				config.SampleDurationSecondsEnvVarName: fmt.Sprintf("%d", testSampleDurationSeconds),
 			},
 			expectedConfig: config.Config{
-				CheckupParameters: config.CheckupParameters{
-					DesiredMaxLatencyMilliseconds:        config.DefaultDesiredMaxLatencyMilliseconds,
-					NetworkAttachmentDefinitionName:      testNetAttachDefName,
-					NetworkAttachmentDefinitionNamespace: testNamespace,
-					SampleDurationSeconds:                testSampleDurationSeconds,
-				},
-				CheckupUID:                testCheckupUID,
-				ResultsConfigMapName:      testResultConfigMapName,
-				ResultsConfigMapNamespace: testNamespace,
+				DesiredMaxLatencyMilliseconds:        config.DefaultDesiredMaxLatencyMilliseconds,
+				NetworkAttachmentDefinitionName:      testNetAttachDefName,
+				NetworkAttachmentDefinitionNamespace: testNamespace,
+				SampleDurationSeconds:                testSampleDurationSeconds,
 			},
 		},
 		{
 			description: "set source and target nodes when both are specified",
 			env: map[string]string{
-				config.CheckupUIDEnvVarName:                testCheckupUID,
-				config.ResultsConfigMapNameEnvVarName:      testResultConfigMapName,
-				config.ResultsConfigMapNamespaceEnvVarName: testNamespace,
-				config.NetworkNameEnvVarName:               testNetAttachDefName,
-				config.NetworkNamespaceEnvVarName:          testNamespace,
-				config.SampleDurationSecondsEnvVarName:     fmt.Sprintf("%d", testSampleDurationSeconds),
-				config.SourceNodeNameEnvVarName:            testSourceNodeName,
-				config.TargetNodeNameEnvVarName:            testTargetNodeName,
+				config.NetworkNameEnvVarName:           testNetAttachDefName,
+				config.NetworkNamespaceEnvVarName:      testNamespace,
+				config.SampleDurationSecondsEnvVarName: fmt.Sprintf("%d", testSampleDurationSeconds),
+				config.SourceNodeNameEnvVarName:        testSourceNodeName,
+				config.TargetNodeNameEnvVarName:        testTargetNodeName,
 			},
 			expectedConfig: config.Config{
-				CheckupParameters: config.CheckupParameters{
-					DesiredMaxLatencyMilliseconds:        config.DefaultDesiredMaxLatencyMilliseconds,
-					NetworkAttachmentDefinitionName:      testNetAttachDefName,
-					NetworkAttachmentDefinitionNamespace: testNamespace,
-					SampleDurationSeconds:                testSampleDurationSeconds,
-					SourceNodeName:                       testSourceNodeName,
-					TargetNodeName:                       testTargetNodeName,
-				},
-				CheckupUID:                testCheckupUID,
-				ResultsConfigMapName:      testResultConfigMapName,
-				ResultsConfigMapNamespace: testNamespace,
+				DesiredMaxLatencyMilliseconds:        config.DefaultDesiredMaxLatencyMilliseconds,
+				NetworkAttachmentDefinitionName:      testNetAttachDefName,
+				NetworkAttachmentDefinitionNamespace: testNamespace,
+				SampleDurationSeconds:                testSampleDurationSeconds,
+				SourceNodeName:                       testSourceNodeName,
+				TargetNodeName:                       testTargetNodeName,
 			},
 		},
 	}
@@ -159,53 +133,17 @@ func TestCreateConfigFromEnvShouldFailWhen(t *testing.T) {
 func TestCreateConfigFromEnvShouldFailWhenMandatoryEnvVarsAreMissing(t *testing.T) {
 	testCases := []configCreateFallingTestCases{
 		{
-			description:   "Checkup UID env var is missing",
-			expectedError: config.ErrInvalidCheckupUID,
-			env: map[string]string{
-				config.ResultsConfigMapNameEnvVarName:      testResultConfigMapName,
-				config.ResultsConfigMapNamespaceEnvVarName: testNamespace,
-				config.NetworkNameEnvVarName:               testNetAttachDefName,
-				config.NetworkNamespaceEnvVarName:          testNamespace,
-			},
-		},
-		{
-			description:   "results ConfigMap name env var is missing",
-			expectedError: config.ErrInvalidResultsConfigMapName,
-			env: map[string]string{
-				config.CheckupUIDEnvVarName:                testCheckupUID,
-				config.ResultsConfigMapNamespaceEnvVarName: testNamespace,
-				config.NetworkNameEnvVarName:               testNetAttachDefName,
-				config.NetworkNamespaceEnvVarName:          testNamespace,
-			},
-		},
-		{
-			description:   "results ConfigMap namespace env var is missing",
-			expectedError: config.ErrInvalidResultsConfigMapNamespace,
-			env: map[string]string{
-				config.CheckupUIDEnvVarName:           testCheckupUID,
-				config.ResultsConfigMapNameEnvVarName: testResultConfigMapName,
-				config.NetworkNameEnvVarName:          testNetAttachDefName,
-				config.NetworkNamespaceEnvVarName:     testNamespace,
-			},
-		},
-		{
 			description:   "network name env var is missing",
 			expectedError: config.ErrInvalidNetworkName,
 			env: map[string]string{
-				config.CheckupUIDEnvVarName:                testCheckupUID,
-				config.ResultsConfigMapNameEnvVarName:      testResultConfigMapName,
-				config.ResultsConfigMapNamespaceEnvVarName: testNamespace,
-				config.NetworkNamespaceEnvVarName:          testNamespace,
+				config.NetworkNamespaceEnvVarName: testNamespace,
 			},
 		},
 		{
 			description:   "network namespace env var is missing",
 			expectedError: config.ErrInvalidNetworkNamespace,
 			env: map[string]string{
-				config.CheckupUIDEnvVarName:                testCheckupUID,
-				config.ResultsConfigMapNameEnvVarName:      testResultConfigMapName,
-				config.ResultsConfigMapNamespaceEnvVarName: testNamespace,
-				config.NetworkNameEnvVarName:               testNetAttachDefName,
+				config.NetworkNameEnvVarName: testNetAttachDefName,
 			},
 		},
 	}
@@ -221,58 +159,19 @@ func TestCreateConfigFromEnvShouldFailWhenMandatoryEnvVarsAreMissing(t *testing.
 func TestCreateConfigFromEnvShouldFailWhenMandatoryEnvVarsAreInvalid(t *testing.T) {
 	testCases := []configCreateFallingTestCases{
 		{
-			description:   "Checkup UID env var value is not valid",
-			expectedError: config.ErrInvalidCheckupUID,
-			env: map[string]string{
-				config.CheckupUIDEnvVarName:                "",
-				config.ResultsConfigMapNameEnvVarName:      testResultConfigMapName,
-				config.ResultsConfigMapNamespaceEnvVarName: testNamespace,
-				config.NetworkNameEnvVarName:               testNetAttachDefName,
-				config.NetworkNamespaceEnvVarName:          testNamespace,
-			},
-		},
-		{
-			description:   "results ConfigMap name env var value is not valid",
-			expectedError: config.ErrInvalidResultsConfigMapName,
-			env: map[string]string{
-				config.CheckupUIDEnvVarName:                testCheckupUID,
-				config.ResultsConfigMapNameEnvVarName:      "",
-				config.ResultsConfigMapNamespaceEnvVarName: testNamespace,
-				config.NetworkNameEnvVarName:               testNetAttachDefName,
-				config.NetworkNamespaceEnvVarName:          testNamespace,
-			},
-		},
-		{
-			description:   "results ConfigMap namespace env var value is not valid",
-			expectedError: config.ErrInvalidResultsConfigMapNamespace,
-			env: map[string]string{
-				config.CheckupUIDEnvVarName:                testCheckupUID,
-				config.ResultsConfigMapNameEnvVarName:      testResultConfigMapName,
-				config.ResultsConfigMapNamespaceEnvVarName: "",
-				config.NetworkNameEnvVarName:               testNetAttachDefName,
-				config.NetworkNamespaceEnvVarName:          testNamespace,
-			},
-		},
-		{
 			description:   "network name env var value is not valid",
 			expectedError: config.ErrInvalidNetworkName,
 			env: map[string]string{
-				config.CheckupUIDEnvVarName:                testCheckupUID,
-				config.ResultsConfigMapNameEnvVarName:      testResultConfigMapName,
-				config.ResultsConfigMapNamespaceEnvVarName: testNamespace,
-				config.NetworkNameEnvVarName:               "",
-				config.NetworkNamespaceEnvVarName:          testNamespace,
+				config.NetworkNameEnvVarName:      "",
+				config.NetworkNamespaceEnvVarName: testNamespace,
 			},
 		},
 		{
 			description:   "network namespace env var value is not valid",
 			expectedError: config.ErrInvalidNetworkNamespace,
 			env: map[string]string{
-				config.CheckupUIDEnvVarName:                testCheckupUID,
-				config.ResultsConfigMapNameEnvVarName:      testResultConfigMapName,
-				config.ResultsConfigMapNamespaceEnvVarName: testNamespace,
-				config.NetworkNameEnvVarName:               testNetAttachDefName,
-				config.NetworkNamespaceEnvVarName:          "",
+				config.NetworkNameEnvVarName:      testNetAttachDefName,
+				config.NetworkNamespaceEnvVarName: "",
 			},
 		},
 	}
@@ -290,50 +189,38 @@ func TestCreateConfigFromEnvShouldFailWhenNodeNames(t *testing.T) {
 			description:   "source node name is set but target node name isn't",
 			expectedError: config.ErrIllegalSourceAndTargetNodesCombination,
 			env: map[string]string{
-				config.CheckupUIDEnvVarName:                testCheckupUID,
-				config.ResultsConfigMapNameEnvVarName:      testResultConfigMapName,
-				config.ResultsConfigMapNamespaceEnvVarName: testNamespace,
-				config.NetworkNameEnvVarName:               testNetAttachDefName,
-				config.NetworkNamespaceEnvVarName:          testNamespace,
-				config.SourceNodeNameEnvVarName:            testSourceNodeName,
+				config.NetworkNameEnvVarName:      testNetAttachDefName,
+				config.NetworkNamespaceEnvVarName: testNamespace,
+				config.SourceNodeNameEnvVarName:   testSourceNodeName,
 			},
 		},
 		{
 			description:   "target node name is set but source node name isn't",
 			expectedError: config.ErrIllegalSourceAndTargetNodesCombination,
 			env: map[string]string{
-				config.CheckupUIDEnvVarName:                testCheckupUID,
-				config.ResultsConfigMapNameEnvVarName:      testResultConfigMapName,
-				config.ResultsConfigMapNamespaceEnvVarName: testNamespace,
-				config.NetworkNameEnvVarName:               testNetAttachDefName,
-				config.NetworkNamespaceEnvVarName:          testNamespace,
-				config.TargetNodeNameEnvVarName:            testTargetNodeName,
+				config.NetworkNameEnvVarName:      testNetAttachDefName,
+				config.NetworkNamespaceEnvVarName: testNamespace,
+				config.TargetNodeNameEnvVarName:   testTargetNodeName,
 			},
 		},
 		{
 			description:   "source node name is empty",
 			expectedError: config.ErrIllegalSourceAndTargetNodesCombination,
 			env: map[string]string{
-				config.CheckupUIDEnvVarName:                testCheckupUID,
-				config.ResultsConfigMapNameEnvVarName:      testResultConfigMapName,
-				config.ResultsConfigMapNamespaceEnvVarName: testNamespace,
-				config.NetworkNameEnvVarName:               testNetAttachDefName,
-				config.NetworkNamespaceEnvVarName:          testNamespace,
-				config.SourceNodeNameEnvVarName:            "",
-				config.TargetNodeNameEnvVarName:            testTargetNodeName,
+				config.NetworkNameEnvVarName:      testNetAttachDefName,
+				config.NetworkNamespaceEnvVarName: testNamespace,
+				config.SourceNodeNameEnvVarName:   "",
+				config.TargetNodeNameEnvVarName:   testTargetNodeName,
 			},
 		},
 		{
 			description:   "target node name is empty",
 			expectedError: config.ErrIllegalSourceAndTargetNodesCombination,
 			env: map[string]string{
-				config.CheckupUIDEnvVarName:                testCheckupUID,
-				config.ResultsConfigMapNameEnvVarName:      testResultConfigMapName,
-				config.ResultsConfigMapNamespaceEnvVarName: testNamespace,
-				config.NetworkNameEnvVarName:               testNetAttachDefName,
-				config.NetworkNamespaceEnvVarName:          testNamespace,
-				config.SourceNodeNameEnvVarName:            testSourceNodeName,
-				config.TargetNodeNameEnvVarName:            "",
+				config.NetworkNameEnvVarName:      testNetAttachDefName,
+				config.NetworkNamespaceEnvVarName: testNamespace,
+				config.SourceNodeNameEnvVarName:   testSourceNodeName,
+				config.TargetNodeNameEnvVarName:   "",
 			},
 		},
 	}
@@ -351,21 +238,15 @@ func TestCreateConfigShouldFailWhenIntegerEnvVarsAreInvalid(t *testing.T) {
 			description:   "sample duration is not valid integer",
 			expectedError: strconv.ErrSyntax,
 			env: map[string]string{
-				config.CheckupUIDEnvVarName:                testCheckupUID,
-				config.ResultsConfigMapNameEnvVarName:      testResultConfigMapName,
-				config.ResultsConfigMapNamespaceEnvVarName: testNamespace,
-				config.NetworkNameEnvVarName:               testNetAttachDefName,
-				config.NetworkNamespaceEnvVarName:          testNamespace,
-				config.SampleDurationSecondsEnvVarName:     "3rr0r",
+				config.NetworkNameEnvVarName:           testNetAttachDefName,
+				config.NetworkNamespaceEnvVarName:      testNamespace,
+				config.SampleDurationSecondsEnvVarName: "3rr0r",
 			},
 		},
 		{
 			description:   "desired max latency is too big",
 			expectedError: strconv.ErrRange,
 			env: map[string]string{
-				config.CheckupUIDEnvVarName:                    testCheckupUID,
-				config.ResultsConfigMapNameEnvVarName:          testResultConfigMapName,
-				config.ResultsConfigMapNamespaceEnvVarName:     testNamespace,
 				config.NetworkNameEnvVarName:                   testNetAttachDefName,
 				config.NetworkNamespaceEnvVarName:              testNamespace,
 				config.DesiredMaxLatencyMillisecondsEnvVarName: "39213801928309128309",

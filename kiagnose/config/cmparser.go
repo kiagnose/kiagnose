@@ -54,15 +54,10 @@ func newConfigMapParser(configMapRawData map[string]string) *configMapParser {
 }
 
 func (cmp *configMapParser) Parse() error {
-	if err := cmp.parseImageField(); err != nil {
-		return err
-	}
+	_ = cmp.parseImageField()
+	_ = cmp.parseServiceAccountName()
 
 	if err := cmp.parseTimeoutField(); err != nil {
-		return err
-	}
-
-	if err := cmp.parseServiceAccountName(); err != nil {
 		return err
 	}
 

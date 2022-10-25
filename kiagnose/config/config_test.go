@@ -143,20 +143,6 @@ func TestReadFromConfigMapShouldFail(t *testing.T) {
 			expectedError: config.ErrConfigMapIsAlreadyInUse.Error(),
 		},
 		{
-			description:   "when image field is missing",
-			configMapData: map[string]string{types.TimeoutKey: timeoutValue, types.ServiceAccountNameKey: serviceAccountNameValue},
-			expectedError: config.ErrImageFieldIsMissing.Error(),
-		},
-		{
-			description: "when image field value is empty",
-			configMapData: map[string]string{
-				types.ImageKey:              "",
-				types.TimeoutKey:            timeoutValue,
-				types.ServiceAccountNameKey: serviceAccountNameValue,
-			},
-			expectedError: config.ErrImageFieldIsIllegal.Error(),
-		},
-		{
 			description:   "when timout field is missing",
 			configMapData: map[string]string{types.ImageKey: imageName, types.ServiceAccountNameKey: serviceAccountNameValue},
 			expectedError: config.ErrTimeoutFieldIsMissing.Error(),
@@ -169,21 +155,6 @@ func TestReadFromConfigMapShouldFail(t *testing.T) {
 				types.ServiceAccountNameKey: serviceAccountNameValue,
 			},
 			expectedError: config.ErrTimeoutFieldIsIllegal.Error(),
-		},
-		{
-			description:   "when serviceAccountName field is missing",
-			configMapData: map[string]string{types.ImageKey: imageName, types.TimeoutKey: timeoutValue},
-			expectedError: config.ErrServiceAccountNameFieldIsMissing.Error(),
-		},
-		{
-			description:   "when serviceAccountName field is empty",
-			configMapData: map[string]string{types.ImageKey: imageName, types.TimeoutKey: timeoutValue, types.ServiceAccountNameKey: ""},
-			expectedError: config.ErrServiceAccountNameIsEmpty.Error(),
-		},
-		{
-			description:   "when serviceAccountName field is illegal",
-			configMapData: map[string]string{types.ImageKey: imageName, types.TimeoutKey: timeoutValue, types.ServiceAccountNameKey: "default"},
-			expectedError: config.ErrServiceAccountNameIsIllegal.Error(),
 		},
 		{
 			description: "when ConfigMap Data is nil", configMapData: nil, expectedError: config.ErrConfigMapDataIsNil.Error()},
