@@ -19,7 +19,11 @@
 
 package status
 
-import "time"
+import (
+	"time"
+
+	"github.com/kiagnose/kiagnose/kiagnose/status"
+)
 
 type Results struct {
 	MinLatency          time.Duration
@@ -31,6 +35,6 @@ type Results struct {
 }
 
 type Status struct {
-	FailureReason []string
+	status.Status
 	Results
 }

@@ -27,9 +27,6 @@ import (
 )
 
 const (
-	CheckupUIDEnvVarName                    = "CHECKUP_UID"
-	ResultsConfigMapNamespaceEnvVarName     = "RESULT_CONFIGMAP_NAMESPACE"
-	ResultsConfigMapNameEnvVarName          = "RESULT_CONFIGMAP_NAME"
 	NetworkNamespaceEnvVarName              = "NETWORK_ATTACHMENT_DEFINITION_NAMESPACE"
 	NetworkNameEnvVarName                   = "NETWORK_ATTACHMENT_DEFINITION_NAME"
 	SampleDurationSecondsEnvVarName         = "SAMPLE_DURATION_SECONDS"
@@ -38,7 +35,7 @@ const (
 	DesiredMaxLatencyMillisecondsEnvVarName = "MAX_DESIRED_LATENCY_MILLISECONDS"
 )
 
-type CheckupParameters struct {
+type Config struct {
 	NetworkAttachmentDefinitionName      string
 	NetworkAttachmentDefinitionNamespace string
 	TargetNodeName                       string
@@ -47,18 +44,8 @@ type CheckupParameters struct {
 	DesiredMaxLatencyMilliseconds        int
 }
 
-type Config struct {
-	CheckupUID                string
-	ResultsConfigMapName      string
-	ResultsConfigMapNamespace string
-	CheckupParameters
-}
-
 var (
 	ErrInvalidEnv                             = errors.New("environment is invalid")
-	ErrInvalidCheckupUID                      = fmt.Errorf("%q environment variable is invalid", CheckupUIDEnvVarName)
-	ErrInvalidResultsConfigMapName            = fmt.Errorf("%q environment variable is invalid", ResultsConfigMapNameEnvVarName)
-	ErrInvalidResultsConfigMapNamespace       = fmt.Errorf("%q environment variable is invalid", ResultsConfigMapNamespaceEnvVarName)
 	ErrInvalidNetworkName                     = fmt.Errorf("%q environment variable is invalid", NetworkNameEnvVarName)
 	ErrInvalidNetworkNamespace                = fmt.Errorf("%q environment variable is invalid", NetworkNamespaceEnvVarName)
 	ErrIllegalSourceAndTargetNodesCombination = errors.New("illegal source and target nodes combination")
@@ -75,15 +62,10 @@ func New(env map[string]string) (Config, error) {
 	}
 
 	newConfig := Config{
-		CheckupUID:                env[CheckupUIDEnvVarName],
-		ResultsConfigMapName:      env[ResultsConfigMapNameEnvVarName],
-		ResultsConfigMapNamespace: env[ResultsConfigMapNamespaceEnvVarName],
-		CheckupParameters: CheckupParameters{
-			NetworkAttachmentDefinitionName:      env[NetworkNameEnvVarName],
-			NetworkAttachmentDefinitionNamespace: env[NetworkNamespaceEnvVarName],
-			TargetNodeName:                       env[TargetNodeNameEnvVarName],
-			SourceNodeName:                       env[SourceNodeNameEnvVarName],
-		},
+		NetworkAttachmentDefinitionName:      env[NetworkNameEnvVarName],
+		NetworkAttachmentDefinitionNamespace: env[NetworkNamespaceEnvVarName],
+		TargetNodeName:                       env[TargetNodeNameEnvVarName],
+		SourceNodeName:                       env[SourceNodeNameEnvVarName],
 	}
 
 	var err error
@@ -111,18 +93,6 @@ func New(env map[string]string) (Config, error) {
 }
 
 func (c Config) validate() error {
-	if c.CheckupUID == "" {
-		return ErrInvalidCheckupUID
-	}
-
-	if c.ResultsConfigMapName == "" {
-		return ErrInvalidResultsConfigMapName
-	}
-
-	if c.ResultsConfigMapNamespace == "" {
-		return ErrInvalidResultsConfigMapNamespace
-	}
-
 	if c.NetworkAttachmentDefinitionName == "" {
 		return ErrInvalidNetworkName
 	}
