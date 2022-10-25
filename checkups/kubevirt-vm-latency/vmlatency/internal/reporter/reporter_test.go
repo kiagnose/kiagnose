@@ -20,13 +20,19 @@
 package reporter_test
 
 import (
-	"errors"
 	"fmt"
 	"strconv"
 	"testing"
 	"time"
 
 	assert "github.com/stretchr/testify/require"
+
+	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/client-go/kubernetes"
+	"k8s.io/client-go/kubernetes/fake"
+
+	"github.com/kiagnose/kiagnose/kiagnose/configmap"
 
 	"github.com/kiagnose/kiagnose/checkups/kubevirt-vm-latency/vmlatency/internal/reporter"
 	"github.com/kiagnose/kiagnose/checkups/kubevirt-vm-latency/vmlatency/internal/status"
@@ -39,7 +45,9 @@ const (
 
 func TestReportShouldRunSuccessfullyWhen(t *testing.T) {
 	t.Run("status is initialized", func(t *testing.T) {
-		testReporter := reporter.New(&configMapClientStub{}, testNamespace, testConfigMapName)
+		fakeClient := fake.NewSimpleClientset(newConfigMap())
+
+		testReporter := reporter.New(fakeClient, testNamespace, testConfigMapName)
 
 		assert.NoError(t, testReporter.Report(status.Status{}))
 	})
@@ -47,10 +55,11 @@ func TestReportShouldRunSuccessfullyWhen(t *testing.T) {
 
 func TestReportShouldFailWhen(t *testing.T) {
 	t.Run("failed to update results ConfigMap", func(t *testing.T) {
-		expectedErr := errors.New("update fail")
-		testReporter := reporter.New(&configMapClientStub{failUpdateConfigMap: expectedErr}, testNamespace, testConfigMapName)
+		fakeClient := fake.NewSimpleClientset()
 
-		assert.Equal(t, testReporter.Report(status.Status{}), expectedErr)
+		testReporter := reporter.New(fakeClient, testNamespace, testConfigMapName)
+
+		assert.ErrorContains(t, testReporter.Report(status.Status{}), "not found")
 	})
 }
 
@@ -59,21 +68,26 @@ func TestReportShouldSuccessfullyConvertResultValues(t *testing.T) {
 		someFailureReason      = "some reason"
 		someOtherFailureReason = "some other reason"
 	)
-	testClient := &configMapClientStub{}
-	testReporter := reporter.New(testClient, testNamespace, testConfigMapName)
 
 	t.Run("on checkup successful completion", func(t *testing.T) {
-		checkupStatus := status.Status{
-			FailureReason: []string{},
-			Results: status.Results{
-				MinLatency:          1 * time.Minute,
-				AvgLatency:          2 * time.Minute,
-				MeasurementDuration: 3 * time.Minute,
-				MaxLatency:          4 * time.Minute,
-				TargetNode:          "a",
-				SourceNode:          "b",
-			},
+		fakeClient := fake.NewSimpleClientset(newConfigMap())
+		testReporter := reporter.New(fakeClient, testNamespace, testConfigMapName)
+
+		var checkupStatus status.Status
+		checkupStatus.StartTimestamp = time.Now()
+		assert.NoError(t, testReporter.Report(checkupStatus))
+
+		checkupStatus.FailureReason = []string{}
+		checkupStatus.CompletionTimestamp = time.Now()
+		checkupStatus.Results = status.Results{
+			MinLatency:          1 * time.Minute,
+			AvgLatency:          2 * time.Minute,
+			MeasurementDuration: 3 * time.Minute,
+			MaxLatency:          4 * time.Minute,
+			TargetNode:          "a",
+			SourceNode:          "b",
 		}
+
 		assert.NoError(t, testReporter.Report(checkupStatus))
 
 		expectedReportData := map[string]string{
@@ -83,48 +97,77 @@ func TestReportShouldSuccessfullyConvertResultValues(t *testing.T) {
 			"status.result.measurementDurationSec": fmt.Sprint(checkupStatus.MeasurementDuration.Seconds()),
 			"status.result.targetNode":             checkupStatus.TargetNode,
 			"status.result.sourceNode":             checkupStatus.SourceNode,
+			"status.startTimestamp":                timestamp(checkupStatus.StartTimestamp),
+			"status.completionTimestamp":           timestamp(checkupStatus.CompletionTimestamp),
 			"status.succeeded":                     strconv.FormatBool(true),
 			"status.failureReason":                 "",
 		}
 
-		assert.Equal(t, expectedReportData, testClient.configMapData)
+		assert.Equal(t, expectedReportData, getCheckupData(t, fakeClient, testNamespace, testConfigMapName))
 	})
 
 	t.Run("on checkup failure", func(t *testing.T) {
-		checkupStatus := status.Status{
-			FailureReason: []string{someFailureReason},
-		}
+		fakeClient := fake.NewSimpleClientset(newConfigMap())
+		testReporter := reporter.New(fakeClient, testNamespace, testConfigMapName)
+
+		var checkupStatus status.Status
+		checkupStatus.StartTimestamp = time.Now()
+		assert.NoError(t, testReporter.Report(checkupStatus))
+
+		checkupStatus.FailureReason = []string{someFailureReason}
+		checkupStatus.CompletionTimestamp = time.Now()
 		assert.NoError(t, testReporter.Report(checkupStatus))
 
 		expectedReportData := map[string]string{
-			"status.succeeded":     strconv.FormatBool(false),
-			"status.failureReason": someFailureReason,
+			"status.startTimestamp":      timestamp(checkupStatus.StartTimestamp),
+			"status.completionTimestamp": timestamp(checkupStatus.CompletionTimestamp),
+			"status.succeeded":           strconv.FormatBool(false),
+			"status.failureReason":       someFailureReason,
 		}
 
-		assert.Equal(t, expectedReportData, testClient.configMapData)
+		assert.Equal(t, expectedReportData, getCheckupData(t, fakeClient, testNamespace, testConfigMapName))
 	})
 
 	t.Run("on checkup multiple failures", func(t *testing.T) {
-		checkupStatus := status.Status{
-			FailureReason: []string{someFailureReason, someOtherFailureReason},
-		}
+		fakeClient := fake.NewSimpleClientset(newConfigMap())
+		testReporter := reporter.New(fakeClient, testNamespace, testConfigMapName)
+
+		var checkupStatus status.Status
+		checkupStatus.StartTimestamp = time.Now()
+		checkupStatus.CompletionTimestamp = time.Now()
+		assert.NoError(t, testReporter.Report(checkupStatus))
+
+		checkupStatus.FailureReason = []string{someFailureReason, someOtherFailureReason}
 		assert.NoError(t, testReporter.Report(checkupStatus))
 
 		expectedReportData := map[string]string{
-			"status.succeeded":     strconv.FormatBool(false),
-			"status.failureReason": someFailureReason + ", " + someOtherFailureReason,
+			"status.startTimestamp":      timestamp(checkupStatus.StartTimestamp),
+			"status.completionTimestamp": timestamp(checkupStatus.CompletionTimestamp),
+			"status.succeeded":           strconv.FormatBool(false),
+			"status.failureReason":       someFailureReason + "," + someOtherFailureReason,
 		}
 
-		assert.Equal(t, expectedReportData, testClient.configMapData)
+		assert.Equal(t, expectedReportData, getCheckupData(t, fakeClient, testNamespace, testConfigMapName))
 	})
 }
 
-type configMapClientStub struct {
-	failUpdateConfigMap error
-	configMapData       map[string]string
+func newConfigMap() *corev1.ConfigMap {
+	return &corev1.ConfigMap{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      testConfigMapName,
+			Namespace: testNamespace,
+		},
+		Data: map[string]string{},
+	}
 }
 
-func (c *configMapClientStub) UpdateConfigMap(_, _ string, data map[string]string) error {
-	c.configMapData = data
-	return c.failUpdateConfigMap
+func getCheckupData(t *testing.T, client kubernetes.Interface, configMapNamespace, configMapName string) map[string]string {
+	configMap, err := configmap.Get(client, configMapNamespace, configMapName)
+	assert.NoError(t, err)
+
+	return configMap.Data
+}
+
+func timestamp(t time.Time) string {
+	return t.Format(time.RFC3339)
 }

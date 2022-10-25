@@ -48,14 +48,14 @@ type checkup struct {
 	client    vmi.KubevirtVmisClient
 	uid       string
 	namespace string
-	params    config.CheckupParameters
+	params    config.Config
 	results   status.Results
 	sourceVM  *kvcorev1.VirtualMachineInstance
 	targetVM  *kvcorev1.VirtualMachineInstance
 	checker   checker
 }
 
-func New(c vmi.KubevirtVmisClient, uid, namespace string, params config.CheckupParameters, checker checker) *checkup {
+func New(c vmi.KubevirtVmisClient, uid, namespace string, params config.Config, checker checker) *checkup {
 	return &checkup{
 		client:    c,
 		uid:       uid,

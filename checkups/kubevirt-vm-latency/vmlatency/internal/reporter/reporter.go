@@ -23,54 +23,49 @@ import (
 	"encoding/json"
 	"log"
 	"strconv"
-	"strings"
+
+	"k8s.io/client-go/kubernetes"
 
 	"github.com/kiagnose/kiagnose/checkups/kubevirt-vm-latency/vmlatency/internal/status"
+	kreporter "github.com/kiagnose/kiagnose/kiagnose/reporter"
 )
 
-type configMapUpdater interface {
-	UpdateConfigMap(string, string, map[string]string) error
-}
-
 type reporter struct {
-	client             configMapUpdater
-	configMapName      string
-	configMapNamespace string
+	kreporter.Reporter
 }
 
-func New(c configMapUpdater, configMapNamespace, configMapName string) *reporter {
-	return &reporter{
-		client:             c,
-		configMapNamespace: configMapNamespace,
-		configMapName:      configMapName,
-	}
+func New(c kubernetes.Interface, configMapNamespace, configMapName string) *reporter {
+	r := kreporter.New(c, configMapNamespace, configMapName)
+	return &reporter{*r}
 }
 
 func (r *reporter) Report(s status.Status) error {
-	data := formatStatus(s)
+	if !r.HasData() {
+		return r.Reporter.Report(s.Status)
+	}
 
+	// TODO: Update the base reporter to drop the `Succeeded` field.
+	s.Succeeded = len(s.FailureReason) == 0
+
+	data := formatResults(s)
 	if raw, err := json.MarshalIndent(data, "", " "); err == nil {
 		log.Printf("reporting status:\n%s\n", string(raw))
 	}
 
-	return r.client.UpdateConfigMap(r.configMapNamespace, r.configMapName, data)
+	s.Status.Results = data
+	return r.Reporter.Report(s.Status)
 }
 
-func formatStatus(s status.Status) map[string]string {
+func formatResults(s status.Status) map[string]string {
 	const (
-		succeededKey                 = "status.succeeded"
-		failureReasonKey             = "status.failureReason"
-		resultMinLatencyKey          = "status.result.minLatencyNanoSec"
-		resultAvgLatencyKey          = "status.result.avgLatencyNanoSec"
-		resultMaxLatencyKey          = "status.result.maxLatencyNanoSec"
-		resultMeasurementDurationKey = "status.result.measurementDurationSec"
-		resultSourceNode             = "status.result.sourceNode"
-		resultTargetNode             = "status.result.targetNode"
+		resultMinLatencyKey          = "minLatencyNanoSec"
+		resultAvgLatencyKey          = "avgLatencyNanoSec"
+		resultMaxLatencyKey          = "maxLatencyNanoSec"
+		resultMeasurementDurationKey = "measurementDurationSec"
+		resultSourceNode             = "sourceNode"
+		resultTargetNode             = "targetNode"
 	)
 	data := map[string]string{}
-
-	data[succeededKey] = strconv.FormatBool(len(s.FailureReason) == 0)
-	data[failureReasonKey] = strings.Join(s.FailureReason, ", ")
 
 	var emptyResults status.Results
 	if s.Results != emptyResults {
