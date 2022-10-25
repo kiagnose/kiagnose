@@ -154,7 +154,7 @@ func TestCheckupSetupShouldCreateVMsWithPodAntiAffinity(t *testing.T) {
 	t.Run("when source and target nodes names are not specified", func(t *testing.T) {
 		testClient := newTestClient()
 		testClient.returnNetAttachDef = newTestNetAttachDef("")
-		testCheckup := checkup.New(testClient, testCheckupUID, testNamespace, config.CheckupParameters{}, &checkerStub{})
+		testCheckup := checkup.New(testClient, testCheckupUID, testNamespace, config.Config{}, &checkerStub{})
 
 		assert.NoError(t, testCheckup.Setup(context.Background()))
 		assertVmiPodAntiAffinityExist(t, testClient, checkup.SourceVmiName)
@@ -172,7 +172,7 @@ func TestCheckupSetupShouldCreateVMsWithNodeAffinity(t *testing.T) {
 		)
 		testClient := newTestClient()
 		testClient.returnNetAttachDef = newTestNetAttachDef("blah")
-		testCheckupParams := config.CheckupParameters{SourceNodeName: testSourceNode, TargetNodeName: testTargetNode}
+		testCheckupParams := config.Config{SourceNodeName: testSourceNode, TargetNodeName: testTargetNode}
 		testCheckup := checkup.New(testClient, testCheckupUID, testNamespace, testCheckupParams, &checkerStub{})
 
 		assert.NoError(t, testCheckup.Setup(context.Background()))
@@ -224,8 +224,8 @@ func newTestNetAttachDef(cniPluginName string) *netattdefv1.NetworkAttachmentDef
 	}
 }
 
-func newTestsCheckupParameters() config.CheckupParameters {
-	return config.CheckupParameters{
+func newTestsCheckupParameters() config.Config {
+	return config.Config{
 		NetworkAttachmentDefinitionName:      testNetAttachDefName,
 		NetworkAttachmentDefinitionNamespace: testNamespace,
 		TargetNodeName:                       "",

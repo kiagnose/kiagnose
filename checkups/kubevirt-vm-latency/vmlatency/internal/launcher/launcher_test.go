@@ -29,6 +29,8 @@ import (
 
 	k8scorev1 "k8s.io/api/core/v1"
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/client-go/kubernetes/fake"
 
 	kvcorev1 "kubevirt.io/api/core/v1"
 	"kubevirt.io/client-go/kubecli"
@@ -44,16 +46,21 @@ import (
 
 const testCheckupUID = "0123456789"
 
+const (
+	configMapNamespace = "target-ns"
+	configMapName      = "checkup1"
+)
+
 func TestLauncherShouldFail(t *testing.T) {
 	testClient := newFakeClient()
 	testCheckup := checkup.New(
 		testClient,
 		testCheckupUID,
 		k8scorev1.NamespaceDefault,
-		config.CheckupParameters{},
+		config.Config{},
 		&checkerStub{checkFailure: errorCheck},
 	)
-	testLauncher := launcher.New(testCheckup, reporterStub{})
+	testLauncher := launcher.New(testCheckup, &reporterStub{})
 
 	assert.ErrorContains(t, testLauncher.Run(), errorCheck.Error())
 }
@@ -64,34 +71,34 @@ func TestLauncherShouldRunSuccessfully(t *testing.T) {
 		testClient,
 		testCheckupUID,
 		k8scorev1.NamespaceDefault,
-		config.CheckupParameters{},
+		config.Config{},
 		&checkerStub{},
 	)
-	testLauncher := launcher.New(testCheckup, reporterStub{})
+	testLauncher := launcher.New(testCheckup, &reporterStub{})
 
 	assert.NoError(t, testLauncher.Run())
 }
 
 func TestLauncherShould(t *testing.T) {
 	t.Run("run successfully", func(t *testing.T) {
-		testLauncher := launcher.New(checkupStub{}, reporterStub{})
+		testLauncher := launcher.New(checkupStub{}, &reporterStub{})
 		assert.NoError(t, testLauncher.Run())
 	})
 
 	t.Run("fail when report is failing", func(t *testing.T) {
-		testLauncher := launcher.New(checkupStub{}, reporterStub{failReport: errorReport})
+		testLauncher := launcher.New(checkupStub{}, &reporterStub{failReport: errorReport})
 		assert.ErrorContains(t, testLauncher.Run(), errorReport.Error())
 	})
 
 	t.Run("fail when setup is failing", func(t *testing.T) {
-		testLauncher := launcher.New(checkupStub{failSetup: errorSetup}, reporterStub{})
+		testLauncher := launcher.New(checkupStub{failSetup: errorSetup}, &reporterStub{})
 		assert.ErrorContains(t, testLauncher.Run(), errorSetup.Error())
 	})
 
-	t.Run("fail when setup and report are failing", func(t *testing.T) {
+	t.Run("fail when setup and 2nd report are failing", func(t *testing.T) {
 		testLauncher := launcher.New(
 			checkupStub{failSetup: errorSetup},
-			reporterStub{failReport: errorReport},
+			&reporterStub{failReport: errorReport, failOnSecondReport: true},
 		)
 		err := testLauncher.Run()
 		assert.ErrorContains(t, err, errorSetup.Error())
@@ -99,19 +106,19 @@ func TestLauncherShould(t *testing.T) {
 	})
 
 	t.Run("fail when run is failing", func(t *testing.T) {
-		testLauncher := launcher.New(checkupStub{failRun: errorRun}, reporterStub{})
+		testLauncher := launcher.New(checkupStub{failRun: errorRun}, &reporterStub{})
 		assert.ErrorContains(t, testLauncher.Run(), errorRun.Error())
 	})
 
 	t.Run("fail when teardown is failing", func(t *testing.T) {
-		testLauncher := launcher.New(checkupStub{failTeardown: errorTeardown}, reporterStub{})
+		testLauncher := launcher.New(checkupStub{failTeardown: errorTeardown}, &reporterStub{})
 		assert.ErrorContains(t, testLauncher.Run(), errorTeardown.Error())
 	})
 
 	t.Run("fail when run and report are failing", func(t *testing.T) {
 		testLauncher := launcher.New(
 			checkupStub{failRun: errorRun},
-			reporterStub{failReport: errorReport},
+			&reporterStub{failReport: errorReport, failOnSecondReport: true},
 		)
 		err := testLauncher.Run()
 		assert.ErrorContains(t, err, errorRun.Error())
@@ -121,7 +128,7 @@ func TestLauncherShould(t *testing.T) {
 	t.Run("fail when teardown and report are failing", func(t *testing.T) {
 		testLauncher := launcher.New(
 			checkupStub{failTeardown: errorTeardown},
-			reporterStub{failReport: errorReport},
+			&reporterStub{failReport: errorReport, failOnSecondReport: true},
 		)
 		err := testLauncher.Run()
 		assert.ErrorContains(t, err, errorTeardown.Error())
@@ -131,7 +138,7 @@ func TestLauncherShould(t *testing.T) {
 	t.Run("fail when run, teardown and report are failing", func(t *testing.T) {
 		testLauncher := launcher.New(
 			checkupStub{failRun: errorRun, failTeardown: errorTeardown},
-			reporterStub{failReport: errorReport},
+			&reporterStub{failReport: errorReport, failOnSecondReport: true},
 		)
 		err := testLauncher.Run()
 		assert.ErrorContains(t, err, errorRun.Error())
@@ -141,16 +148,17 @@ func TestLauncherShould(t *testing.T) {
 }
 
 func TestLauncherShouldSuccessfullyProduceStatusResults(t *testing.T) {
-	const testConfigMapName = "results"
 	const sourceNodeName = "worker1"
 	const targetNodeName = "worker2"
+	simpleFakeClient := fake.NewSimpleClientset(newConfigMap())
 	testClient := newFakeClient()
-	testReporter := reporter.New(testClient, k8scorev1.NamespaceDefault, testConfigMapName)
+
+	testReporter := reporter.New(simpleFakeClient, configMapNamespace, configMapName)
 	testCheckup := checkup.New(
 		testClient,
 		testCheckupUID,
 		k8scorev1.NamespaceDefault,
-		config.CheckupParameters{
+		config.Config{
 			SourceNodeName: sourceNodeName,
 			TargetNodeName: targetNodeName,
 		},
@@ -197,11 +205,22 @@ func (s checkupStub) Results() status.Results {
 }
 
 type reporterStub struct {
-	failReport error
+	reportCalls int
+	failReport  error
+	// The launcher calls the report twice: To mark the start timestamp and
+	// then to update the checkup results.
+	// Use this flag to cause the second report to fail.
+	failOnSecondReport bool
 }
 
-func (r reporterStub) Report(_ status.Status) error {
-	return r.failReport
+func (r *reporterStub) Report(_ status.Status) error {
+	r.reportCalls++
+	if r.failOnSecondReport && r.reportCalls == 2 {
+		return r.failReport
+	} else if !r.failOnSecondReport {
+		return r.failReport
+	}
+	return nil
 }
 
 type fakeClient struct {
@@ -292,6 +311,12 @@ func (c *checkerStub) CheckDuration() time.Duration {
 	return 0
 }
 
-func (c *fakeClient) UpdateConfigMap(_, _ string, _ map[string]string) error {
-	return nil
+func newConfigMap() *k8scorev1.ConfigMap {
+	return &k8scorev1.ConfigMap{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      configMapName,
+			Namespace: configMapNamespace,
+		},
+		Data: map[string]string{},
+	}
 }

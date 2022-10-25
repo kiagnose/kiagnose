@@ -23,6 +23,7 @@ import (
 	"context"
 	"errors"
 	"strings"
+	"time"
 
 	"github.com/kiagnose/kiagnose/checkups/kubevirt-vm-latency/vmlatency/internal/status"
 )
@@ -51,9 +52,15 @@ func New(checkup checkup, reporter reporter) launcher {
 }
 
 func (l launcher) Run() (runErr error) {
-	runStatus := status.Status{}
+	var runStatus status.Status
+	runStatus.StartTimestamp = time.Now()
+
+	if err := l.reporter.Report(runStatus); err != nil {
+		return err
+	}
 
 	defer func() {
+		runStatus.CompletionTimestamp = time.Now()
 		runStatus.Results = l.checkup.Results()
 		if err := l.reporter.Report(runStatus); err != nil {
 			runStatus.FailureReason = append(runStatus.FailureReason, err.Error())

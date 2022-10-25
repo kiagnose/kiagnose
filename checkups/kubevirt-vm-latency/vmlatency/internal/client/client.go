@@ -57,20 +57,6 @@ func New() (*Client, error) {
 	return &Client{c, cniClient}, nil
 }
 
-func (c *Client) UpdateConfigMap(namespace, name string, data map[string]string) error {
-	cm, err := c.KubevirtClient.CoreV1().ConfigMaps(namespace).Get(context.Background(), name, metav1.GetOptions{})
-	if err != nil {
-		return err
-	}
-	cm.Data = data
-
-	if _, err = c.KubevirtClient.CoreV1().ConfigMaps(namespace).Update(context.Background(), cm, metav1.UpdateOptions{}); err != nil {
-		return err
-	}
-
-	return nil
-}
-
 func (c *Client) GetVirtualMachineInstance(namespace, name string) (*kvcorev1.VirtualMachineInstance, error) {
 	return c.KubevirtClient.VirtualMachineInstance(namespace).Get(name, &metav1.GetOptions{})
 }
