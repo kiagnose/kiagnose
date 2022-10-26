@@ -34,10 +34,9 @@ CNAO_VERSION=${CNAO_VERSION:-v0.74.0}
 
 BRIDGE_NAME=${BRIDGE_NAME:-br10}
 
-FRAMEWORK_IMAGE="quay.io/kiagnose/kiagnose:devel"
 CHECKUP_IMAGE="quay.io/kiagnose/kubevirt-vm-latency:devel"
 
-KIAGNOSE_JOB=kubevirt-vm-latency-checkup
+CHECKUP_JOB=kubevirt-vm-latency-checkup
 VM_LATENCY_CONFIGMAP=kubevirt-vm-latency-checkup
 VM_LATENCY_SERVICE_ACCOUNT_NAME=kubevirt-vm-latency-checkup-sa
 
@@ -171,7 +170,7 @@ if [ -n "${OPT_DEPLOY_CHECKUP}" ]; then
 fi
 
 if [ -n "${OPT_RUN_TEST}" ]; then
-     ${KUBECTL} apply -n ${TARGET_NAMESPACE} -f ./manifests/kiagnose.yaml
+     ${KUBECTL} apply -n ${TARGET_NAMESPACE} -f ./manifests/kiagnose-configmap-access.yaml
 
      cat <<EOF | ${KUBECTL} apply -n ${TARGET_NAMESPACE} -f -
 ---
@@ -206,6 +205,18 @@ roleRef:
   kind: Role
   name: kubevirt-vm-latency-checker
   apiGroup: rbac.authorization.k8s.io
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: kiagnose-configmap-access
+subjects:
+- kind: ServiceAccount
+  name: ${VM_LATENCY_SERVICE_ACCOUNT_NAME}
+roleRef:
+  kind: Role
+  name: kiagnose-configmap-access
+  apiGroup: rbac.authorization.k8s.io
 EOF
 
     echo
@@ -218,9 +229,7 @@ kind: ConfigMap
 metadata:
   name: ${VM_LATENCY_CONFIGMAP}
 data:
-  spec.image: ${CHECKUP_IMAGE}
   spec.timeout: 10m
-  spec.serviceAccountName: ${VM_LATENCY_SERVICE_ACCOUNT_NAME}
   spec.param.network_attachment_definition_namespace: "${TARGET_NAMESPACE}"
   spec.param.network_attachment_definition_name: "bridge-network"
   spec.param.max_desired_latency_milliseconds: "500"
@@ -235,16 +244,16 @@ EOF
 apiVersion: batch/v1
 kind: Job
 metadata:
-  name: ${KIAGNOSE_JOB}
+  name: ${CHECKUP_JOB}
 spec:
   backoffLimit: 0
   template:
     spec:
-      serviceAccount: kiagnose
+      serviceAccount: ${VM_LATENCY_SERVICE_ACCOUNT_NAME}
       restartPolicy: Never
       containers:
         - name: framework
-          image: ${FRAMEWORK_IMAGE}
+          image: ${CHECKUP_IMAGE}
           env:
             - name: CONFIGMAP_NAMESPACE
               value: ${TARGET_NAMESPACE}
@@ -252,7 +261,7 @@ spec:
               value: ${VM_LATENCY_CONFIGMAP}
 EOF
 
-    ${KUBECTL} wait --for=condition=complete --timeout=10m job.batch/${KIAGNOSE_JOB} -n ${TARGET_NAMESPACE}
+    ${KUBECTL} wait --for=condition=complete --timeout=10m job.batch/${CHECKUP_JOB} -n ${TARGET_NAMESPACE}
 
     echo
     echo "Result:"
@@ -268,6 +277,6 @@ EOF
 fi
 
 if [ -n "${OPT_CLEAN_RUN}" ];then
-  ${KUBECTL} delete job ${KIAGNOSE_JOB} -n ${TARGET_NAMESPACE} --ignore-not-found
+  ${KUBECTL} delete job ${CHECKUP_JOB} -n ${TARGET_NAMESPACE} --ignore-not-found
   ${KUBECTL} delete configmap ${VM_LATENCY_CONFIGMAP} -n ${TARGET_NAMESPACE} --ignore-not-found
 fi
