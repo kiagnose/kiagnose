@@ -28,22 +28,15 @@ import (
 )
 
 var (
-	ErrImageFieldIsMissing              = errors.New("image field is missing")
-	ErrImageFieldIsIllegal              = errors.New("image field is illegal")
-	ErrTimeoutFieldIsMissing            = errors.New("timeout field is missing")
-	ErrTimeoutFieldIsIllegal            = errors.New("timeout field is illegal")
-	ErrServiceAccountNameFieldIsMissing = errors.New("serviceAccountName field is missing")
-	ErrServiceAccountNameIsEmpty        = errors.New("serviceAccountName field is empty")
-	ErrServiceAccountNameIsIllegal      = errors.New("serviceAccountName field is illegal")
-	ErrParamNameIsIllegal               = errors.New("param name is illegal")
+	ErrTimeoutFieldIsMissing = errors.New("timeout field is missing")
+	ErrTimeoutFieldIsIllegal = errors.New("timeout field is illegal")
+	ErrParamNameIsIllegal    = errors.New("param name is illegal")
 )
 
 type configMapParser struct {
-	configMapRawData   map[string]string
-	Image              string
-	Timeout            time.Duration
-	ServiceAccountName string
-	Params             map[string]string
+	configMapRawData map[string]string
+	Timeout          time.Duration
+	Params           map[string]string
 }
 
 func newConfigMapParser(configMapRawData map[string]string) *configMapParser {
@@ -54,30 +47,12 @@ func newConfigMapParser(configMapRawData map[string]string) *configMapParser {
 }
 
 func (cmp *configMapParser) Parse() error {
-	_ = cmp.parseImageField()
-	_ = cmp.parseServiceAccountName()
-
 	if err := cmp.parseTimeoutField(); err != nil {
 		return err
 	}
 
 	if err := cmp.parseParamsField(); err != nil {
 		return err
-	}
-
-	return nil
-}
-
-func (cmp *configMapParser) parseImageField() error {
-	var exists bool
-
-	cmp.Image, exists = cmp.configMapRawData[types.ImageKey]
-	if !exists {
-		return ErrImageFieldIsMissing
-	}
-
-	if cmp.Image == "" {
-		return ErrImageFieldIsIllegal
 	}
 
 	return nil
@@ -93,21 +68,6 @@ func (cmp *configMapParser) parseTimeoutField() error {
 	cmp.Timeout, err = time.ParseDuration(rawTimeout)
 	if err != nil {
 		return ErrTimeoutFieldIsIllegal
-	}
-
-	return nil
-}
-
-func (cmp *configMapParser) parseServiceAccountName() error {
-	const defaultK8sServiceAccountName = "default"
-	var exists bool
-
-	if cmp.ServiceAccountName, exists = cmp.configMapRawData[types.ServiceAccountNameKey]; !exists {
-		return ErrServiceAccountNameFieldIsMissing
-	} else if cmp.ServiceAccountName == "" {
-		return ErrServiceAccountNameIsEmpty
-	} else if cmp.ServiceAccountName == defaultK8sServiceAccountName {
-		return ErrServiceAccountNameIsIllegal
 	}
 
 	return nil

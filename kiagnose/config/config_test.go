@@ -40,13 +40,11 @@ const (
 	configMapName      = "cm1"
 	configMapUID       = "0123456789"
 
-	imageName               = "registry:5000/echo-checkup:latest"
-	timeoutValue            = "1m"
-	serviceAccountNameValue = "test-sa"
-	param1Key               = "message1"
-	param1Value             = "message1 value"
-	param2Key               = "message2"
-	param2Value             = "message2 value"
+	timeoutValue = "1m"
+	param1Key    = "message1"
+	param1Value  = "message1 value"
+	param2Key    = "message2"
+	param2Value  = "message2 value"
 )
 
 func TestReadFromConfigMapShouldSucceed(t *testing.T) {
@@ -60,32 +58,24 @@ func TestReadFromConfigMapShouldSucceed(t *testing.T) {
 		{
 			description: "when supplied with required parameters only",
 			configMapData: map[string]string{
-				types.ImageKey:              imageName,
-				types.TimeoutKey:            timeoutValue,
-				types.ServiceAccountNameKey: serviceAccountNameValue,
+				types.TimeoutKey: timeoutValue,
 			},
 			expectedConfig: &config.Config{
-				UID:                configMapUID,
-				Image:              imageName,
-				Timeout:            stringToDurationMustParse(timeoutValue),
-				ServiceAccountName: serviceAccountNameValue,
+				UID:     configMapUID,
+				Timeout: stringToDurationMustParse(timeoutValue),
 			},
 		},
 		{
 			description: "when supplied with all parameters",
 			configMapData: map[string]string{
-				types.ImageKey:                       imageName,
 				types.TimeoutKey:                     timeoutValue,
-				types.ServiceAccountNameKey:          serviceAccountNameValue,
 				types.ParamNameKeyPrefix + param1Key: param1Value,
 				types.ParamNameKeyPrefix + param2Key: param2Value,
 			},
 			expectedConfig: &config.Config{
-				UID:                configMapUID,
-				Image:              imageName,
-				Timeout:            stringToDurationMustParse(timeoutValue),
-				ServiceAccountName: serviceAccountNameValue,
-				EnvVars:            expectedEnvVars(param1Key, param1Value, param2Key, param2Value),
+				UID:     configMapUID,
+				Timeout: stringToDurationMustParse(timeoutValue),
+				EnvVars: expectedEnvVars(param1Key, param1Value, param2Key, param2Value),
 			},
 		},
 	}
@@ -125,34 +115,28 @@ func TestReadFromConfigMapShouldFail(t *testing.T) {
 		{
 			description: "when ConfigMap is already in use",
 			configMapData: map[string]string{
-				types.ImageKey:              imageName,
-				types.TimeoutKey:            timeoutValue,
-				types.ServiceAccountNameKey: serviceAccountNameValue,
-				types.StartTimestampKey:     time.Now().Format(time.RFC3339),
+				types.TimeoutKey:        timeoutValue,
+				types.StartTimestampKey: time.Now().Format(time.RFC3339),
 			},
 			expectedError: config.ErrConfigMapIsAlreadyInUse.Error(),
 		},
 		{
 			description: "when ConfigMap is already in use (startTimestamp exists but empty)",
 			configMapData: map[string]string{
-				types.ImageKey:              imageName,
-				types.TimeoutKey:            timeoutValue,
-				types.ServiceAccountNameKey: serviceAccountNameValue,
-				types.StartTimestampKey:     "",
+				types.TimeoutKey:        timeoutValue,
+				types.StartTimestampKey: "",
 			},
 			expectedError: config.ErrConfigMapIsAlreadyInUse.Error(),
 		},
 		{
 			description:   "when timout field is missing",
-			configMapData: map[string]string{types.ImageKey: imageName, types.ServiceAccountNameKey: serviceAccountNameValue},
+			configMapData: map[string]string{},
 			expectedError: config.ErrTimeoutFieldIsMissing.Error(),
 		},
 		{
 			description: "when timout field is illegal",
 			configMapData: map[string]string{
-				types.ImageKey:              imageName,
-				types.TimeoutKey:            "illegalValue",
-				types.ServiceAccountNameKey: serviceAccountNameValue,
+				types.TimeoutKey: "illegalValue",
 			},
 			expectedError: config.ErrTimeoutFieldIsIllegal.Error(),
 		},
@@ -161,9 +145,7 @@ func TestReadFromConfigMapShouldFail(t *testing.T) {
 		{
 			description: "when param name is empty",
 			configMapData: map[string]string{
-				types.ImageKey:                            imageName,
-				types.TimeoutKey:                          timeoutValue,
-				types.ServiceAccountNameKey:               serviceAccountNameValue,
+				types.TimeoutKey: timeoutValue,
 				types.ParamNameKeyPrefix + emptyParamName: "some value",
 			},
 			expectedError: config.ErrParamNameIsIllegal.Error(),

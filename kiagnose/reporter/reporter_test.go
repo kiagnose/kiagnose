@@ -154,11 +154,10 @@ func TestReportShouldFail(t *testing.T) {
 
 func checkupSpecData() map[string]string {
 	const (
-		testImageValue   = "mycheckup:v0.1.0"
 		testTimeoutValue = "1m"
 	)
 
-	return map[string]string{types.ImageKey: testImageValue, types.TimeoutKey: testTimeoutValue}
+	return map[string]string{types.TimeoutKey: testTimeoutValue}
 }
 
 func newConfigMap(data map[string]string) *corev1.ConfigMap {
