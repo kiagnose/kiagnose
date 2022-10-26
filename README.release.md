@@ -43,9 +43,7 @@ git push --delete upstream <tag_name>
 ## Container Images
 
 - [ ] Verify that the container images with the proper label exist in the registry:
-  - [kiagnose](https://quay.io/repository/kiagnose/kiagnose?tab=tags)
   - [kubevirt-vm-latency](https://quay.io/repository/kiagnose/kubevirt-vm-latency?tab=tags)
-  - [echo-checkup](https://quay.io/repository/kiagnose/echo-checkup?tab=tags)
 
 ## GitHub Release
 

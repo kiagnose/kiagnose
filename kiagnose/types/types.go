@@ -20,10 +20,8 @@
 package types
 
 const (
-	ImageKey              = "spec.image"
-	TimeoutKey            = "spec.timeout"
-	ServiceAccountNameKey = "spec.serviceAccountName"
-	ParamNameKeyPrefix    = "spec.param."
+	TimeoutKey         = "spec.timeout"
+	ParamNameKeyPrefix = "spec.param."
 )
 
 const (

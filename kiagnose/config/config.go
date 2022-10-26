@@ -37,11 +37,9 @@ var (
 )
 
 type Config struct {
-	UID                string
-	Image              string
-	Timeout            time.Duration
-	ServiceAccountName string
-	EnvVars            []corev1.EnvVar
+	UID     string
+	Timeout time.Duration
+	EnvVars []corev1.EnvVar
 }
 
 func ReadFromConfigMap(client kubernetes.Interface, configMapNamespace, configMapName string) (*Config, error) {
@@ -65,11 +63,9 @@ func ReadFromConfigMap(client kubernetes.Interface, configMapNamespace, configMa
 	}
 
 	return &Config{
-		UID:                string(configMap.UID),
-		Image:              parser.Image,
-		Timeout:            parser.Timeout,
-		ServiceAccountName: parser.ServiceAccountName,
-		EnvVars:            paramsToEnvVars(parser.Params),
+		UID:     string(configMap.UID),
+		Timeout: parser.Timeout,
+		EnvVars: paramsToEnvVars(parser.Params),
 	}, nil
 }
 
