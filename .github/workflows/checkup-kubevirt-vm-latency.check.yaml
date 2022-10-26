@@ -86,15 +86,11 @@ jobs:
         run:  sudo rmmod br_netfilter
       - name: Check out code
         uses: actions/checkout@v2
-      - name: Build kiagnose image
-        run: ./automation/make.sh --build-core --build-core-image
       - name: Build checkup image
         working-directory: ./checkups/kubevirt-vm-latency
         run: ./automation/make.sh --build-checkup --build-checkup-image
       - name: Start cluster
         run: ./automation/make.sh --e2e -- --install-kind --install-kubectl --create-multi-node-cluster
-      - name: Deploy kiagnose
-        run: ./automation/make.sh --e2e -- --deploy-kiagnose
       - name: Deploy kubevirt, CNAO and the NetworkAttachementDefinition
         run: ./checkups/kubevirt-vm-latency/automation/make.sh --e2e -- --deploy-kubevirt --deploy-cnao --define-nad
       - name: Deploy VM latency checkup
