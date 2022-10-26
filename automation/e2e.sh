@@ -33,10 +33,8 @@ KOKO=${KOKO:-$PWD/koko}
 BRIDGE_NAME=${BRIDGE_NAME:-br10}
 VETH_NAME=${VETH_NAME:-link_${BRIDGE_NAME}}
 
-FRAMEWORK_IMAGE="quay.io/kiagnose/kiagnose:devel"
-
 options=$(getopt --options "" \
-    --long install-kind,install-kubectl,create-cluster,create-multi-node-cluster,delete-cluster,deploy-kiagnose,help\
+    --long install-kind,install-kubectl,create-cluster,create-multi-node-cluster,delete-cluster,help\
     -- "${@}")
 eval set -- "$options"
 while true; do
@@ -56,12 +54,9 @@ while true; do
     --delete-cluster)
         OPT_DELETE_CLUSTER=1
         ;;
-    --deploy-kiagnose)
-        OPT_DEPLOY_KIAGNOSE=1
-        ;;
     --help)
         set +x
-        echo "$0 [--install-kind] [--install-kubectl] [--create-cluster] [--create-multi-node-cluster] [--delete-cluster] [--deploy-kiagnose]"
+        echo "$0 [--install-kind] [--install-kubectl] [--create-cluster] [--create-multi-node-cluster] [--delete-cluster]"
         exit
         ;;
     --)
@@ -76,7 +71,6 @@ if [ "${ARGCOUNT}" -eq "0" ] ; then
     OPT_INSTALL_KIND=1
     OPT_INSTALL_KUBECTL=1
     OPT_CREATE_CLUSTER=1
-    OPT_DEPLOY_KIAGNOSE=1
     OPT_DELETE_CLUSTER=1
 fi
 
@@ -147,10 +141,6 @@ EOF
             ${CRI} exec ${node} ip link set up ${BRIDGE_NAME}
         done
     fi
-fi
-
-if [ -n "${OPT_DEPLOY_KIAGNOSE}" ]; then
-  ${KIND} load docker-image "${FRAMEWORK_IMAGE}" --name "${CLUSTER_NAME}"
 fi
 
 if [ -n "${OPT_DELETE_CLUSTER}" ]; then
