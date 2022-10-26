@@ -5,8 +5,8 @@
 A checkup is a containerized application, which checks that a certain cluster functionality is working.
 A checkup can be provided by a third party vendor, and should adhere to the Kiagnose checkup API.
 
-Kiagnose executes a checkup in an existing Namespace.
-Kiagnose passes user-supplied configuration to the checkup, and reports the checkup's results upon termination.
+The checkup runs in an existing Namespace.
+The checkup reads the user-supplied configuration and reports back the results upon termination.
 
 # Usage
 ## Prerequisites
@@ -15,34 +15,20 @@ In order to use Kiagnose you should have:
 2. Namespace-Admin privileges on this cluster.
 3. [kubectl](https://kubernetes.io/docs/tasks/tools/#kubectl) utility.
 
-## Kiagnose Installation
-
-Please see the [installation instructions](./README.install.md/#kiagnose-installation).
-
-## Kiagnose Removal
-
-Please see the [removal instructions](./README.install.md/#kiagnose-removal).
-
 ## Checkup Installation
 A vendor creating a checkup should provide:
 1. Checkup's documentation (what it does, how to configure it, what are its output, etc). 
 2. A checkup image.
-3. A yaml file containing the following objects required for the checkup's execution:
- - A ServiceAccount object
- - Role object(s) - optional
- - RoleBinding object(s) - optional
- - ClusterRole object(s) - optional
- - ClusterRoleBinding object(s) - optional
 
 > **_WARNING:_**
 > 1. One should make sure a trustful checkup is used.
-> 2. It is up to the cluster administrator to **ALWAYS** check the checkup's **image** and **permissions**
-**BEFORE** applying them and running the checkup.
-Kiagnose will **AUTOMATICALLY** use the user-supplied ServiceAccount for granting permissions to the checkup instance.
+> 2. It is up to the namespace administrator to **ALWAYS** check the checkup's required **permissions**
+**BEFORE** attempting to run the checkup.
+Kiagnose checkups are expecting the namespace admin to supply the ServiceAccount, Roles and RoleBindings objects.
 
 ### Installation Steps
 1. Make sure the checkup's image is accessible to your cluster.
-2. Deploy the vendor-supplied permissions.
+2. Assure the required checkup permissions are in place.
 
 ## Checkup Configuration
 
@@ -56,9 +42,7 @@ The user can configure the following under the `data` field:
 
 | Property                | Description                                                                                                                 | Mandatory | Remarks                               |
 |-------------------------|-----------------------------------------------------------------------------------------------------------------------------|-----------|---------------------------------------|
-| spec.image              | Where to pull the checkup's image from                                                                                      | Yes       | A registry accessible to your cluster |
 | spec.timeout            | After how much time should Kiagnose stop the running checkup                                                                | Yes       | 5m, 1h etc                            |
-| spec.serviceAccountName | Name of ServiceAccount object, that exists in the target namespace and bound to the proper permissions the checkup requires | Yes       | "default" value is illegal            |
 | spec.param.*            | Arbitrary strings that will be passed to the checkup as input parameters                                                    | No        | [0..N]                                |
 
 Example configuration:
@@ -72,9 +56,7 @@ metadata:
   name: example-checkup-config
   namespace: <target-namespace>
 data:
-  spec.image: my-registry/example-checkup:main
   spec.timeout: 5m
-  spec.serviceAccountName: example-sa
   spec.param.param_key_1: "value 1"
   spec.param.param_key_2: "value 2"
 ```
@@ -106,11 +88,11 @@ spec:
   backoffLimit: 0
   template:
     spec:
-      serviceAccount: kiagnose
+      serviceAccount: example-sa
       restartPolicy: Never
       containers:
-        - name: framework
-          image: quay.io/kiagnose/kiagnose:main
+        - name: example-checkup
+          image: my-registry/example-checkup:main
           imagePullPolicy: Always
           env:
             - name: CONFIGMAP_NAMESPACE
@@ -121,8 +103,7 @@ spec:
 
 ## Checkup Results Retrieval
 
-The Kiagnose Job waits until the checkup Job is completed or timed-out.
-After the Kiagnose Job had completed, the results are made available at the user-supplied ConfigMap object:
+After the checkup Job had completed, the results are made available at the user-supplied ConfigMap object:
 
 ```bash
 kubectl get configmap example-checkup-config -n <target-namespace> -o yaml
@@ -144,9 +125,7 @@ metadata:
   name: example-checkup-config
   namespace: <target-namespace>
 data:
-  spec.image: my-registry/example-checkup:main
   spec.timeout: 5m
-  spec.serviceAccountName: example-sa
   spec.param.param_key_1: "value 1"
   spec.param.param_key_2: "value 2"
   
@@ -158,23 +137,18 @@ data:
   status.result.key2: "result 2"
 ```
 
-In order to read the Kiagnose's logs (during or after its execution):
+In order to read the checkup's logs (during or after its execution):
 ```bash
-kubectl logs job.batch/<Kiagnose-job-name> -n <target-namespace>
+kubectl logs job.batch/<checkup-job-name> -n <target-namespace>
 ```
 
-Remove the Kiagnose Job and the ConfigMap object when the logs and the results are no longer needed:
+Remove the checkup Job and the ConfigMap object when the logs and the results are no longer needed:
 ```bash
-kubectl delete job.batch/<Kiagnose-job-name> -n <target-namespace>
+kubectl delete job.batch/<checkup-job-name> -n <target-namespace>
 kubectl delete configmap <ConfigMap name> -n <target-namespace>
 ```
 
 ## Checkup Removal
 In order to remove a checkup from the cluster:
-1. Remove vendor-supplied objects:
-- A ServiceAccount object
-- Role object(s) - optional
-- RoleBinding object(s) - optional
-- ClusterRole object(s) - optional
-- ClusterRoleBinding object(s) - optional
-2. If the checkup's image is stored on your registry - remove it.
+1. Remove any leftover checkup jobs and configmaps in the namespace. 
+2. If the checkup's image is stored on your` registry - remove it.
