@@ -8,8 +8,6 @@ Currently, the measurement is done using standard [ping](https://en.wikipedia.or
 
 It can ease the maintainability effort required from a cluster administrator by removing the burden of manually testing network connectivity and performance, reduce mistakes and generally save time.
 
-![block diagram](./docs/images/kubevirt-vm-latency-diagram.svg)
-
 ## VM network binding
 The checkup binds the VMs to the given `NetworkAttachmentDefinition` using one of the
 following binding methods:
@@ -22,7 +20,6 @@ The default binding method is `bridge`.
 > In case [SR-IOV CNI plugin](https://github.com/k8snetworkplumbingwg/sriov-cni) is being used, `sriov` binding method is used.
 
 ## Prerequisites
-- [Kiagnose](../../README.install.md)
 - [Kubevirt](https://kubevirt.io//quickstart_minikube/#deploy-kubevirt)
 - [Multus](https://github.com/k8snetworkplumbingwg/multus-cni#quickstart-installation-guide)
 - Cluster nodes have one of the desired [CNI](https://www.cni.dev/) plugins installed.
@@ -64,6 +61,29 @@ roleRef:
   kind: Role
   name: kubevirt-vm-latency-checker
   apiGroup: rbac.authorization.k8s.io
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: kiagnose-configmap-access
+rules:
+  - apiGroups: [ "" ]
+    resources: [ "configmaps" ]
+    verbs:
+      - get
+      - update
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: kiagnose-configmap-access
+subjects:
+- kind: ServiceAccount
+  name: vm-latency-checkup-sa
+roleRef:
+  kind: Role
+  name: kiagnose-configmap-access
+  apiGroup: rbac.authorization.k8s.io
 EOF
 ```
 
@@ -72,9 +92,7 @@ The checkup is configured by the following parameters:
 
 | Name                                                                               | Description                                                                                                                  |
 |:-----------------------------------------------------------------------------------|:-----------------------------------------------------------------------------------------------------------------------------|
-| `spec.image`                                                                       | The checkup container image.                                                                                                 |
-| `spec.timeout`                                                                     | Overall time the checkup can run.                                                                                            |
-| `spec.serviceAccountName`                                                          | Name of ServiceAccount object, that exists in the target namespace and bound to the proper permissions the checkup requires  |
+| `timeout`                                                                          | Overall time the checkup can run.                                                                                            |
 | `network_attachment_definition_namespace`<br/>`network_attachment_definition_name` | `NetworkAttachmentDefinition` object on which <br/> the VMs are connected to and measure network latency.                    |
 | `sample_duration_seconds`                                                          | Network latency measurement sample time (optional).<br/> Default is 5 seconds.                                               |
 | `max_desired_latency_milliseconds`                                                 | Maximal network latency accepted, if the actual latency <br/> is higher the checkup will be considered as failed (optional). |
@@ -96,9 +114,7 @@ kind: ConfigMap
 metadata:
   name: kubevirt-vm-latency-checkup-config
 data:
-  spec.image: quay.io/kiagnose/kubevirt-vm-latency:main
   spec.timeout: 5m
-  spec.serviceAccountName: vm-latency-checkup-sa
   spec.param.network_attachment_definition_namespace: "default"
   spec.param.network_attachment_definition_name: "blue-network"
   spec.param.max_desired_latency_milliseconds: "10"
@@ -121,11 +137,11 @@ spec:
   backoffLimit: 0
   template:
     spec:
-      serviceAccountName: kiagnose
+      serviceAccountName: vm-latency-checkup-sa
       restartPolicy: Never
       containers:
-        - name: framework
-          image: quay.io/kiagnose/kiagnose:main
+        - name: vm-latency-checkup
+          image: quay.io/kiagnose/kubevirt-vm-latency:main
           env:
             - name: CONFIGMAP_NAMESPACE
               value: <target-namespace>
@@ -135,7 +151,8 @@ EOF
 ```
 
 > **_Note_**:
-> `CONFIGMAP_NAMESPACE` and `CONFIGMAP_NAME` environment variables are required in order to pass the checkup configuration to Kiagnose.
+> `CONFIGMAP_NAMESPACE` and `CONFIGMAP_NAME` environment variables are required to allow the checkup application
+> access to the input & output API (in the form of a ConfigMap).
 
 Wait for the checkup to finish:
 ```bash
@@ -155,9 +172,7 @@ metadata:
   name: kubevirt-vm-latency-checkup-config
   namespace: <target-namespace>
 data:
-  spec.image: quay.io/kiagnose/kubevirt-vm-latency:main
   spec.timeout: 5m
-  spec.serviceAccountName: vm-latency-checkup-sa
   spec.param.network_attachment_definition_namespace: "default"
   spec.param.network_attachment_definition_name: "blue-network"
   spec.param.max_desired_latency_milliseconds: "10"
@@ -213,10 +228,6 @@ status.failureReason: "run: failed to run check: failed due to connectivity issu
 ```bash
 kubectl delete job -n <target-namespace> kubevirt-vm-latency-checkup
 kubectl delete config-map -n <target-namespace> kubevirt-vm-latency-checkup-config
-```
-Once the checkup is finished it's safe to remove the ClusterRole:
-```bash
-kubectl delete -f ./manifests/clusterroles.yaml
 ```
 
 ## Build Instructions
