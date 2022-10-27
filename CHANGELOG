@@ -1,4 +1,10 @@
 # Changelog
+## [0.2.1] - 2022-10-27
+### Breaking Changes
+ - VM latency could now be directly executed by a namespace-admin
+ - Kiagnose image was removed
+ - Echo checkup was removed
+
 ## [0.2.0] - 2022-10-06
 ### Breaking Changes
  - Removed ephemeral namespace feature
