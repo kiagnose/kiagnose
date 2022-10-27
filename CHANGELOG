@@ -1,4 +1,12 @@
 # Changelog
+## [0.2.1] - 2022-10-27
+### Breaking Changes
+ - VM latency checkup is now running as a standalone application and using Kiagnose packages as a library
+ - VM latency checkup no longer requires cluster-admin intervention to be deployed and executed
+ - The Kiagnose two Jobs and two APIs are unified to a single API and Job
+ - Kiagnose image was removed
+ - Echo checkup was temporarily removed
+
 ## [0.2.0] - 2022-10-06
 ### Breaking Changes
  - Removed ephemeral namespace feature
