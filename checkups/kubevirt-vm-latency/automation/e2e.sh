@@ -254,6 +254,14 @@ spec:
       containers:
         - name: vm-latency-checkup
           image: ${CHECKUP_IMAGE}
+          securityContext:
+            runAsUser: 1000
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop: ["ALL"]
+            runAsNonRoot: true
+            seccompProfile:
+              type: "RuntimeDefault"
           env:
             - name: CONFIGMAP_NAMESPACE
               value: ${TARGET_NAMESPACE}
