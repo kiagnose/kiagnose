@@ -142,6 +142,14 @@ spec:
       containers:
         - name: vm-latency-checkup
           image: quay.io/kiagnose/kubevirt-vm-latency:main
+          securityContext:
+            runAsUser: 1000
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop: ["ALL"]
+            runAsNonRoot: true
+            seccompProfile:
+              type: "RuntimeDefault"
           env:
             - name: CONFIGMAP_NAMESPACE
               value: <target-namespace>
