@@ -249,10 +249,10 @@ spec:
   backoffLimit: 0
   template:
     spec:
-      serviceAccount: ${VM_LATENCY_SERVICE_ACCOUNT_NAME}
+      serviceAccountName: ${VM_LATENCY_SERVICE_ACCOUNT_NAME}
       restartPolicy: Never
       containers:
-        - name: framework
+        - name: vm-latency-checkup
           image: ${CHECKUP_IMAGE}
           env:
             - name: CONFIGMAP_NAMESPACE
