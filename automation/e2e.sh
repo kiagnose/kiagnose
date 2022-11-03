@@ -21,6 +21,8 @@ set -e
 
 ARGCOUNT=$#
 
+CRI=${CRI:-podman}
+
 KUBECTL_VERSION=${KUBECTL_VERSION:-v1.25.3}
 KUBECTL=${KUBECTL:-$PWD/kubectl}
 
@@ -34,7 +36,7 @@ BRIDGE_NAME=${BRIDGE_NAME:-br10}
 VETH_NAME=${VETH_NAME:-link_${BRIDGE_NAME}}
 
 options=$(getopt --options "" \
-    --long install-kind,install-kubectl,create-cluster,create-multi-node-cluster,delete-cluster,help\
+    --long install-kind,install-kubectl,create-cluster,create-multi-node-cluster,delete-cluster,build-test-image,help\
     -- "${@}")
 eval set -- "$options"
 while true; do
@@ -54,9 +56,12 @@ while true; do
     --delete-cluster)
         OPT_DELETE_CLUSTER=1
         ;;
+    --build-test-image)
+        OPT_BUILD_TEST_IMAGE=1
+        ;;
     --help)
         set +x
-        echo "$0 [--install-kind] [--install-kubectl] [--create-cluster] [--create-multi-node-cluster] [--delete-cluster]"
+        echo "$0 [--install-kind] [--install-kubectl] [--create-cluster] [--create-multi-node-cluster] [--delete-cluster] [--build-test-image]"
         exit
         ;;
     --)
@@ -141,6 +146,10 @@ EOF
             ${CRI} exec ${node} ip link set up ${BRIDGE_NAME}
         done
     fi
+fi
+
+if [ -n "${OPT_BUILD_TEST_IMAGE}" ]; then
+  ${CRI} build -f ./test/infra/Dockerfile -t kiagnose-e2e-test ./test/infra
 fi
 
 if [ -n "${OPT_DELETE_CLUSTER}" ]; then

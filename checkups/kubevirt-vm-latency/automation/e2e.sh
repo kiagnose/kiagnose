@@ -21,6 +21,8 @@ set -e
 
 ARGCOUNT=$#
 
+CRI=${CRI:-podman}
+
 SCRIPT_PATH=$(dirname $(realpath -s $0))
 
 CRI=${CRI:-podman}
@@ -45,7 +47,7 @@ VM_LATENCY_SERVICE_ACCOUNT_NAME=kubevirt-vm-latency-checkup-sa
 TARGET_NAMESPACE="target-ns"
 
 options=$(getopt --options "" \
-    --long deploy-kubevirt,deploy-cnao,deploy-checkup,define-nad,run-tests,clean-run,help\
+    --long deploy-kubevirt,deploy-cnao,deploy-checkup,define-nad,run-tests,run-tests-py,clean-run,help\
     -- "${@}")
 eval set -- "$options"
 while true; do
@@ -65,12 +67,15 @@ while true; do
     --run-tests)
         OPT_RUN_TEST=1
         ;;
+    --run-tests-py)
+        OPT_RUN_TEST_PY=1
+        ;;
     --clean-run)
         OPT_CLEAN_RUN=1
         ;;
     --help)
         set +x
-        echo -n "$0 [--deploy-kubevirt] [--deploy-cnao] [--deploy-checkup] [--define-nad] [--run-tests] [--clean-run]"
+        echo -n "$0 [--deploy-kubevirt] [--deploy-cnao] [--deploy-checkup] [--define-nad] [--run-tests] [--clean-run] [--run-tests-py]"
         exit
         ;;
     --)
@@ -295,4 +300,9 @@ fi
 if [ -n "${OPT_CLEAN_RUN}" ];then
   ${KUBECTL} delete job ${CHECKUP_JOB} -n ${TARGET_NAMESPACE} --ignore-not-found
   ${KUBECTL} delete configmap ${VM_LATENCY_CONFIGMAP} -n ${TARGET_NAMESPACE} --ignore-not-found
+fi
+
+if [ -n "${OPT_RUN_TEST_PY}" ]; then
+    test -t 1 && USE_TTY="t"
+    ${CRI} run -i${USE_TTY} --rm --net=host -v "${PWD}":/workspace/kiagnose:Z -v "${HOME}"/.kube:/root/.kube:ro,Z kiagnose-e2e-test pytest -v ./test/e2e/vmlatency
 fi
