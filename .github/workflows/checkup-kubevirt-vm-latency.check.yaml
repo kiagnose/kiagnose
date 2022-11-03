@@ -107,3 +107,29 @@ jobs:
         run: ./checkups/kubevirt-vm-latency/automation/make.sh --e2e -- --run-tests
       - name: Delete cluster
         run: ./automation/make.sh --e2e -- --delete-cluster
+  e2e-test-py:
+    name: e2e-py
+    runs-on: ubuntu-latest
+    env:
+      CRI: docker
+      KUBEVIRT_USE_EMULATION: true
+    steps:
+      - name: Unload the br_netfilter kernel module to remove traffic restriction between bridge ports
+        run:  sudo rmmod br_netfilter
+      - name: Check out code
+        uses: actions/checkout@v2
+      - name: Build checkup image
+        working-directory: ./checkups/kubevirt-vm-latency
+        run: ./automation/make.sh --build-checkup --build-checkup-image
+      - name: Start cluster
+        run: ./automation/make.sh --e2e -- --install-kind --install-kubectl --create-multi-node-cluster
+      - name: Deploy kubevirt, CNAO and the NetworkAttachementDefinition
+        run: ./checkups/kubevirt-vm-latency/automation/make.sh --e2e -- --deploy-kubevirt --deploy-cnao --define-nad
+      - name: Deploy VM latency checkup
+        run: ./checkups/kubevirt-vm-latency/automation/make.sh --e2e -- --deploy-checkup
+      - name: Build test image
+        run: ./automation/e2e.sh --build-test-image
+      - name: Run e2e tests
+        run: ./checkups/kubevirt-vm-latency/automation/make.sh --e2e -- --run-tests-py
+      - name: Delete cluster
+        run: ./automation/make.sh --e2e -- --delete-cluster
