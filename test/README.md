@@ -23,11 +23,32 @@ In order to build the image, one can use podman:
 `podman build -f ./Dockerfile -t kiagnose-e2e-test .`
 
 ### Running the Tests
+The tests are expecting a running k8s cluster and a valid kubeconfig that allows
+clients to access the cluster.
+
+A common flow includes the following steps before running the tests:
+- Prepare the cluster under test:
+
+  `./automation/make.sh --e2e --create-cluster`
+
+  Similar, individual checkups should build and load their images to the kind cluster
+  before running their relevant tests.
+- Build test runner image:
+
+  `./automation/e2e.sh --build-test-image`
 
 > **Note**: The tests run on the host network namespace, where access to the k8s cluster is available.
 > The `kubeconfig` configuration is shared through a volume to the container.
 
 > **Note**: The default command execution runs all test.
+
+To run the tests, just execute:
+
+`./checkups/kubevirt-vm-latency/automation/e2e.sh --run-tests-py`
+
+or directly:
+
+`podman run -ti --rm --net=host -v $(pwd):/workspace/kiagnose:Z -v ${HOME}/.kube:/root/.kube:ro,Z kiagnose-e2e-test`
 
 To run the tests, just execute:
 
