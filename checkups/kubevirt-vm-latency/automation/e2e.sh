@@ -23,6 +23,8 @@ ARGCOUNT=$#
 
 SCRIPT_PATH=$(dirname $(realpath -s $0))
 
+CRI=${CRI:-podman}
+
 KUBECTL=${KUBECTL:-$PWD/kubectl}
 
 KIND=${KIND:-$PWD/kind}
@@ -166,7 +168,10 @@ if [ -n "${OPT_DEPLOY_CHECKUP}" ]; then
     echo "Deploy kubevirt-vm-latency..."
     echo
 
-    ${KIND} load docker-image "${CHECKUP_IMAGE}" --name "${CLUSTER_NAME}"
+    vmlatency_tar="/tmp/vmlatency-image.tar"
+    ${CRI} save -o "${vmlatency_tar}" "${CHECKUP_IMAGE}"
+    ${KIND} load image-archive --name "${CLUSTER_NAME}" "${vmlatency_tar}"
+    rm "${vmlatency_tar}"
 fi
 
 if [ -n "${OPT_RUN_TEST}" ]; then
