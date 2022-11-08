@@ -21,6 +21,9 @@
 package vmi
 
 import (
+	"crypto/rand"
+	"net"
+
 	k8scorev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	k8smetav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -205,6 +208,25 @@ func WithMacAddress(macAddress string) interfaceOption {
 	return func(iface *kvcorev1.Interface) {
 		iface.MacAddress = macAddress
 	}
+}
+
+// RandomMACAddress return random local unicast MAC address
+func RandomMACAddress() string {
+	const octetsCount = 6
+	address := make([]byte, octetsCount)
+	_, _ = rand.Read(address)
+	address[0] = 0x02
+	return net.HardwareAddr(address).String()
+}
+
+// RandomIPAddress return random private IPv4 CIDR notation address from range 10.0.0.0/8
+func RandomIPAddress() string {
+	const octetsCount = 4
+	address := make([]byte, octetsCount)
+	_, _ = rand.Read(address)
+	address[0] = 10
+	cidr := net.IPNet{IP: address, Mask: []byte{255, 0, 0, 0}}
+	return cidr.String()
 }
 
 func NewAlpine(name string, opts ...Option) *kvcorev1.VirtualMachineInstance {
