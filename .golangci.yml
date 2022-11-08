@@ -54,7 +54,6 @@ linters:
   disable-all: true
   enable:
     - bodyclose
-    - deadcode
     - depguard
     - dogsled
     - dupl
@@ -80,16 +79,15 @@ linters:
     - nakedret
     - noctx
     - nolintlint
-    - rowserrcheck
     - staticcheck
-    - structcheck
     - stylecheck
     - typecheck
     - unconvert
     - unparam
     - unused
-    - varcheck
     - whitespace
+  # disabled beacuse of generics, tracker https://github.com/golangci/golangci-lint/issues/2649.
+  #  - rowserrcheck
 
   # don't enable:
   # - asciicheck
