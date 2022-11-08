@@ -26,6 +26,7 @@ import (
 	"time"
 
 	k8scorev1 "k8s.io/api/core/v1"
+	k8srand "k8s.io/apimachinery/pkg/util/rand"
 
 	kvcorev1 "kubevirt.io/api/core/v1"
 
@@ -66,8 +67,8 @@ func New(c vmi.KubevirtVmisClient, uid, namespace string, params config.Config, 
 }
 
 const (
-	SourceVmiName        = "latency-check-source"
-	TargetVmiName        = "latency-check-target"
+	SourceVMINamePrefix  = "latency-check-source"
+	TargetVMINamePrefix  = "latency-check-target"
 	LabelLatencyCheckUID = "latency-check/uid"
 )
 
@@ -90,8 +91,11 @@ func (c *checkup) Setup(ctx context.Context) error {
 		return fmt.Errorf("%s: %v", errMessagePrefix, err)
 	}
 
-	sourceVmi := newLatencyCheckVmi(c.uid, SourceVmiName, c.params.SourceNodeName, netAttachDef, sourceVmiMac, sourceVmiCidr)
-	targetVmi := newLatencyCheckVmi(c.uid, TargetVmiName, c.params.TargetNodeName, netAttachDef, targetVmiMac, targetVmiCidr)
+	sourceVMIName := randomizeName(SourceVMINamePrefix)
+	targetVMIName := randomizeName(TargetVMINamePrefix)
+
+	sourceVmi := newLatencyCheckVmi(c.uid, sourceVMIName, c.params.SourceNodeName, netAttachDef, sourceVmiMac, sourceVmiCidr)
+	targetVmi := newLatencyCheckVmi(c.uid, targetVMIName, c.params.TargetNodeName, netAttachDef, targetVmiMac, targetVmiCidr)
 
 	if err = vmi.Start(c.client, c.namespace, sourceVmi); err != nil {
 		return fmt.Errorf("%s: %v", errMessagePrefix, err)
@@ -206,4 +210,10 @@ func (c *checkup) Teardown(waitCtx context.Context) error {
 
 func (c *checkup) Results() status.Results {
 	return c.results
+}
+
+func randomizeName(prefix string) string {
+	const randomStringLen = 5
+
+	return fmt.Sprintf("%s-%s", prefix, k8srand.String(randomStringLen))
 }
