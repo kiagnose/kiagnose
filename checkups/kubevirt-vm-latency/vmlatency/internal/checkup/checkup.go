@@ -77,11 +77,6 @@ func (c *checkup) Setup(ctx context.Context) error {
 		errMessagePrefix = "setup"
 
 		defaultSetupTimeout = time.Minute * 10
-
-		sourceVmiMac  = "02:00:00:01:00:01"
-		sourceVmiCidr = "192.168.100.10/24"
-		targetVmiMac  = "02:00:00:02:00:02"
-		targetVmiCidr = "192.168.100.20/24"
 	)
 
 	netAttachDef, err := c.client.GetNetworkAttachmentDefinition(
@@ -94,8 +89,8 @@ func (c *checkup) Setup(ctx context.Context) error {
 	sourceVMIName := randomizeName(SourceVMINamePrefix)
 	targetVMIName := randomizeName(TargetVMINamePrefix)
 
-	sourceVmi := newLatencyCheckVmi(c.uid, sourceVMIName, c.params.SourceNodeName, netAttachDef, sourceVmiMac, sourceVmiCidr)
-	targetVmi := newLatencyCheckVmi(c.uid, targetVMIName, c.params.TargetNodeName, netAttachDef, targetVmiMac, targetVmiCidr)
+	sourceVmi := newLatencyCheckVmi(c.uid, sourceVMIName, c.params.SourceNodeName, netAttachDef)
+	targetVmi := newLatencyCheckVmi(c.uid, targetVMIName, c.params.TargetNodeName, netAttachDef)
 
 	if err = vmi.Start(c.client, c.namespace, sourceVmi); err != nil {
 		return fmt.Errorf("%s: %v", errMessagePrefix, err)
@@ -120,11 +115,8 @@ func (c *checkup) Setup(ctx context.Context) error {
 }
 
 func newLatencyCheckVmi(
-	uid,
-	name,
-	nodeName string,
-	netAttachDef *netattdefv1.NetworkAttachmentDefinition,
-	macAddress, cidr string) *kvcorev1.VirtualMachineInstance {
+	uid, name, nodeName string,
+	netAttachDef *netattdefv1.NetworkAttachmentDefinition) *kvcorev1.VirtualMachineInstance {
 	const networkName = "net0"
 
 	vmLabel := vmi.Label{Key: LabelLatencyCheckUID, Value: uid}
@@ -135,6 +127,7 @@ func newLatencyCheckVmi(
 		affinity = &k8scorev1.Affinity{PodAntiAffinity: vmi.NewPodAntiAffinity(vmLabel)}
 	}
 
+	macAddress := vmi.RandomMACAddress()
 	return vmi.NewAlpine(name,
 		vmi.WithLabels(vmLabel),
 		vmi.WithAffinity(affinity),
@@ -147,7 +140,7 @@ func newLatencyCheckVmi(
 		vmi.WithCloudInitNoCloudNetworkData(
 			vmi.WithEthernet(
 				networkName,
-				vmi.WithAddresses(cidr),
+				vmi.WithAddresses(vmi.RandomIPAddress()),
 				vmi.WithMatchingMAC(macAddress),
 			),
 		),
