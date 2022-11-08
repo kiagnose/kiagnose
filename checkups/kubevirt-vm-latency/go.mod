@@ -1,6 +1,6 @@
 module github.com/kiagnose/kiagnose/checkups/kubevirt-vm-latency
 
-go 1.17
+go 1.19
 
 require (
 	github.com/containernetworking/cni v1.1.1
