@@ -23,6 +23,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strings"
 	"testing"
 	"time"
 
@@ -157,10 +158,14 @@ func TestCheckupSetupShouldCreateVMsWithPodAntiAffinity(t *testing.T) {
 		testCheckup := checkup.New(testClient, testCheckupUID, testNamespace, config.Config{}, &checkerStub{})
 
 		assert.NoError(t, testCheckup.Setup(context.Background()))
-		assertVmiPodAntiAffinityExist(t, testClient, checkup.SourceVmiName)
-		assertVmiPodAntiAffinityExist(t, testClient, checkup.TargetVmiName)
-		assertVmiNodeAffinityNotExist(t, testClient, checkup.SourceVmiName)
-		assertVmiNodeAffinityNotExist(t, testClient, checkup.TargetVmiName)
+
+		sourceVMIName := testClient.SourceVMIName()
+		targetVMIName := testClient.TargetVMIName()
+
+		assertVmiPodAntiAffinityExist(t, testClient, sourceVMIName)
+		assertVmiPodAntiAffinityExist(t, testClient, targetVMIName)
+		assertVmiNodeAffinityNotExist(t, testClient, sourceVMIName)
+		assertVmiNodeAffinityNotExist(t, testClient, targetVMIName)
 	})
 }
 
@@ -176,10 +181,14 @@ func TestCheckupSetupShouldCreateVMsWithNodeAffinity(t *testing.T) {
 		testCheckup := checkup.New(testClient, testCheckupUID, testNamespace, testCheckupParams, &checkerStub{})
 
 		assert.NoError(t, testCheckup.Setup(context.Background()))
-		assertVmiNodeAffinityExist(t, testClient, checkup.SourceVmiName, testSourceNode)
-		assertVmiNodeAffinityExist(t, testClient, checkup.TargetVmiName, testTargetNode)
-		assertVmiPodAntiAffinityNotExist(t, testClient, checkup.SourceVmiName)
-		assertVmiPodAntiAffinityNotExist(t, testClient, checkup.TargetVmiName)
+
+		sourceVMIName := testClient.SourceVMIName()
+		targetVMIName := testClient.TargetVMIName()
+
+		assertVmiNodeAffinityExist(t, testClient, sourceVMIName, testSourceNode)
+		assertVmiNodeAffinityExist(t, testClient, targetVMIName, testTargetNode)
+		assertVmiPodAntiAffinityNotExist(t, testClient, sourceVMIName)
+		assertVmiPodAntiAffinityNotExist(t, testClient, targetVMIName)
 	})
 }
 
@@ -278,6 +287,26 @@ func (c *clientStub) SerialConsole(_, _ string, _ time.Duration) (kubecli.Stream
 
 func (c *clientStub) GetNetworkAttachmentDefinition(_, _ string) (*netattdefv1.NetworkAttachmentDefinition, error) {
 	return c.returnNetAttachDef, c.failGetNetAttachDef
+}
+
+func (c *clientStub) SourceVMIName() string {
+	for vmiName := range c.createdVmis {
+		if strings.HasPrefix(vmiName, checkup.SourceVMINamePrefix) {
+			return vmiName
+		}
+	}
+
+	return ""
+}
+
+func (c *clientStub) TargetVMIName() string {
+	for vmiName := range c.createdVmis {
+		if strings.HasPrefix(vmiName, checkup.TargetVMINamePrefix) {
+			return vmiName
+		}
+	}
+
+	return ""
 }
 
 type checkerStub struct {
