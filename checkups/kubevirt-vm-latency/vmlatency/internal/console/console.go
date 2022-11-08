@@ -125,9 +125,9 @@ func (c Console) RunCommand(command string, timeout time.Duration) (string, erro
 // It is done so, to make sure the match was found in the result of the expect.BSnd
 // command and not in a leftover that wasn't removed from the buffer.
 // NOTE: the method contains the following limitations:
-//       - Use of `BatchSwitchCase`
-//       - Multiline commands
-//       - No more than one sequential send or receive
+//   - Use of `BatchSwitchCase`
+//   - Multiline commands
+//   - No more than one sequential send or receive
 func (c Console) safeExpectBatch(batches []expect.Batcher, timeout time.Duration) ([]expect.BatchRes, error) {
 	const connectTimeout = 30 * time.Second
 	expecter, err := c.newExpecter(connectTimeout)
