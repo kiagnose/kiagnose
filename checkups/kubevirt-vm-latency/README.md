@@ -8,6 +8,9 @@ Currently, the measurement is done using standard [ping](https://en.wikipedia.or
 
 It can ease the maintainability effort required from a cluster administrator by removing the burden of manually testing network connectivity and performance, reduce mistakes and generally save time.
 
+## Block Diagram
+![Block Diagram](../../docs/images/kubevirt-vm-latency-diagram.svg "Block Diagram")
+
 ## VM network binding
 The checkup binds the VMs to the given `NetworkAttachmentDefinition` using one of the
 following binding methods:
