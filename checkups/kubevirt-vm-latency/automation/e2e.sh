@@ -175,8 +175,6 @@ if [ -n "${OPT_DEPLOY_CHECKUP}" ]; then
 fi
 
 if [ -n "${OPT_RUN_TEST}" ]; then
-     ${KUBECTL} apply -n ${TARGET_NAMESPACE} -f ./manifests/kiagnose-configmap-access.yaml
-
      cat <<EOF | ${KUBECTL} apply -n ${TARGET_NAMESPACE} -f -
 ---
 apiVersion: v1
@@ -210,6 +208,15 @@ roleRef:
   kind: Role
   name: kubevirt-vm-latency-checker
   apiGroup: rbac.authorization.k8s.io
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+ name: kiagnose-configmap-access
+rules:
+ - apiGroups: [ "" ]
+   resources: [ "configmaps" ]
+   verbs: ["get", "update"]
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: RoleBinding
