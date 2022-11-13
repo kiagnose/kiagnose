@@ -47,8 +47,8 @@ import (
 const testCheckupUID = "0123456789"
 
 const (
-	configMapNamespace = "target-ns"
-	configMapName      = "checkup1"
+	testNamespace = "target-ns"
+	configMapName = "checkup1"
 )
 
 func TestLauncherShouldFail(t *testing.T) {
@@ -56,7 +56,7 @@ func TestLauncherShouldFail(t *testing.T) {
 	testCheckup := checkup.New(
 		testClient,
 		testCheckupUID,
-		k8scorev1.NamespaceDefault,
+		testNamespace,
 		config.Config{},
 		&checkerStub{checkFailure: errorCheck},
 	)
@@ -70,7 +70,7 @@ func TestLauncherShouldRunSuccessfully(t *testing.T) {
 	testCheckup := checkup.New(
 		testClient,
 		testCheckupUID,
-		k8scorev1.NamespaceDefault,
+		testNamespace,
 		config.Config{},
 		&checkerStub{},
 	)
@@ -153,11 +153,11 @@ func TestLauncherShouldSuccessfullyProduceStatusResults(t *testing.T) {
 	simpleFakeClient := fake.NewSimpleClientset(newConfigMap())
 	testClient := newFakeClient()
 
-	testReporter := reporter.New(simpleFakeClient, configMapNamespace, configMapName)
+	testReporter := reporter.New(simpleFakeClient, testNamespace, configMapName)
 	testCheckup := checkup.New(
 		testClient,
 		testCheckupUID,
-		k8scorev1.NamespaceDefault,
+		testNamespace,
 		config.Config{
 			SourceNodeName: sourceNodeName,
 			TargetNodeName: targetNodeName,
@@ -315,7 +315,7 @@ func newConfigMap() *k8scorev1.ConfigMap {
 	return &k8scorev1.ConfigMap{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      configMapName,
-			Namespace: configMapNamespace,
+			Namespace: testNamespace,
 		},
 		Data: map[string]string{},
 	}
