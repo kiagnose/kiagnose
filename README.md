@@ -29,7 +29,35 @@ Kiagnose checkups are expecting the namespace admin to supply the ServiceAccount
 ### Installation Steps
 1. Make sure the checkup's image is accessible to your cluster.
 2. Assure the required checkup permissions are in place.
-
+3. Grant Kiagnose Job with access permissions to the checkup config-map:
+    ```yaml
+    ---
+    apiVersion: v1
+    kind: ServiceAccount
+    metadata:
+      name: example-sa
+    ---
+    apiVersion: rbac.authorization.k8s.io/v1
+    kind: Role
+    metadata:
+      name: kiagnose-configmap-access
+    rules:
+    - apiGroups: [ "" ]
+      resources: [ "configmaps" ]
+      verbs: ["get", "update"]
+    ---
+    apiVersion: rbac.authorization.k8s.io/v1
+    kind: RoleBinding
+    metadata:
+      name: kiagnose-configmap-access
+    subjects:
+    - kind: ServiceAccount
+      name: example-sa
+    roleRef:
+      kind: Role
+      apiGroup: rbac.authorization.k8s.io
+      name: kiagnose-configmap-access
+   ```
 ## Checkup Configuration
 
 The main user-interface is a [ConfigMap](https://kubernetes.io/docs/concepts/configuration/configmap/) object with a
@@ -100,6 +128,8 @@ spec:
             - name: CONFIGMAP_NAME
               value: example-checkup-config
 ```
+
+Kiagnose Job service-account should have permission to access the checkup ConfigMap
 
 ## Checkup Results Retrieval
 
