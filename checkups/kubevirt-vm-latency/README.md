@@ -144,7 +144,6 @@ spec:
         - name: vm-latency-checkup
           image: quay.io/kiagnose/kubevirt-vm-latency:main
           securityContext:
-            runAsUser: 1000
             allowPrivilegeEscalation: false
             capabilities:
               drop: ["ALL"]
