@@ -4,7 +4,7 @@ kind: Role
 metadata:
   name: kiagnose-configmap-access
 rules:
-  - apiGroups: [ "" ]
-    resources: [ "configmaps" ]
-    verbs: ["get", "update"]
+- apiGroups: [ "" ]
+  resources: [ "configmaps" ]
+  verbs: ["get", "update"]
 ...

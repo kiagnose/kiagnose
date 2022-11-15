@@ -70,9 +70,9 @@ kind: Role
 metadata:
   name: kiagnose-configmap-access
 rules:
-  - apiGroups: [ "" ]
-    resources: [ "configmaps" ]
-    verbs: ["get", "update"]
+- apiGroups: [ "" ]
+  resources: [ "configmaps" ]
+  verbs: ["get", "update"]
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: RoleBinding
