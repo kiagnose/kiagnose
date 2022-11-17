@@ -21,10 +21,8 @@ package config
 
 import (
 	"errors"
-	"strings"
 	"time"
 
-	corev1 "k8s.io/api/core/v1"
 	"k8s.io/client-go/kubernetes"
 
 	"github.com/kiagnose/kiagnose/kiagnose/configmap"
@@ -39,7 +37,7 @@ var (
 type Config struct {
 	UID     string
 	Timeout time.Duration
-	EnvVars []corev1.EnvVar
+	Params  map[string]string
 }
 
 func ReadFromConfigMap(client kubernetes.Interface, configMapNamespace, configMapName string) (*Config, error) {
@@ -65,33 +63,11 @@ func ReadFromConfigMap(client kubernetes.Interface, configMapNamespace, configMa
 	return &Config{
 		UID:     string(configMap.UID),
 		Timeout: parser.Timeout,
-		EnvVars: paramsToEnvVars(parser.Params),
+		Params:  parser.Params,
 	}, nil
 }
 
 func isConfigMapAlreadyInUse(data map[string]string) bool {
 	_, exists := data[types.StartTimestampKey]
 	return exists
-}
-
-func paramsToEnvVars(params map[string]string) []corev1.EnvVar {
-	var envVars []corev1.EnvVar
-
-	for k, v := range params {
-		envVars = append(envVars, corev1.EnvVar{
-			Name:  strings.ToUpper(k),
-			Value: v,
-		})
-	}
-
-	return envVars
-}
-
-func EnvVarsToParams(envVars []corev1.EnvVar) map[string]string {
-	params := map[string]string{}
-	for _, v := range envVars {
-		params[v.Name] = v.Value
-	}
-
-	return params
 }
