@@ -31,7 +31,7 @@ import (
 
 type configCreateTestCases struct {
 	description    string
-	env            map[string]string
+	params         map[string]string
 	expectedConfig config.Config
 }
 
@@ -44,14 +44,14 @@ const (
 	testTargetNodeName                = "worker2"
 )
 
-func TestCreateConfigFromEnvShould(t *testing.T) {
+func TestCreateConfigFromParamsShould(t *testing.T) {
 	testCases := []configCreateTestCases{
 		{
-			description: "set default sample duration when env var is missing",
-			env: map[string]string{
-				config.NetworkNameEnvVarName:                   testNetAttachDefName,
-				config.NetworkNamespaceEnvVarName:              testNamespace,
-				config.DesiredMaxLatencyMillisecondsEnvVarName: fmt.Sprintf("%d", testDesiredMaxLatencyMilliseconds),
+			description: "set default sample duration when parameter is missing",
+			params: map[string]string{
+				config.NetworkNameParamName:                   testNetAttachDefName,
+				config.NetworkNamespaceParamName:              testNamespace,
+				config.DesiredMaxLatencyMillisecondsParamName: fmt.Sprintf("%d", testDesiredMaxLatencyMilliseconds),
 			},
 			expectedConfig: config.Config{
 				SampleDurationSeconds:                config.DefaultSampleDurationSeconds,
@@ -61,11 +61,11 @@ func TestCreateConfigFromEnvShould(t *testing.T) {
 			},
 		},
 		{
-			description: "set default desired max latency when env var is missing",
-			env: map[string]string{
-				config.NetworkNameEnvVarName:           testNetAttachDefName,
-				config.NetworkNamespaceEnvVarName:      testNamespace,
-				config.SampleDurationSecondsEnvVarName: fmt.Sprintf("%d", testSampleDurationSeconds),
+			description: "set default desired max latency when parameter is missing",
+			params: map[string]string{
+				config.NetworkNameParamName:           testNetAttachDefName,
+				config.NetworkNamespaceParamName:      testNamespace,
+				config.SampleDurationSecondsParamName: fmt.Sprintf("%d", testSampleDurationSeconds),
 			},
 			expectedConfig: config.Config{
 				DesiredMaxLatencyMilliseconds:        config.DefaultDesiredMaxLatencyMilliseconds,
@@ -76,12 +76,12 @@ func TestCreateConfigFromEnvShould(t *testing.T) {
 		},
 		{
 			description: "set source and target nodes when both are specified",
-			env: map[string]string{
-				config.NetworkNameEnvVarName:           testNetAttachDefName,
-				config.NetworkNamespaceEnvVarName:      testNamespace,
-				config.SampleDurationSecondsEnvVarName: fmt.Sprintf("%d", testSampleDurationSeconds),
-				config.SourceNodeNameEnvVarName:        testSourceNodeName,
-				config.TargetNodeNameEnvVarName:        testTargetNodeName,
+			params: map[string]string{
+				config.NetworkNameParamName:           testNetAttachDefName,
+				config.NetworkNamespaceParamName:      testNamespace,
+				config.SampleDurationSecondsParamName: fmt.Sprintf("%d", testSampleDurationSeconds),
+				config.SourceNodeNameParamName:        testSourceNodeName,
+				config.TargetNodeNameParamName:        testTargetNodeName,
 			},
 			expectedConfig: config.Config{
 				DesiredMaxLatencyMilliseconds:        config.DefaultDesiredMaxLatencyMilliseconds,
@@ -96,7 +96,7 @@ func TestCreateConfigFromEnvShould(t *testing.T) {
 
 	for _, testCase := range testCases {
 		t.Run(testCase.description, func(t *testing.T) {
-			testConfig, err := config.New(testCase.env)
+			testConfig, err := config.New(testCase.params)
 			assert.NoError(t, err)
 			assert.Equal(t, testConfig, testCase.expectedConfig)
 		})
@@ -106,156 +106,156 @@ func TestCreateConfigFromEnvShould(t *testing.T) {
 type configCreateFallingTestCases struct {
 	description   string
 	expectedError error
-	env           map[string]string
+	params        map[string]string
 }
 
-func TestCreateConfigFromEnvShouldFailWhen(t *testing.T) {
+func TestCreateConfigFromParamsShouldFailWhen(t *testing.T) {
 	testCases := []configCreateFallingTestCases{
 		{
-			description:   "env is nil",
-			expectedError: config.ErrInvalidEnv,
-			env:           nil,
+			description:   "params is nil",
+			expectedError: config.ErrInvalidParams,
+			params:        nil,
 		},
 		{
-			description:   "env is empty",
-			expectedError: config.ErrInvalidEnv,
-			env:           map[string]string{},
+			description:   "params is empty",
+			expectedError: config.ErrInvalidParams,
+			params:        map[string]string{},
 		},
 	}
 	for _, testCase := range testCases {
 		t.Run(testCase.description, func(t *testing.T) {
-			_, err := config.New(testCase.env)
+			_, err := config.New(testCase.params)
 			assert.Equal(t, err, testCase.expectedError)
 		})
 	}
 }
 
-func TestCreateConfigFromEnvShouldFailWhenMandatoryEnvVarsAreMissing(t *testing.T) {
+func TestCreateConfigFromParamsShouldFailWhenMandatoryParamsAreMissing(t *testing.T) {
 	testCases := []configCreateFallingTestCases{
 		{
-			description:   "network name env var is missing",
+			description:   "network name parameter is missing",
 			expectedError: config.ErrInvalidNetworkName,
-			env: map[string]string{
-				config.NetworkNamespaceEnvVarName: testNamespace,
+			params: map[string]string{
+				config.NetworkNamespaceParamName: testNamespace,
 			},
 		},
 		{
-			description:   "network namespace env var is missing",
+			description:   "network namespace parameter is missing",
 			expectedError: config.ErrInvalidNetworkNamespace,
-			env: map[string]string{
-				config.NetworkNameEnvVarName: testNetAttachDefName,
+			params: map[string]string{
+				config.NetworkNameParamName: testNetAttachDefName,
 			},
 		},
 	}
 
 	for _, testCase := range testCases {
 		t.Run(testCase.description, func(t *testing.T) {
-			_, err := config.New(testCase.env)
+			_, err := config.New(testCase.params)
 			assert.Equal(t, err, testCase.expectedError)
 		})
 	}
 }
 
-func TestCreateConfigFromEnvShouldFailWhenMandatoryEnvVarsAreInvalid(t *testing.T) {
+func TestCreateConfigFromParamsShouldFailWhenMandatoryParamsAreInvalid(t *testing.T) {
 	testCases := []configCreateFallingTestCases{
 		{
-			description:   "network name env var value is not valid",
+			description:   "network name parameter value is not valid",
 			expectedError: config.ErrInvalidNetworkName,
-			env: map[string]string{
-				config.NetworkNameEnvVarName:      "",
-				config.NetworkNamespaceEnvVarName: testNamespace,
+			params: map[string]string{
+				config.NetworkNameParamName:      "",
+				config.NetworkNamespaceParamName: testNamespace,
 			},
 		},
 		{
-			description:   "network namespace env var value is not valid",
+			description:   "network namespace parameter value is not valid",
 			expectedError: config.ErrInvalidNetworkNamespace,
-			env: map[string]string{
-				config.NetworkNameEnvVarName:      testNetAttachDefName,
-				config.NetworkNamespaceEnvVarName: "",
+			params: map[string]string{
+				config.NetworkNameParamName:      testNetAttachDefName,
+				config.NetworkNamespaceParamName: "",
 			},
 		},
 	}
 	for _, testCase := range testCases {
 		t.Run(testCase.description, func(t *testing.T) {
-			_, err := config.New(testCase.env)
+			_, err := config.New(testCase.params)
 			assert.Equal(t, err, testCase.expectedError)
 		})
 	}
 }
 
-func TestCreateConfigFromEnvShouldFailWhenNodeNames(t *testing.T) {
+func TestCreateConfigFromParamsShouldFailWhenNodeNames(t *testing.T) {
 	testCases := []configCreateFallingTestCases{
 		{
 			description:   "source node name is set but target node name isn't",
 			expectedError: config.ErrIllegalSourceAndTargetNodesCombination,
-			env: map[string]string{
-				config.NetworkNameEnvVarName:      testNetAttachDefName,
-				config.NetworkNamespaceEnvVarName: testNamespace,
-				config.SourceNodeNameEnvVarName:   testSourceNodeName,
+			params: map[string]string{
+				config.NetworkNameParamName:      testNetAttachDefName,
+				config.NetworkNamespaceParamName: testNamespace,
+				config.SourceNodeNameParamName:   testSourceNodeName,
 			},
 		},
 		{
 			description:   "target node name is set but source node name isn't",
 			expectedError: config.ErrIllegalSourceAndTargetNodesCombination,
-			env: map[string]string{
-				config.NetworkNameEnvVarName:      testNetAttachDefName,
-				config.NetworkNamespaceEnvVarName: testNamespace,
-				config.TargetNodeNameEnvVarName:   testTargetNodeName,
+			params: map[string]string{
+				config.NetworkNameParamName:      testNetAttachDefName,
+				config.NetworkNamespaceParamName: testNamespace,
+				config.TargetNodeNameParamName:   testTargetNodeName,
 			},
 		},
 		{
 			description:   "source node name is empty",
 			expectedError: config.ErrIllegalSourceAndTargetNodesCombination,
-			env: map[string]string{
-				config.NetworkNameEnvVarName:      testNetAttachDefName,
-				config.NetworkNamespaceEnvVarName: testNamespace,
-				config.SourceNodeNameEnvVarName:   "",
-				config.TargetNodeNameEnvVarName:   testTargetNodeName,
+			params: map[string]string{
+				config.NetworkNameParamName:      testNetAttachDefName,
+				config.NetworkNamespaceParamName: testNamespace,
+				config.SourceNodeNameParamName:   "",
+				config.TargetNodeNameParamName:   testTargetNodeName,
 			},
 		},
 		{
 			description:   "target node name is empty",
 			expectedError: config.ErrIllegalSourceAndTargetNodesCombination,
-			env: map[string]string{
-				config.NetworkNameEnvVarName:      testNetAttachDefName,
-				config.NetworkNamespaceEnvVarName: testNamespace,
-				config.SourceNodeNameEnvVarName:   testSourceNodeName,
-				config.TargetNodeNameEnvVarName:   "",
+			params: map[string]string{
+				config.NetworkNameParamName:      testNetAttachDefName,
+				config.NetworkNamespaceParamName: testNamespace,
+				config.SourceNodeNameParamName:   testSourceNodeName,
+				config.TargetNodeNameParamName:   "",
 			},
 		},
 	}
 	for _, testCase := range testCases {
 		t.Run(testCase.description, func(t *testing.T) {
-			_, err := config.New(testCase.env)
+			_, err := config.New(testCase.params)
 			assert.Equal(t, err, testCase.expectedError)
 		})
 	}
 }
 
-func TestCreateConfigShouldFailWhenIntegerEnvVarsAreInvalid(t *testing.T) {
+func TestCreateConfigShouldFailWhenIntegerParamsAreInvalid(t *testing.T) {
 	testCases := []configCreateFallingTestCases{
 		{
 			description:   "sample duration is not valid integer",
 			expectedError: strconv.ErrSyntax,
-			env: map[string]string{
-				config.NetworkNameEnvVarName:           testNetAttachDefName,
-				config.NetworkNamespaceEnvVarName:      testNamespace,
-				config.SampleDurationSecondsEnvVarName: "3rr0r",
+			params: map[string]string{
+				config.NetworkNameParamName:           testNetAttachDefName,
+				config.NetworkNamespaceParamName:      testNamespace,
+				config.SampleDurationSecondsParamName: "3rr0r",
 			},
 		},
 		{
 			description:   "desired max latency is too big",
 			expectedError: strconv.ErrRange,
-			env: map[string]string{
-				config.NetworkNameEnvVarName:                   testNetAttachDefName,
-				config.NetworkNamespaceEnvVarName:              testNamespace,
-				config.DesiredMaxLatencyMillisecondsEnvVarName: "39213801928309128309",
+			params: map[string]string{
+				config.NetworkNameParamName:                   testNetAttachDefName,
+				config.NetworkNamespaceParamName:              testNamespace,
+				config.DesiredMaxLatencyMillisecondsParamName: "39213801928309128309",
 			},
 		},
 	}
 	for _, testCase := range testCases {
 		t.Run(testCase.description, func(t *testing.T) {
-			_, err := config.New(testCase.env)
+			_, err := config.New(testCase.params)
 			assert.ErrorContains(t, err, testCase.expectedError.Error())
 		})
 	}

@@ -27,12 +27,12 @@ import (
 )
 
 const (
-	NetworkNamespaceEnvVarName              = "NETWORK_ATTACHMENT_DEFINITION_NAMESPACE"
-	NetworkNameEnvVarName                   = "NETWORK_ATTACHMENT_DEFINITION_NAME"
-	SampleDurationSecondsEnvVarName         = "SAMPLE_DURATION_SECONDS"
-	SourceNodeNameEnvVarName                = "SOURCE_NODE"
-	TargetNodeNameEnvVarName                = "TARGET_NODE"
-	DesiredMaxLatencyMillisecondsEnvVarName = "MAX_DESIRED_LATENCY_MILLISECONDS"
+	NetworkNamespaceParamName              = "NETWORK_ATTACHMENT_DEFINITION_NAMESPACE"
+	NetworkNameParamName                   = "NETWORK_ATTACHMENT_DEFINITION_NAME"
+	SampleDurationSecondsParamName         = "SAMPLE_DURATION_SECONDS"
+	SourceNodeNameParamName                = "SOURCE_NODE"
+	TargetNodeNameParamName                = "TARGET_NODE"
+	DesiredMaxLatencyMillisecondsParamName = "MAX_DESIRED_LATENCY_MILLISECONDS"
 )
 
 type Config struct {
@@ -45,9 +45,9 @@ type Config struct {
 }
 
 var (
-	ErrInvalidEnv                             = errors.New("environment is invalid")
-	ErrInvalidNetworkName                     = fmt.Errorf("%q environment variable is invalid", NetworkNameEnvVarName)
-	ErrInvalidNetworkNamespace                = fmt.Errorf("%q environment variable is invalid", NetworkNamespaceEnvVarName)
+	ErrInvalidParams                          = errors.New("params is invalid")
+	ErrInvalidNetworkName                     = fmt.Errorf("%q parameter is invalid", NetworkNameParamName)
+	ErrInvalidNetworkNamespace                = fmt.Errorf("%q parameter is invalid", NetworkNamespaceParamName)
 	ErrIllegalSourceAndTargetNodesCombination = errors.New("illegal source and target nodes combination")
 )
 
@@ -56,31 +56,31 @@ const (
 	DefaultDesiredMaxLatencyMilliseconds = math.MaxInt
 )
 
-func New(env map[string]string) (Config, error) {
-	if len(env) == 0 {
-		return Config{}, ErrInvalidEnv
+func New(params map[string]string) (Config, error) {
+	if len(params) == 0 {
+		return Config{}, ErrInvalidParams
 	}
 
 	newConfig := Config{
-		NetworkAttachmentDefinitionName:      env[NetworkNameEnvVarName],
-		NetworkAttachmentDefinitionNamespace: env[NetworkNamespaceEnvVarName],
-		TargetNodeName:                       env[TargetNodeNameEnvVarName],
-		SourceNodeName:                       env[SourceNodeNameEnvVarName],
+		NetworkAttachmentDefinitionName:      params[NetworkNameParamName],
+		NetworkAttachmentDefinitionNamespace: params[NetworkNamespaceParamName],
+		TargetNodeName:                       params[TargetNodeNameParamName],
+		SourceNodeName:                       params[SourceNodeNameParamName],
 	}
 
 	var err error
 	sampleDuration := DefaultSampleDurationSeconds
-	if value, exists := env[SampleDurationSecondsEnvVarName]; exists {
+	if value, exists := params[SampleDurationSecondsParamName]; exists {
 		if sampleDuration, err = strconv.Atoi(value); err != nil {
-			return Config{}, fmt.Errorf("%q environment variable is invalid: %v", SampleDurationSecondsEnvVarName, err)
+			return Config{}, fmt.Errorf("%q parameter is invalid: %v", SampleDurationSecondsParamName, err)
 		}
 	}
 	newConfig.SampleDurationSeconds = sampleDuration
 
 	desiredMaxLatency := DefaultDesiredMaxLatencyMilliseconds
-	if value, exists := env[DesiredMaxLatencyMillisecondsEnvVarName]; exists {
+	if value, exists := params[DesiredMaxLatencyMillisecondsParamName]; exists {
 		if desiredMaxLatency, err = strconv.Atoi(value); err != nil {
-			return Config{}, fmt.Errorf("%q environment variable is invalid: %v", DesiredMaxLatencyMillisecondsEnvVarName, err)
+			return Config{}, fmt.Errorf("%q parameter is invalid: %v", DesiredMaxLatencyMillisecondsParamName, err)
 		}
 	}
 	newConfig.DesiredMaxLatencyMilliseconds = desiredMaxLatency
