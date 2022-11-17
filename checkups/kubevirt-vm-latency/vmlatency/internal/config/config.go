@@ -27,12 +27,12 @@ import (
 )
 
 const (
-	NetworkNamespaceParamName              = "NETWORK_ATTACHMENT_DEFINITION_NAMESPACE"
-	NetworkNameParamName                   = "NETWORK_ATTACHMENT_DEFINITION_NAME"
-	SampleDurationSecondsParamName         = "SAMPLE_DURATION_SECONDS"
-	SourceNodeNameParamName                = "SOURCE_NODE"
-	TargetNodeNameParamName                = "TARGET_NODE"
-	DesiredMaxLatencyMillisecondsParamName = "MAX_DESIRED_LATENCY_MILLISECONDS"
+	NetworkNamespaceParamName              = "network_attachment_definition_namespace"
+	NetworkNameParamName                   = "network_attachment_definition_name"
+	SampleDurationSecondsParamName         = "sample_duration_seconds"
+	SourceNodeNameParamName                = "source_node"
+	TargetNodeNameParamName                = "target_node"
+	DesiredMaxLatencyMillisecondsParamName = "max_desired_latency_milliseconds"
 )
 
 type Config struct {

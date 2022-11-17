@@ -20,8 +20,6 @@
 package config_test
 
 import (
-	"sort"
-	"strings"
 	"testing"
 	"time"
 
@@ -63,6 +61,7 @@ func TestReadFromConfigMapShouldSucceed(t *testing.T) {
 			expectedConfig: &config.Config{
 				UID:     configMapUID,
 				Timeout: stringToDurationMustParse(timeoutValue),
+				Params:  map[string]string{},
 			},
 		},
 		{
@@ -75,7 +74,10 @@ func TestReadFromConfigMapShouldSucceed(t *testing.T) {
 			expectedConfig: &config.Config{
 				UID:     configMapUID,
 				Timeout: stringToDurationMustParse(timeoutValue),
-				EnvVars: expectedEnvVars(param1Key, param1Value, param2Key, param2Value),
+				Params: map[string]string{
+					param1Key: param1Value,
+					param2Key: param2Value,
+				},
 			},
 		},
 	}
@@ -86,10 +88,6 @@ func TestReadFromConfigMapShouldSucceed(t *testing.T) {
 
 			actualConfig, err := config.ReadFromConfigMap(fakeClient, configMapNamespace, configMapName)
 			assert.NoError(t, err)
-
-			sort.Slice(actualConfig.EnvVars, func(i, j int) bool {
-				return actualConfig.EnvVars[i].Name < actualConfig.EnvVars[j].Name
-			})
 
 			assert.Equal(t, testCase.expectedConfig, actualConfig)
 		})
@@ -170,13 +168,6 @@ func newConfigMap(namespace, name string, data map[string]string) *corev1.Config
 			UID:       configMapUID,
 		},
 		Data: data,
-	}
-}
-
-func expectedEnvVars(param1Key, param1Value, param2Key, param2Value string) []corev1.EnvVar {
-	return []corev1.EnvVar{
-		{Name: strings.ToUpper(param1Key), Value: param1Value},
-		{Name: strings.ToUpper(param2Key), Value: param2Value},
 	}
 }
 

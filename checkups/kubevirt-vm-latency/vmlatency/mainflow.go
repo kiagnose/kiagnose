@@ -46,7 +46,7 @@ func Run(env map[string]string, namespace string) error {
 		return err
 	}
 
-	cfg, err := config.New(kconfig.EnvVarsToParams(baseConfig.EnvVars))
+	cfg, err := config.New(baseConfig.Params)
 	if err != nil {
 		return err
 	}
