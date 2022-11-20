@@ -21,21 +21,11 @@ package configmap
 
 import (
 	"context"
-	"log"
 
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 )
-
-func Create(client kubernetes.Interface, cm *corev1.ConfigMap) (*corev1.ConfigMap, error) {
-	createdConfigMap, err := client.CoreV1().ConfigMaps(cm.Namespace).Create(context.Background(), cm, metav1.CreateOptions{})
-	if err != nil {
-		return nil, err
-	}
-	log.Printf("ConfigMap '%s/%s' successfully created", cm.Namespace, cm.Name)
-	return createdConfigMap, nil
-}
 
 func Get(client kubernetes.Interface, namespace, name string) (*corev1.ConfigMap, error) {
 	return client.CoreV1().ConfigMaps(namespace).Get(context.Background(), name, metav1.GetOptions{})
@@ -43,8 +33,4 @@ func Get(client kubernetes.Interface, namespace, name string) (*corev1.ConfigMap
 
 func Update(client kubernetes.Interface, configMap *corev1.ConfigMap) (*corev1.ConfigMap, error) {
 	return client.CoreV1().ConfigMaps(configMap.Namespace).Update(context.Background(), configMap, metav1.UpdateOptions{})
-}
-
-func Delete(client kubernetes.Interface, namespace, name string) error {
-	return client.CoreV1().ConfigMaps(namespace).Delete(context.Background(), name, metav1.DeleteOptions{})
 }
