@@ -40,27 +40,27 @@ type Config struct {
 	Params  map[string]string
 }
 
-func ReadFromConfigMap(client kubernetes.Interface, configMapNamespace, configMapName string) (*Config, error) {
+func ReadFromConfigMap(client kubernetes.Interface, configMapNamespace, configMapName string) (Config, error) {
 	configMap, err := configmap.Get(client, configMapNamespace, configMapName)
 	if err != nil {
-		return nil, err
+		return Config{}, err
 	}
 
 	if configMap.Data == nil {
-		return nil, ErrConfigMapDataIsNil
+		return Config{}, ErrConfigMapDataIsNil
 	}
 
 	if isConfigMapAlreadyInUse(configMap.Data) {
-		return nil, ErrConfigMapIsAlreadyInUse
+		return Config{}, ErrConfigMapIsAlreadyInUse
 	}
 
 	parser := newConfigMapParser(configMap.Data)
 	err = parser.Parse()
 	if err != nil {
-		return nil, err
+		return Config{}, err
 	}
 
-	return &Config{
+	return Config{
 		UID:     string(configMap.UID),
 		Timeout: parser.Timeout,
 		Params:  parser.Params,

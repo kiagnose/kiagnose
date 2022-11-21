@@ -49,7 +49,7 @@ func TestReadFromConfigMapShouldSucceed(t *testing.T) {
 	type loadTestCase struct {
 		description    string
 		configMapData  map[string]string
-		expectedConfig *config.Config
+		expectedConfig config.Config
 	}
 
 	testCases := []loadTestCase{
@@ -58,7 +58,7 @@ func TestReadFromConfigMapShouldSucceed(t *testing.T) {
 			configMapData: map[string]string{
 				types.TimeoutKey: timeoutValue,
 			},
-			expectedConfig: &config.Config{
+			expectedConfig: config.Config{
 				UID:     configMapUID,
 				Timeout: stringToDurationMustParse(timeoutValue),
 				Params:  map[string]string{},
@@ -71,7 +71,7 @@ func TestReadFromConfigMapShouldSucceed(t *testing.T) {
 				types.ParamNameKeyPrefix + param1Key: param1Value,
 				types.ParamNameKeyPrefix + param2Key: param2Value,
 			},
-			expectedConfig: &config.Config{
+			expectedConfig: config.Config{
 				UID:     configMapUID,
 				Timeout: stringToDurationMustParse(timeoutValue),
 				Params: map[string]string{
