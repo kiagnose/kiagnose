@@ -46,7 +46,7 @@ func Run(env map[string]string, namespace string) error {
 		return err
 	}
 
-	cfg, err := config.New(baseConfig.Params)
+	cfg, err := config.New(baseConfig)
 	if err != nil {
 		return err
 	}

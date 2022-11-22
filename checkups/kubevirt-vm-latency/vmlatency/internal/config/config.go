@@ -24,6 +24,8 @@ import (
 	"fmt"
 	"math"
 	"strconv"
+
+	kconfig "github.com/kiagnose/kiagnose/kiagnose/config"
 )
 
 const (
@@ -56,21 +58,21 @@ const (
 	DefaultDesiredMaxLatencyMilliseconds = math.MaxInt
 )
 
-func New(params map[string]string) (Config, error) {
-	if len(params) == 0 {
+func New(baseConfig kconfig.Config) (Config, error) {
+	if len(baseConfig.Params) == 0 {
 		return Config{}, ErrInvalidParams
 	}
 
 	newConfig := Config{
-		NetworkAttachmentDefinitionName:      params[NetworkNameParamName],
-		NetworkAttachmentDefinitionNamespace: params[NetworkNamespaceParamName],
-		TargetNodeName:                       params[TargetNodeNameParamName],
-		SourceNodeName:                       params[SourceNodeNameParamName],
+		NetworkAttachmentDefinitionName:      baseConfig.Params[NetworkNameParamName],
+		NetworkAttachmentDefinitionNamespace: baseConfig.Params[NetworkNamespaceParamName],
+		TargetNodeName:                       baseConfig.Params[TargetNodeNameParamName],
+		SourceNodeName:                       baseConfig.Params[SourceNodeNameParamName],
 	}
 
 	var err error
 	sampleDuration := DefaultSampleDurationSeconds
-	if value, exists := params[SampleDurationSecondsParamName]; exists {
+	if value, exists := baseConfig.Params[SampleDurationSecondsParamName]; exists {
 		if sampleDuration, err = strconv.Atoi(value); err != nil {
 			return Config{}, fmt.Errorf("%q parameter is invalid: %v", SampleDurationSecondsParamName, err)
 		}
@@ -78,7 +80,7 @@ func New(params map[string]string) (Config, error) {
 	newConfig.SampleDurationSeconds = sampleDuration
 
 	desiredMaxLatency := DefaultDesiredMaxLatencyMilliseconds
-	if value, exists := params[DesiredMaxLatencyMillisecondsParamName]; exists {
+	if value, exists := baseConfig.Params[DesiredMaxLatencyMillisecondsParamName]; exists {
 		if desiredMaxLatency, err = strconv.Atoi(value); err != nil {
 			return Config{}, fmt.Errorf("%q parameter is invalid: %v", DesiredMaxLatencyMillisecondsParamName, err)
 		}

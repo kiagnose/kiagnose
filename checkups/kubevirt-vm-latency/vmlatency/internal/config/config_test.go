@@ -26,6 +26,8 @@ import (
 
 	assert "github.com/stretchr/testify/require"
 
+	kconfig "github.com/kiagnose/kiagnose/kiagnose/config"
+
 	"github.com/kiagnose/kiagnose/checkups/kubevirt-vm-latency/vmlatency/internal/config"
 )
 
@@ -96,7 +98,8 @@ func TestCreateConfigFromParamsShould(t *testing.T) {
 
 	for _, testCase := range testCases {
 		t.Run(testCase.description, func(t *testing.T) {
-			testConfig, err := config.New(testCase.params)
+			baseConfig := kconfig.Config{Params: testCase.params}
+			testConfig, err := config.New(baseConfig)
 			assert.NoError(t, err)
 			assert.Equal(t, testConfig, testCase.expectedConfig)
 		})
@@ -124,7 +127,8 @@ func TestCreateConfigFromParamsShouldFailWhen(t *testing.T) {
 	}
 	for _, testCase := range testCases {
 		t.Run(testCase.description, func(t *testing.T) {
-			_, err := config.New(testCase.params)
+			baseConfig := kconfig.Config{Params: testCase.params}
+			_, err := config.New(baseConfig)
 			assert.Equal(t, err, testCase.expectedError)
 		})
 	}
@@ -150,7 +154,8 @@ func TestCreateConfigFromParamsShouldFailWhenMandatoryParamsAreMissing(t *testin
 
 	for _, testCase := range testCases {
 		t.Run(testCase.description, func(t *testing.T) {
-			_, err := config.New(testCase.params)
+			baseConfig := kconfig.Config{Params: testCase.params}
+			_, err := config.New(baseConfig)
 			assert.Equal(t, err, testCase.expectedError)
 		})
 	}
@@ -177,7 +182,8 @@ func TestCreateConfigFromParamsShouldFailWhenMandatoryParamsAreInvalid(t *testin
 	}
 	for _, testCase := range testCases {
 		t.Run(testCase.description, func(t *testing.T) {
-			_, err := config.New(testCase.params)
+			baseConfig := kconfig.Config{Params: testCase.params}
+			_, err := config.New(baseConfig)
 			assert.Equal(t, err, testCase.expectedError)
 		})
 	}
@@ -226,7 +232,8 @@ func TestCreateConfigFromParamsShouldFailWhenNodeNames(t *testing.T) {
 	}
 	for _, testCase := range testCases {
 		t.Run(testCase.description, func(t *testing.T) {
-			_, err := config.New(testCase.params)
+			baseConfig := kconfig.Config{Params: testCase.params}
+			_, err := config.New(baseConfig)
 			assert.Equal(t, err, testCase.expectedError)
 		})
 	}
@@ -255,7 +262,8 @@ func TestCreateConfigShouldFailWhenIntegerParamsAreInvalid(t *testing.T) {
 	}
 	for _, testCase := range testCases {
 		t.Run(testCase.description, func(t *testing.T) {
-			_, err := config.New(testCase.params)
+			baseConfig := kconfig.Config{Params: testCase.params}
+			_, err := config.New(baseConfig)
 			assert.ErrorContains(t, err, testCase.expectedError.Error())
 		})
 	}
