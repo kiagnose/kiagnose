@@ -271,6 +271,10 @@ spec:
               value: ${TARGET_NAMESPACE}
             - name: CONFIGMAP_NAME
               value: ${VM_LATENCY_CONFIGMAP}
+            - name: POD_UID
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.uid
 EOF
 
     ${KUBECTL} wait --for=condition=complete --timeout=10m job.batch/${CHECKUP_JOB} -n ${TARGET_NAMESPACE}
