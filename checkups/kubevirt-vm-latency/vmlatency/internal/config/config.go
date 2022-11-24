@@ -38,6 +38,8 @@ const (
 )
 
 type Config struct {
+	PodName                              string
+	PodUID                               string
 	NetworkAttachmentDefinitionName      string
 	NetworkAttachmentDefinitionNamespace string
 	TargetNodeName                       string
@@ -64,6 +66,8 @@ func New(baseConfig kconfig.Config) (Config, error) {
 	}
 
 	newConfig := Config{
+		PodName:                              baseConfig.PodName,
+		PodUID:                               baseConfig.PodUID,
 		NetworkAttachmentDefinitionName:      baseConfig.Params[NetworkNameParamName],
 		NetworkAttachmentDefinitionNamespace: baseConfig.Params[NetworkNamespaceParamName],
 		TargetNodeName:                       baseConfig.Params[TargetNodeNameParamName],

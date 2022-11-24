@@ -38,6 +38,8 @@ type configCreateTestCases struct {
 }
 
 const (
+	testPodName                       = "my-pod"
+	testPodUID                        = "0123456789-0123456789"
 	testNamespace                     = "default"
 	testNetAttachDefName              = "blue-net"
 	testDesiredMaxLatencyMilliseconds = 100
@@ -56,6 +58,8 @@ func TestCreateConfigFromParamsShould(t *testing.T) {
 				config.DesiredMaxLatencyMillisecondsParamName: fmt.Sprintf("%d", testDesiredMaxLatencyMilliseconds),
 			},
 			expectedConfig: config.Config{
+				PodName:                              testPodName,
+				PodUID:                               testPodUID,
 				SampleDurationSeconds:                config.DefaultSampleDurationSeconds,
 				NetworkAttachmentDefinitionName:      testNetAttachDefName,
 				NetworkAttachmentDefinitionNamespace: testNamespace,
@@ -70,6 +74,8 @@ func TestCreateConfigFromParamsShould(t *testing.T) {
 				config.SampleDurationSecondsParamName: fmt.Sprintf("%d", testSampleDurationSeconds),
 			},
 			expectedConfig: config.Config{
+				PodName:                              testPodName,
+				PodUID:                               testPodUID,
 				DesiredMaxLatencyMilliseconds:        config.DefaultDesiredMaxLatencyMilliseconds,
 				NetworkAttachmentDefinitionName:      testNetAttachDefName,
 				NetworkAttachmentDefinitionNamespace: testNamespace,
@@ -86,6 +92,8 @@ func TestCreateConfigFromParamsShould(t *testing.T) {
 				config.TargetNodeNameParamName:        testTargetNodeName,
 			},
 			expectedConfig: config.Config{
+				PodName:                              testPodName,
+				PodUID:                               testPodUID,
 				DesiredMaxLatencyMilliseconds:        config.DefaultDesiredMaxLatencyMilliseconds,
 				NetworkAttachmentDefinitionName:      testNetAttachDefName,
 				NetworkAttachmentDefinitionNamespace: testNamespace,
@@ -98,7 +106,11 @@ func TestCreateConfigFromParamsShould(t *testing.T) {
 
 	for _, testCase := range testCases {
 		t.Run(testCase.description, func(t *testing.T) {
-			baseConfig := kconfig.Config{Params: testCase.params}
+			baseConfig := kconfig.Config{
+				PodName: testPodName,
+				PodUID:  testPodUID,
+				Params:  testCase.params,
+			}
 			testConfig, err := config.New(baseConfig)
 			assert.NoError(t, err)
 			assert.Equal(t, testConfig, testCase.expectedConfig)
