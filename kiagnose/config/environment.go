@@ -26,18 +26,21 @@ const (
 	ConfigMapNameEnvVarName      = "CONFIGMAP_NAME"
 )
 
-func ConfigMapFullName(env map[string]string) (namespace, name string, err error) {
-	const envVarErr = "missing required environment variable"
+var (
+	ErrMissingConfigMapNamespace = fmt.Errorf("missing required environment variable: %q", ConfigMapNamespaceEnvVarName)
+	ErrMissingConfigMapName      = fmt.Errorf("missing required environment variable: %q", ConfigMapNameEnvVarName)
+)
 
+func ConfigMapFullName(env map[string]string) (namespace, name string, err error) {
 	var exists bool
 	namespace, exists = env[ConfigMapNamespaceEnvVarName]
 	if !exists {
-		return "", "", fmt.Errorf("%s: %q", envVarErr, ConfigMapNamespaceEnvVarName)
+		return "", "", ErrMissingConfigMapNamespace
 	}
 
 	name, exists = env[ConfigMapNameEnvVarName]
 	if !exists {
-		return "", "", fmt.Errorf("%s: %q", envVarErr, ConfigMapNameEnvVarName)
+		return "", "", ErrMissingConfigMapName
 	}
 
 	return namespace, name, nil
