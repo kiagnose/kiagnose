@@ -21,6 +21,11 @@ package config
 
 import "fmt"
 
+type Environment struct {
+	ConfigMapNamespace string
+	ConfigMapName      string
+}
+
 const (
 	ConfigMapNamespaceEnvVarName = "CONFIGMAP_NAMESPACE"
 	ConfigMapNameEnvVarName      = "CONFIGMAP_NAME"
@@ -31,17 +36,21 @@ var (
 	ErrMissingConfigMapName      = fmt.Errorf("missing required environment variable: %q", ConfigMapNameEnvVarName)
 )
 
-func ConfigMapFullName(env map[string]string) (namespace, name string, err error) {
-	var exists bool
-	namespace, exists = env[ConfigMapNamespaceEnvVarName]
-	if !exists {
-		return "", "", ErrMissingConfigMapNamespace
+func NewEnvironment(rawEnv map[string]string) Environment {
+	return Environment{
+		ConfigMapNamespace: rawEnv[ConfigMapNamespaceEnvVarName],
+		ConfigMapName:      rawEnv[ConfigMapNameEnvVarName],
+	}
+}
+
+func (e Environment) Validate() error {
+	if e.ConfigMapNamespace == "" {
+		return ErrMissingConfigMapNamespace
 	}
 
-	name, exists = env[ConfigMapNameEnvVarName]
-	if !exists {
-		return "", "", ErrMissingConfigMapName
+	if e.ConfigMapName == "" {
+		return ErrMissingConfigMapName
 	}
 
-	return namespace, name, nil
+	return nil
 }

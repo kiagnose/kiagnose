@@ -30,18 +30,19 @@ import (
 	"github.com/kiagnose/kiagnose/checkups/kubevirt-vm-latency/vmlatency/internal/reporter"
 )
 
-func Run(env map[string]string, namespace string) error {
+func Run(rawEnv map[string]string, namespace string) error {
 	c, err := client.New()
 	if err != nil {
 		return err
 	}
 
-	configMapNamespace, configMapName, err := kconfig.ConfigMapFullName(env)
+	environment := kconfig.NewEnvironment(rawEnv)
+	err = environment.Validate()
 	if err != nil {
 		return err
 	}
 
-	baseConfig, err := kconfig.ReadFromConfigMap(c, configMapNamespace, configMapName)
+	baseConfig, err := kconfig.ReadFromConfigMap(c, environment.ConfigMapNamespace, environment.ConfigMapName)
 	if err != nil {
 		return err
 	}
@@ -53,7 +54,7 @@ func Run(env map[string]string, namespace string) error {
 
 	l := launcher.New(
 		checkup.New(c, baseConfig.UID, namespace, cfg, latency.New(c)),
-		reporter.New(c, configMapNamespace, configMapName),
+		reporter.New(c, environment.ConfigMapNamespace, environment.ConfigMapName),
 	)
 	return l.Run()
 }

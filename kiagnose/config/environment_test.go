@@ -27,47 +27,56 @@ import (
 	"github.com/kiagnose/kiagnose/kiagnose/config"
 )
 
-func TestConfigMapFullNameShouldSucceed(t *testing.T) {
+func TestEnvironmentValidationShouldSucceed(t *testing.T) {
 	goodEnv := map[string]string{
 		config.ConfigMapNamespaceEnvVarName: configMapNamespace,
 		config.ConfigMapNameEnvVarName:      configMapName,
 	}
 
-	namespace, name, err := config.ConfigMapFullName(goodEnv)
-	assert.NoError(t, err)
-	assert.Equal(t, configMapNamespace, namespace)
-	assert.Equal(t, configMapName, name)
+	actualEnvironment := config.NewEnvironment(goodEnv)
+
+	expectedEnvironment := config.Environment{
+		ConfigMapNamespace: configMapNamespace,
+		ConfigMapName:      configMapName,
+	}
+
+	assert.Equal(t, expectedEnvironment, actualEnvironment)
+
+	assert.NoError(t, actualEnvironment.Validate())
 }
 
-func TestConfigMapFullNameShouldFail(t *testing.T) {
-	type envVarsLoadingFailureTestCase struct {
+func TestValidateEnvironmentShouldFail(t *testing.T) {
+	type validationErrorTestCase struct {
 		description   string
-		envVars       map[string]string
+		rawEnv        map[string]string
 		expectedError error
 	}
 
-	failureTestCases := []envVarsLoadingFailureTestCase{
+	failureTestCases := []validationErrorTestCase{
 		{
 			description:   "when ConfigMap's name environment variable is missing",
-			envVars:       map[string]string{config.ConfigMapNamespaceEnvVarName: configMapNamespace},
+			rawEnv:        map[string]string{config.ConfigMapNamespaceEnvVarName: configMapNamespace},
 			expectedError: config.ErrMissingConfigMapName,
 		},
 		{
 			description:   "when ConfigMap's namespace environment variable is missing",
-			envVars:       map[string]string{config.ConfigMapNameEnvVarName: configMapName},
+			rawEnv:        map[string]string{config.ConfigMapNameEnvVarName: configMapName},
 			expectedError: config.ErrMissingConfigMapNamespace,
 		},
 		{
 			description:   "when both ConfigMap's environment variables are missing",
-			envVars:       map[string]string{},
+			rawEnv:        map[string]string{},
 			expectedError: config.ErrMissingConfigMapNamespace,
 		},
 	}
 
 	for _, testCase := range failureTestCases {
 		t.Run(testCase.description, func(t *testing.T) {
-			_, _, err := config.ConfigMapFullName(testCase.envVars)
-			assert.ErrorIs(t, err, testCase.expectedError)
+			environment := config.NewEnvironment(testCase.rawEnv)
+			assert.ErrorIs(t,
+				environment.Validate(),
+				testCase.expectedError,
+			)
 		})
 	}
 }
