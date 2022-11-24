@@ -36,13 +36,7 @@ func Run(rawEnv map[string]string, namespace string) error {
 		return err
 	}
 
-	environment := kconfig.NewEnvironment(rawEnv)
-	err = environment.Validate()
-	if err != nil {
-		return err
-	}
-
-	baseConfig, err := kconfig.ReadFromConfigMap(c, environment.ConfigMapNamespace, environment.ConfigMapName)
+	baseConfig, err := kconfig.Read(c, rawEnv)
 	if err != nil {
 		return err
 	}
@@ -54,7 +48,7 @@ func Run(rawEnv map[string]string, namespace string) error {
 
 	l := launcher.New(
 		checkup.New(c, baseConfig.UID, namespace, cfg, latency.New(c)),
-		reporter.New(c, environment.ConfigMapNamespace, environment.ConfigMapName),
+		reporter.New(c, baseConfig.ConfigMapNamespace, baseConfig.ConfigMapName),
 	)
 	return l.Run()
 }

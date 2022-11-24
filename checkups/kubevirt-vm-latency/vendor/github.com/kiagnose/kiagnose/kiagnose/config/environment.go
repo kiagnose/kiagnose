@@ -21,7 +21,7 @@ package config
 
 import "fmt"
 
-type Environment struct {
+type environment struct {
 	ConfigMapNamespace string
 	ConfigMapName      string
 }
@@ -36,14 +36,14 @@ var (
 	ErrMissingConfigMapName      = fmt.Errorf("missing required environment variable: %q", ConfigMapNameEnvVarName)
 )
 
-func NewEnvironment(rawEnv map[string]string) Environment {
-	return Environment{
+func newEnvironment(rawEnv map[string]string) environment {
+	return environment{
 		ConfigMapNamespace: rawEnv[ConfigMapNamespaceEnvVarName],
 		ConfigMapName:      rawEnv[ConfigMapNameEnvVarName],
 	}
 }
 
-func (e Environment) Validate() error {
+func (e environment) Validate() error {
 	if e.ConfigMapNamespace == "" {
 		return ErrMissingConfigMapNamespace
 	}

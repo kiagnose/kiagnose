@@ -35,32 +35,61 @@ var (
 )
 
 type Config struct {
+	ConfigMapNamespace string
+	ConfigMapName      string
+	UID                string
+	Timeout            time.Duration
+	Params             map[string]string
+}
+
+type configMapSettings struct {
 	UID     string
 	Timeout time.Duration
 	Params  map[string]string
 }
 
-func ReadFromConfigMap(client kubernetes.Interface, configMapNamespace, configMapName string) (Config, error) {
-	configMap, err := configmap.Get(client, configMapNamespace, configMapName)
-	if err != nil {
+func Read(client kubernetes.Interface, rawEnv map[string]string) (Config, error) {
+	env := newEnvironment(rawEnv)
+
+	if err := env.Validate(); err != nil {
 		return Config{}, err
 	}
 
-	if configMap.Data == nil {
-		return Config{}, ErrConfigMapDataIsNil
-	}
-
-	if isConfigMapAlreadyInUse(configMap.Data) {
-		return Config{}, ErrConfigMapIsAlreadyInUse
-	}
-
-	parser := newConfigMapParser(configMap.Data)
-	err = parser.Parse()
+	cmSettings, err := readFromConfigMap(client, env.ConfigMapNamespace, env.ConfigMapName)
 	if err != nil {
 		return Config{}, err
 	}
 
 	return Config{
+		ConfigMapNamespace: env.ConfigMapNamespace,
+		ConfigMapName:      env.ConfigMapName,
+		UID:                cmSettings.UID,
+		Timeout:            cmSettings.Timeout,
+		Params:             cmSettings.Params,
+	}, nil
+}
+
+func readFromConfigMap(client kubernetes.Interface, configMapNamespace, configMapName string) (configMapSettings, error) {
+	configMap, err := configmap.Get(client, configMapNamespace, configMapName)
+	if err != nil {
+		return configMapSettings{}, err
+	}
+
+	if configMap.Data == nil {
+		return configMapSettings{}, ErrConfigMapDataIsNil
+	}
+
+	if isConfigMapAlreadyInUse(configMap.Data) {
+		return configMapSettings{}, ErrConfigMapIsAlreadyInUse
+	}
+
+	parser := newConfigMapParser(configMap.Data)
+	err = parser.Parse()
+	if err != nil {
+		return configMapSettings{}, err
+	}
+
+	return configMapSettings{
 		UID:     string(configMap.UID),
 		Timeout: parser.Timeout,
 		Params:  parser.Params,
