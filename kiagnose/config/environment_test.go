@@ -41,35 +41,33 @@ func TestConfigMapFullNameShouldSucceed(t *testing.T) {
 
 func TestConfigMapFullNameShouldFail(t *testing.T) {
 	type envVarsLoadingFailureTestCase struct {
-		description           string
-		envVars               map[string]string
-		expectedErrorContains string
+		description   string
+		envVars       map[string]string
+		expectedError error
 	}
-
-	const expectedErrorPrefix = "missing required environment variable"
 
 	failureTestCases := []envVarsLoadingFailureTestCase{
 		{
-			description:           "when ConfigMap's name environment variable is missing",
-			envVars:               map[string]string{config.ConfigMapNamespaceEnvVarName: configMapNamespace},
-			expectedErrorContains: expectedErrorPrefix,
+			description:   "when ConfigMap's name environment variable is missing",
+			envVars:       map[string]string{config.ConfigMapNamespaceEnvVarName: configMapNamespace},
+			expectedError: config.ErrMissingConfigMapName,
 		},
 		{
-			description:           "when ConfigMap's namespace environment variable is missing",
-			envVars:               map[string]string{config.ConfigMapNameEnvVarName: configMapName},
-			expectedErrorContains: expectedErrorPrefix,
+			description:   "when ConfigMap's namespace environment variable is missing",
+			envVars:       map[string]string{config.ConfigMapNameEnvVarName: configMapName},
+			expectedError: config.ErrMissingConfigMapNamespace,
 		},
 		{
-			description:           "when both ConfigMap's environment variables are missing",
-			envVars:               map[string]string{},
-			expectedErrorContains: expectedErrorPrefix,
+			description:   "when both ConfigMap's environment variables are missing",
+			envVars:       map[string]string{},
+			expectedError: config.ErrMissingConfigMapNamespace,
 		},
 	}
 
 	for _, testCase := range failureTestCases {
 		t.Run(testCase.description, func(t *testing.T) {
 			_, _, err := config.ConfigMapFullName(testCase.envVars)
-			assert.ErrorContains(t, err, testCase.expectedErrorContains)
+			assert.ErrorIs(t, err, testCase.expectedError)
 		})
 	}
 }
