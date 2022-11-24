@@ -34,6 +34,7 @@ import (
 )
 
 const (
+	podName            = "my-pod"
 	configMapNamespace = "target-ns"
 	configMapName      = "cm1"
 	configMapUID       = "0123456789"
@@ -48,6 +49,7 @@ const (
 var validRawEnv = map[string]string{
 	config.ConfigMapNamespaceEnvVarName: configMapNamespace,
 	config.ConfigMapNameEnvVarName:      configMapName,
+	config.PodNameEnvVarName:            podName,
 }
 
 func TestReadShouldSucceed(t *testing.T) {
@@ -68,6 +70,7 @@ func TestReadShouldSucceed(t *testing.T) {
 			expectedConfig: config.Config{
 				ConfigMapNamespace: configMapNamespace,
 				ConfigMapName:      configMapName,
+				PodName:            podName,
 				UID:                configMapUID,
 				Timeout:            stringToDurationMustParse(timeoutValue),
 				Params:             map[string]string{},
@@ -84,6 +87,7 @@ func TestReadShouldSucceed(t *testing.T) {
 			expectedConfig: config.Config{
 				ConfigMapNamespace: configMapNamespace,
 				ConfigMapName:      configMapName,
+				PodName:            podName,
 				UID:                configMapUID,
 				Timeout:            stringToDurationMustParse(timeoutValue),
 				Params: map[string]string{
@@ -128,6 +132,14 @@ func TestEnvironmentReadShouldFail(t *testing.T) {
 			description:   "when both ConfigMap's environment variables are missing",
 			rawEnv:        map[string]string{},
 			expectedError: config.ErrMissingConfigMapNamespace,
+		},
+		{
+			description: "when pod name environment variable is missing",
+			rawEnv: map[string]string{
+				config.ConfigMapNamespaceEnvVarName: configMapNamespace,
+				config.ConfigMapNameEnvVarName:      configMapName,
+			},
+			expectedError: config.ErrMissingPodName,
 		},
 	}
 

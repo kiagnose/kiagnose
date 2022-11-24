@@ -24,22 +24,26 @@ import "fmt"
 type environment struct {
 	ConfigMapNamespace string
 	ConfigMapName      string
+	PodName            string
 }
 
 const (
 	ConfigMapNamespaceEnvVarName = "CONFIGMAP_NAMESPACE"
 	ConfigMapNameEnvVarName      = "CONFIGMAP_NAME"
+	PodNameEnvVarName            = "HOSTNAME"
 )
 
 var (
 	ErrMissingConfigMapNamespace = fmt.Errorf("missing required environment variable: %q", ConfigMapNamespaceEnvVarName)
 	ErrMissingConfigMapName      = fmt.Errorf("missing required environment variable: %q", ConfigMapNameEnvVarName)
+	ErrMissingPodName            = fmt.Errorf("missing required environment variable: %q", PodNameEnvVarName)
 )
 
 func newEnvironment(rawEnv map[string]string) environment {
 	return environment{
 		ConfigMapNamespace: rawEnv[ConfigMapNamespaceEnvVarName],
 		ConfigMapName:      rawEnv[ConfigMapNameEnvVarName],
+		PodName:            rawEnv[PodNameEnvVarName],
 	}
 }
 
@@ -50,6 +54,10 @@ func (e environment) Validate() error {
 
 	if e.ConfigMapName == "" {
 		return ErrMissingConfigMapName
+	}
+
+	if e.PodName == "" {
+		return ErrMissingPodName
 	}
 
 	return nil
