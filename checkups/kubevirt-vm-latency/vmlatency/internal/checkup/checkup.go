@@ -89,8 +89,8 @@ func (c *checkup) Setup(ctx context.Context) error {
 	sourceVMIName := randomizeName(SourceVMINamePrefix)
 	targetVMIName := randomizeName(TargetVMINamePrefix)
 
-	sourceVmi := newLatencyCheckVmi(c.uid, sourceVMIName, c.params.SourceNodeName, netAttachDef)
-	targetVmi := newLatencyCheckVmi(c.uid, targetVMIName, c.params.TargetNodeName, netAttachDef)
+	sourceVmi := newLatencyCheckVmi(c.uid, sourceVMIName, c.params.SourceNodeName, c.params.PodName, c.params.PodUID, netAttachDef)
+	targetVmi := newLatencyCheckVmi(c.uid, targetVMIName, c.params.TargetNodeName, c.params.PodName, c.params.PodUID, netAttachDef)
 
 	if err = vmi.Start(c.client, c.namespace, sourceVmi); err != nil {
 		return fmt.Errorf("%s: %v", errMessagePrefix, err)
@@ -115,7 +115,7 @@ func (c *checkup) Setup(ctx context.Context) error {
 }
 
 func newLatencyCheckVmi(
-	uid, name, nodeName string,
+	uid, name, nodeName, ownerName, ownerUID string,
 	netAttachDef *netattdefv1.NetworkAttachmentDefinition) *kvcorev1.VirtualMachineInstance {
 	const networkName = "net0"
 
@@ -129,6 +129,7 @@ func newLatencyCheckVmi(
 
 	macAddress := vmi.RandomMACAddress()
 	return vmi.NewAlpine(name,
+		vmi.WithOwnerReference(ownerName, ownerUID),
 		vmi.WithLabels(vmLabel),
 		vmi.WithAffinity(affinity),
 		vmi.WithMultusNetwork(networkName, netAttachDef.Namespace+"/"+netAttachDef.Name),

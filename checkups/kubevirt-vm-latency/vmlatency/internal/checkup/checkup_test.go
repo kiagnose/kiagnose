@@ -29,6 +29,9 @@ import (
 
 	assert "github.com/stretchr/testify/require"
 
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/types"
+
 	kvcorev1 "kubevirt.io/api/core/v1"
 	"kubevirt.io/client-go/kubecli"
 
@@ -40,6 +43,8 @@ import (
 )
 
 const (
+	testPodName               = "my-pod"
+	testPodUID                = "0123456789-0123456789"
 	testCheckupUID            = "0123456789"
 	testNamespace             = "default"
 	testNetAttachDefName      = "blue-net"
@@ -192,6 +197,62 @@ func TestCheckupSetupShouldCreateVMsWithNodeAffinity(t *testing.T) {
 	})
 }
 
+func TestCheckupSetupShouldCreateOwnerReference(t *testing.T) {
+	testClient := newTestClient()
+	testClient.returnNetAttachDef = newTestNetAttachDef("blah")
+	testCheckupParams := config.Config{
+		PodName:                              testPodName,
+		PodUID:                               testPodUID,
+		NetworkAttachmentDefinitionName:      testNetAttachDefName,
+		NetworkAttachmentDefinitionNamespace: testNamespace,
+	}
+	testCheckup := checkup.New(testClient, testCheckupUID, testNamespace, testCheckupParams, &checkerStub{})
+
+	assert.NoError(t, testCheckup.Setup(context.Background()))
+
+	sourceVMIName := testClient.SourceVMIName()
+	targetVMIName := testClient.TargetVMIName()
+
+	sourceVMI, err := testClient.GetVirtualMachineInstance(testNamespace, sourceVMIName)
+	assert.NoError(t, err)
+
+	targetVMI, err := testClient.GetVirtualMachineInstance(testNamespace, targetVMIName)
+	assert.NoError(t, err)
+
+	assertOwnerReferenceExists(t, sourceVMI, testPodName, testPodUID)
+	assertOwnerReferenceExists(t, targetVMI, testPodName, testPodUID)
+}
+
+func TestCheckupSetupShouldNotCreateOwnerReferenceWhenPodUIDIsEmpty(t *testing.T) {
+	testClient := newTestClient()
+	testClient.returnNetAttachDef = newTestNetAttachDef("blah")
+
+	const emptyPodUID = ""
+
+	testCheckupParams := config.Config{
+		PodName:                              testPodName,
+		PodUID:                               emptyPodUID,
+		NetworkAttachmentDefinitionName:      testNetAttachDefName,
+		NetworkAttachmentDefinitionNamespace: testNamespace,
+	}
+
+	testCheckup := checkup.New(testClient, testCheckupUID, testNamespace, testCheckupParams, &checkerStub{})
+
+	assert.NoError(t, testCheckup.Setup(context.Background()))
+
+	sourceVMIName := testClient.SourceVMIName()
+	targetVMIName := testClient.TargetVMIName()
+
+	sourceVMI, err := testClient.GetVirtualMachineInstance(testNamespace, sourceVMIName)
+	assert.NoError(t, err)
+
+	targetVMI, err := testClient.GetVirtualMachineInstance(testNamespace, targetVMIName)
+	assert.NoError(t, err)
+
+	assertOwnerReferenceDoesNotExists(t, sourceVMI, testPodName, emptyPodUID)
+	assertOwnerReferenceDoesNotExists(t, targetVMI, testPodName, emptyPodUID)
+}
+
 func assertVmiPodAntiAffinityExist(t *testing.T, testClient *clientStub, vmiName string) {
 	actualVmi, err := testClient.GetVirtualMachineInstance(testNamespace, vmiName)
 	assert.NoError(t, err)
@@ -223,6 +284,24 @@ func assertVmiNodeAffinityNotExist(t *testing.T, testClient *clientStub, name st
 	assert.NoError(t, err)
 
 	assert.Nil(t, actualVmi.Spec.Affinity.NodeAffinity)
+}
+
+func assertOwnerReferenceExists(t *testing.T, vmiUnderTest *kvcorev1.VirtualMachineInstance, ownerName, ownerUID string) {
+	assert.Contains(t, vmiUnderTest.OwnerReferences, metav1.OwnerReference{
+		APIVersion: "v1",
+		Kind:       "Pod",
+		Name:       ownerName,
+		UID:        types.UID(ownerUID),
+	})
+}
+
+func assertOwnerReferenceDoesNotExists(t *testing.T, vmiUnderTest *kvcorev1.VirtualMachineInstance, ownerName, ownerUID string) {
+	assert.NotContains(t, vmiUnderTest.OwnerReferences, metav1.OwnerReference{
+		APIVersion: "v1",
+		Kind:       "Pod",
+		Name:       ownerName,
+		UID:        types.UID(ownerUID),
+	})
 }
 
 func newTestNetAttachDef(cniPluginName string) *netattdefv1.NetworkAttachmentDefinition {
