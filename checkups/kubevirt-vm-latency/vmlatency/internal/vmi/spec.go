@@ -26,6 +26,8 @@ import (
 
 	k8scorev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
+	"k8s.io/apimachinery/pkg/types"
+
 	k8smetav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	kvcorev1 "kubevirt.io/api/core/v1"
@@ -57,6 +59,19 @@ func newBaseVmi(name string, opts ...Option) *kvcorev1.VirtualMachineInstance {
 	}
 
 	return vmi
+}
+
+func WithOwnerReference(ownerName, ownerUID string) Option {
+	return func(vmi *kvcorev1.VirtualMachineInstance) {
+		if ownerUID != "" && ownerName != "" {
+			vmi.ObjectMeta.OwnerReferences = append(vmi.ObjectMeta.OwnerReferences, k8smetav1.OwnerReference{
+				APIVersion: "v1",
+				Kind:       "Pod",
+				Name:       ownerName,
+				UID:        types.UID(ownerUID),
+			})
+		}
+	}
 }
 
 // withTerminationGracePeriodSecond sets TerminationGracePeriodSecond.
