@@ -25,12 +25,14 @@ type environment struct {
 	ConfigMapNamespace string
 	ConfigMapName      string
 	PodName            string
+	PodUID             string
 }
 
 const (
 	ConfigMapNamespaceEnvVarName = "CONFIGMAP_NAMESPACE"
 	ConfigMapNameEnvVarName      = "CONFIGMAP_NAME"
 	PodNameEnvVarName            = "HOSTNAME"
+	PodUIDEnvVarName             = "POD_UID"
 )
 
 var (
@@ -44,6 +46,7 @@ func newEnvironment(rawEnv map[string]string) environment {
 		ConfigMapNamespace: rawEnv[ConfigMapNamespaceEnvVarName],
 		ConfigMapName:      rawEnv[ConfigMapNameEnvVarName],
 		PodName:            rawEnv[PodNameEnvVarName],
+		PodUID:             rawEnv[PodUIDEnvVarName],
 	}
 }
 
@@ -59,6 +62,8 @@ func (e environment) Validate() error {
 	if e.PodName == "" {
 		return ErrMissingPodName
 	}
+
+	// PodUID field is optional, thus not validated
 
 	return nil
 }

@@ -35,6 +35,7 @@ import (
 
 const (
 	podName            = "my-pod"
+	podUID             = "0123456789-0123456789"
 	configMapNamespace = "target-ns"
 	configMapName      = "cm1"
 	configMapUID       = "0123456789"
@@ -50,6 +51,7 @@ var validRawEnv = map[string]string{
 	config.ConfigMapNamespaceEnvVarName: configMapNamespace,
 	config.ConfigMapNameEnvVarName:      configMapName,
 	config.PodNameEnvVarName:            podName,
+	config.PodUIDEnvVarName:             podUID,
 }
 
 func TestReadShouldSucceed(t *testing.T) {
@@ -71,6 +73,7 @@ func TestReadShouldSucceed(t *testing.T) {
 				ConfigMapNamespace: configMapNamespace,
 				ConfigMapName:      configMapName,
 				PodName:            podName,
+				PodUID:             podUID,
 				UID:                configMapUID,
 				Timeout:            stringToDurationMustParse(timeoutValue),
 				Params:             map[string]string{},
@@ -88,6 +91,7 @@ func TestReadShouldSucceed(t *testing.T) {
 				ConfigMapNamespace: configMapNamespace,
 				ConfigMapName:      configMapName,
 				PodName:            podName,
+				PodUID:             podUID,
 				UID:                configMapUID,
 				Timeout:            stringToDurationMustParse(timeoutValue),
 				Params: map[string]string{
@@ -151,6 +155,24 @@ func TestEnvironmentReadShouldFail(t *testing.T) {
 			assert.ErrorIs(t, err, testCase.expectedError)
 		})
 	}
+}
+
+func TestEnvironmentReadShouldSucceedWhenOptionalVarsAreMissing(t *testing.T) {
+	fakeClient := fake.NewSimpleClientset(
+		newConfigMap(
+			configMapNamespace,
+			configMapName, map[string]string{types.TimeoutKey: timeoutValue},
+		),
+	)
+
+	t.Run("Pod UID is missing", func(t *testing.T) {
+		_, err := config.Read(fakeClient, map[string]string{
+			config.ConfigMapNamespaceEnvVarName: configMapNamespace,
+			config.ConfigMapNameEnvVarName:      configMapName,
+			config.PodNameEnvVarName:            podName,
+		})
+		assert.NoError(t, err)
+	})
 }
 
 func TestConfigMapReadShouldFail(t *testing.T) {

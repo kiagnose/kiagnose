@@ -38,6 +38,7 @@ type Config struct {
 	ConfigMapNamespace string
 	ConfigMapName      string
 	PodName            string
+	PodUID             string
 	UID                string
 	Timeout            time.Duration
 	Params             map[string]string
@@ -65,6 +66,7 @@ func Read(client kubernetes.Interface, rawEnv map[string]string) (Config, error)
 		ConfigMapNamespace: env.ConfigMapNamespace,
 		ConfigMapName:      env.ConfigMapName,
 		PodName:            env.PodName,
+		PodUID:             env.PodUID,
 		UID:                cmSettings.UID,
 		Timeout:            cmSettings.Timeout,
 		Params:             cmSettings.Params,

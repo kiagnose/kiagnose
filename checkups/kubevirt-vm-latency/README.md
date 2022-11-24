@@ -155,6 +155,10 @@ spec:
               value: <target-namespace>
             - name: CONFIGMAP_NAME
               value: kubevirt-vm-latency-checkup-config
+            - name: POD_UID
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.uid
 EOF
 ```
 
