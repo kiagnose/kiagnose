@@ -45,35 +45,47 @@ const (
 	param2Value  = "message2 value"
 )
 
-func TestReadFromConfigMapShouldSucceed(t *testing.T) {
-	type loadTestCase struct {
+var validRawEnv = map[string]string{
+	config.ConfigMapNamespaceEnvVarName: configMapNamespace,
+	config.ConfigMapNameEnvVarName:      configMapName,
+}
+
+func TestReadShouldSucceed(t *testing.T) {
+	type readTestCase struct {
 		description    string
+		rawEnv         map[string]string
 		configMapData  map[string]string
 		expectedConfig config.Config
 	}
 
-	testCases := []loadTestCase{
+	testCases := []readTestCase{
 		{
 			description: "when supplied with required parameters only",
+			rawEnv:      validRawEnv,
 			configMapData: map[string]string{
 				types.TimeoutKey: timeoutValue,
 			},
 			expectedConfig: config.Config{
-				UID:     configMapUID,
-				Timeout: stringToDurationMustParse(timeoutValue),
-				Params:  map[string]string{},
+				ConfigMapNamespace: configMapNamespace,
+				ConfigMapName:      configMapName,
+				UID:                configMapUID,
+				Timeout:            stringToDurationMustParse(timeoutValue),
+				Params:             map[string]string{},
 			},
 		},
 		{
 			description: "when supplied with all parameters",
+			rawEnv:      validRawEnv,
 			configMapData: map[string]string{
 				types.TimeoutKey:                     timeoutValue,
 				types.ParamNameKeyPrefix + param1Key: param1Value,
 				types.ParamNameKeyPrefix + param2Key: param2Value,
 			},
 			expectedConfig: config.Config{
-				UID:     configMapUID,
-				Timeout: stringToDurationMustParse(timeoutValue),
+				ConfigMapNamespace: configMapNamespace,
+				ConfigMapName:      configMapName,
+				UID:                configMapUID,
+				Timeout:            stringToDurationMustParse(timeoutValue),
 				Params: map[string]string{
 					param1Key: param1Value,
 					param2Key: param2Value,
@@ -86,7 +98,7 @@ func TestReadFromConfigMapShouldSucceed(t *testing.T) {
 		t.Run(testCase.description, func(t *testing.T) {
 			fakeClient := fake.NewSimpleClientset(newConfigMap(configMapNamespace, configMapName, testCase.configMapData))
 
-			actualConfig, err := config.ReadFromConfigMap(fakeClient, configMapNamespace, configMapName)
+			actualConfig, err := config.Read(fakeClient, testCase.rawEnv)
 			assert.NoError(t, err)
 
 			assert.Equal(t, testCase.expectedConfig, actualConfig)
@@ -94,24 +106,61 @@ func TestReadFromConfigMapShouldSucceed(t *testing.T) {
 	}
 }
 
-func TestReadFromConfigMapShouldFail(t *testing.T) {
+func TestEnvironmentReadShouldFail(t *testing.T) {
+	type validationErrorTestCase struct {
+		description   string
+		rawEnv        map[string]string
+		expectedError error
+	}
+
+	failureTestCases := []validationErrorTestCase{
+		{
+			description:   "when ConfigMap's name environment variable is missing",
+			rawEnv:        map[string]string{config.ConfigMapNamespaceEnvVarName: configMapNamespace},
+			expectedError: config.ErrMissingConfigMapName,
+		},
+		{
+			description:   "when ConfigMap's namespace environment variable is missing",
+			rawEnv:        map[string]string{config.ConfigMapNameEnvVarName: configMapName},
+			expectedError: config.ErrMissingConfigMapNamespace,
+		},
+		{
+			description:   "when both ConfigMap's environment variables are missing",
+			rawEnv:        map[string]string{},
+			expectedError: config.ErrMissingConfigMapNamespace,
+		},
+	}
+
+	for _, testCase := range failureTestCases {
+		t.Run(testCase.description, func(t *testing.T) {
+			fakeClient := fake.NewSimpleClientset()
+
+			_, err := config.Read(fakeClient, testCase.rawEnv)
+			assert.ErrorIs(t, err, testCase.expectedError)
+		})
+	}
+}
+
+func TestConfigMapReadShouldFail(t *testing.T) {
 	t.Run("when ConfigMap doesn't exist", func(t *testing.T) {
 		fakeClient := fake.NewSimpleClientset()
-		_, err := config.ReadFromConfigMap(fakeClient, configMapNamespace, configMapName)
+		_, err := config.Read(fakeClient, validRawEnv)
 		assert.ErrorContains(t, err, "not found")
 	})
 
-	type loadFailureTestCase struct {
+	type readFailureTestCase struct {
 		description   string
+		rawEnv        map[string]string
 		configMapData map[string]string
 		expectedError string
 	}
 
 	const emptyParamName = ""
 
-	failureTestCases := []loadFailureTestCase{
+	failureTestCases := []readFailureTestCase{
 		{
 			description: "when ConfigMap is already in use",
+			rawEnv:      validRawEnv,
 			configMapData: map[string]string{
 				types.TimeoutKey:        timeoutValue,
 				types.StartTimestampKey: time.Now().Format(time.RFC3339),
@@ -120,6 +169,7 @@ func TestReadFromConfigMapShouldFail(t *testing.T) {
 		},
 		{
 			description: "when ConfigMap is already in use (startTimestamp exists but empty)",
+			rawEnv:      validRawEnv,
 			configMapData: map[string]string{
 				types.TimeoutKey:        timeoutValue,
 				types.StartTimestampKey: "",
@@ -128,20 +178,23 @@ func TestReadFromConfigMapShouldFail(t *testing.T) {
 		},
 		{
 			description:   "when timout field is missing",
+			rawEnv:        validRawEnv,
 			configMapData: map[string]string{},
 			expectedError: config.ErrTimeoutFieldIsMissing.Error(),
 		},
 		{
 			description: "when timout field is illegal",
+			rawEnv:      validRawEnv,
 			configMapData: map[string]string{
 				types.TimeoutKey: "illegalValue",
 			},
 			expectedError: config.ErrTimeoutFieldIsIllegal.Error(),
 		},
 		{
-			description: "when ConfigMap Data is nil", configMapData: nil, expectedError: config.ErrConfigMapDataIsNil.Error()},
+			description: "when ConfigMap Data is nil", rawEnv: validRawEnv, configMapData: nil, expectedError: config.ErrConfigMapDataIsNil.Error()},
 		{
 			description: "when param name is empty",
+			rawEnv:      validRawEnv,
 			configMapData: map[string]string{
 				types.TimeoutKey: timeoutValue,
 				types.ParamNameKeyPrefix + emptyParamName: "some value",
@@ -154,7 +207,7 @@ func TestReadFromConfigMapShouldFail(t *testing.T) {
 		t.Run(testCase.description, func(t *testing.T) {
 			fakeClient := fake.NewSimpleClientset(newConfigMap(configMapNamespace, configMapName, testCase.configMapData))
 
-			_, err := config.ReadFromConfigMap(fakeClient, configMapNamespace, configMapName)
+			_, err := config.Read(fakeClient, testCase.rawEnv)
 			assert.ErrorContains(t, err, testCase.expectedError)
 		})
 	}
