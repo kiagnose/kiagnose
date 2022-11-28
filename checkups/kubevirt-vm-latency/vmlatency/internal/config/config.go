@@ -91,7 +91,8 @@ func New(baseConfig kconfig.Config) (Config, error) {
 	}
 	newConfig.DesiredMaxLatencyMilliseconds = desiredMaxLatency
 
-	if err := newConfig.validate(); err != nil {
+	err = newConfig.validate()
+	if err != nil {
 		return Config{}, err
 	}
 
