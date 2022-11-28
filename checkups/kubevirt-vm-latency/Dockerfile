@@ -9,4 +9,4 @@ COPY ./bin/kubevirt-vm-latency /usr/bin
 
 USER 1001
 
-CMD kubevirt-vm-latency
+ENTRYPOINT ["kubevirt-vm-latency"]
