@@ -24,6 +24,7 @@ import (
 	"fmt"
 	"log"
 	"math"
+	"reflect"
 	"strconv"
 
 	kconfig "github.com/kiagnose/kiagnose/kiagnose/config"
@@ -70,6 +71,32 @@ type Config struct {
 	DesiredMaxLatencyMilliseconds        int
 }
 
+type parameter struct {
+	id             string
+	name           string
+	deprecatedName string
+}
+
+var stringsParameters = []parameter{
+	{"NetworkAttachmentDefinitionNamespace", NetworkNamespaceParamName, NetworkNamespaceDeprecatedParamName},
+	{"NetworkAttachmentDefinitionName", NetworkNameParamName, NetworkNameDeprecatedParamName},
+	{"SourceNodeName", SourceNodeNameParamName, SourceNodeNameDeprecatedParamName},
+	{"TargetNodeName", TargetNodeNameParamName, TargetNodeNameDeprecatedParamName},
+}
+
+var integersParameters = []parameter{
+	{
+		"SampleDurationSeconds",
+		SampleDurationSecondsParamName,
+		SampleDurationSecondsDeprecatedParamName,
+	},
+	{
+		"DesiredMaxLatencyMilliseconds",
+		DesiredMaxLatencyMillisecondsParamName,
+		DesiredMaxLatencyMillisecondsDeprecatedParamName,
+	},
+}
+
 var (
 	ErrInvalidParams                          = errors.New("params is invalid")
 	ErrInvalidNetworkName                     = fmt.Errorf("%q parameter is invalid", NetworkNameParamName)
@@ -88,30 +115,28 @@ func New(baseConfig kconfig.Config) (Config, error) {
 	}
 
 	newConfig := Config{
-		PodName:                              baseConfig.PodName,
-		PodUID:                               baseConfig.PodUID,
-		SampleDurationSeconds:                DefaultSampleDurationSeconds,
-		DesiredMaxLatencyMilliseconds:        DefaultDesiredMaxLatencyMilliseconds,
-		NetworkAttachmentDefinitionNamespace: readConfig(baseConfig.Params, NetworkNamespaceParamName, NetworkNamespaceDeprecatedParamName),
-		NetworkAttachmentDefinitionName:      readConfig(baseConfig.Params, NetworkNameParamName, NetworkNameDeprecatedParamName),
-		SourceNodeName:                       readConfig(baseConfig.Params, SourceNodeNameParamName, SourceNodeNameDeprecatedParamName),
-		TargetNodeName:                       readConfig(baseConfig.Params, TargetNodeNameParamName, TargetNodeNameDeprecatedParamName),
+		PodName:                       baseConfig.PodName,
+		PodUID:                        baseConfig.PodUID,
+		SampleDurationSeconds:         DefaultSampleDurationSeconds,
+		DesiredMaxLatencyMilliseconds: DefaultDesiredMaxLatencyMilliseconds,
 	}
 
-	var err error
-	if v := readConfig(baseConfig.Params, SampleDurationSecondsParamName, SampleDurationSecondsDeprecatedParamName); v != "" {
-		if newConfig.SampleDurationSeconds, err = strconv.Atoi(v); err != nil {
-			return Config{}, fmt.Errorf("%q parameter is invalid: %v", SampleDurationSecondsDeprecatedParamName, err)
+	for _, param := range stringsParameters {
+		v := readConfig(baseConfig.Params, param.name, param.deprecatedName)
+		reflect.ValueOf(&newConfig).Elem().FieldByName(param.id).SetString(v)
+	}
+
+	for _, param := range integersParameters {
+		if v := readConfig(baseConfig.Params, param.name, param.deprecatedName); v != "" {
+			parsedValue, err := strconv.Atoi(v)
+			if err != nil {
+				return Config{}, fmt.Errorf("%q parameter is invalid: %v", param.name, err)
+			}
+			reflect.ValueOf(&newConfig).Elem().FieldByName(param.id).SetInt(int64(parsedValue))
 		}
 	}
 
-	if v := readConfig(baseConfig.Params, DesiredMaxLatencyMillisecondsParamName, DesiredMaxLatencyMillisecondsDeprecatedParamName); v != "" {
-		if newConfig.DesiredMaxLatencyMilliseconds, err = strconv.Atoi(v); err != nil {
-			return Config{}, fmt.Errorf("%q parameter is invalid: %v", DesiredMaxLatencyMillisecondsParamName, err)
-		}
-	}
-
-	err = newConfig.validate()
+	err := newConfig.validate()
 	if err != nil {
 		return Config{}, err
 	}
