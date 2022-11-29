@@ -240,10 +240,10 @@ metadata:
   name: ${VM_LATENCY_CONFIGMAP}
 data:
   spec.timeout: 10m
-  spec.param.network_attachment_definition_namespace: "${TARGET_NAMESPACE}"
-  spec.param.network_attachment_definition_name: "bridge-network"
-  spec.param.max_desired_latency_milliseconds: "500"
-  spec.param.sample_duration_seconds: "5"
+  spec.param.networkAttachmentDefinitionNamespace: "${TARGET_NAMESPACE}"
+  spec.param.networkAttachmentDefinitionName: "bridge-network"
+  spec.param.maxDesiredLatencyMilliseconds: "500"
+  spec.param.sampleDurationSeconds: "5"
 EOF
 
     echo
