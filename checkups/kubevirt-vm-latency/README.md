@@ -91,20 +91,20 @@ EOF
 ## Configuration
 The checkup is configured by the following parameters:
 
-| Name                                                                               | Description                                                                                                                  |
-|:-----------------------------------------------------------------------------------|:-----------------------------------------------------------------------------------------------------------------------------|
-| `timeout`                                                                          | Overall time the checkup can run.                                                                                            |
-| `network_attachment_definition_namespace`<br/>`network_attachment_definition_name` | `NetworkAttachmentDefinition` object on which <br/> the VMs are connected to and measure network latency.                    |
-| `sample_duration_seconds`                                                          | Network latency measurement sample time (optional).<br/> Default is 5 seconds.                                               |
-| `max_desired_latency_milliseconds`                                                 | Maximal network latency accepted, if the actual latency <br/> is higher the checkup will be considered as failed (optional). |
-| `source_node`<br/>`target_node`                                                    | Two ends of the network latency measurement (optional).<br/> When used, specifying both is mandatory.                        |
+| Name                                                                         | Description                                                                                                                  |
+|:-----------------------------------------------------------------------------|:-----------------------------------------------------------------------------------------------------------------------------|
+| `timeout`                                                                    | Overall time the checkup can run.                                                                                            |
+| `networkAttachmentDefinitionNamespace`<br/>`networkAttachmentDefinitionName` | `NetworkAttachmentDefinition` object on which <br/> the VMs are connected to and measure network latency.                    |
+| `sampleDurationSeconds`                                                      | Network latency measurement sample time (optional).<br/> Default is 5 seconds.                                               |
+| `maxDesiredLatencyMilliseconds`                                              | Maximal network latency accepted, if the actual latency <br/> is higher the checkup will be considered as failed (optional). |
+| `sourceNode`<br/>`targetNode`                                                | Two ends of the network latency measurement (optional).<br/> When used, specifying both is mandatory.                        |
 
 > **_Note_**:
-> `timeout` should be greater than `sample_duration_seconds`.
+> `timeout` should be greater than `sampleDurationSeconds`.
 
 > **_Note_**:
 > By default the checkup source and target VMs will be created in a way they won't end up on the same cluster node.</br>
-> Specifying both `source_node` and `target_node` will override this behaviour and each VM will be created on the desired node.
+> Specifying both `sourceNode` and `targetNode` will override this behaviour and each VM will be created on the desired node.
 
 ### Example
 ```bash
@@ -116,12 +116,12 @@ metadata:
   name: kubevirt-vm-latency-checkup-config
 data:
   spec.timeout: 5m
-  spec.param.network_attachment_definition_namespace: "default"
-  spec.param.network_attachment_definition_name: "blue-network"
-  spec.param.max_desired_latency_milliseconds: "10"
-  spec.param.sample_duration_seconds: "5"
-  spec.param.source_node: "worker1"
-  spec.param.target_node: "worker2"
+  spec.param.networkAttachmentDefinitionNamespace: "default"
+  spec.param.networkAttachmentDefinitionName: "blue-network"
+  spec.param.maxDesiredLatencyMilliseconds: "10"
+  spec.param.sampleDurationSeconds: "5"
+  spec.param.sourceNode: "worker1"
+  spec.param.targetNode: "worker2"
 EOF
 ```
 
@@ -185,12 +185,12 @@ metadata:
   namespace: <target-namespace>
 data:
   spec.timeout: 5m
-  spec.param.network_attachment_definition_namespace: "default"
-  spec.param.network_attachment_definition_name: "blue-network"
-  spec.param.max_desired_latency_milliseconds: "10"
-  spec.param.sample_duration_seconds: "5"
-  spec.param.source_node: "worker1"
-  spec.param.target_node: "worker2"
+  spec.param.networkAttachmentDefinitionNamespace: "default"
+  spec.param.networkAttachmentDefinitionName: "blue-network"
+  spec.param.maxDesiredLatencyMilliseconds: "10"
+  spec.param.sampleDurationSeconds: "5"
+  spec.param.sourceNode: "worker1"
+  spec.param.targetNode: "worker2"
   status.succeeded: "true"
   status.failureReason: ""
   status.completionTimestamp: "2022-01-01T09:00:00Z"

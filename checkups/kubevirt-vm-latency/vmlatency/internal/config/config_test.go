@@ -103,7 +103,71 @@ func TestCreateConfigFromParamsShould(t *testing.T) {
 			},
 		},
 	}
+	for _, testCase := range testCases {
+		t.Run(testCase.description, func(t *testing.T) {
+			baseConfig := kconfig.Config{
+				PodName: testPodName,
+				PodUID:  testPodUID,
+				Params:  testCase.params,
+			}
+			testConfig, err := config.New(baseConfig)
+			assert.NoError(t, err)
+			assert.Equal(t, testConfig, testCase.expectedConfig)
+		})
+	}
+}
 
+func TestCreateConfigShouldPreferNonDeprecatedParameters(t *testing.T) {
+	testCases := []configCreateTestCases{
+		{
+			description: "when both deprecated and non-deprecated params are specified",
+			params: map[string]string{
+				config.NetworkNameDeprecatedParamName:                   testNetAttachDefName + "999",
+				config.NetworkNamespaceDeprecatedParamName:              testNamespace + "999",
+				config.TargetNodeNameDeprecatedParamName:                testSourceNodeName + "999",
+				config.SourceNodeNameDeprecatedParamName:                testTargetNodeName + "999",
+				config.DesiredMaxLatencyMillisecondsDeprecatedParamName: fmt.Sprint(testDesiredMaxLatencyMilliseconds + 999),
+				config.SampleDurationSecondsDeprecatedParamName:         fmt.Sprint(testSampleDurationSeconds + 999),
+				config.NetworkNameParamName:                             testNetAttachDefName,
+				config.NetworkNamespaceParamName:                        testNamespace,
+				config.TargetNodeNameParamName:                          testSourceNodeName,
+				config.SourceNodeNameParamName:                          testTargetNodeName,
+				config.DesiredMaxLatencyMillisecondsParamName:           fmt.Sprint(testDesiredMaxLatencyMilliseconds),
+				config.SampleDurationSecondsParamName:                   fmt.Sprint(testSampleDurationSeconds),
+			},
+			expectedConfig: config.Config{
+				PodName:                              testPodName,
+				PodUID:                               testPodUID,
+				NetworkAttachmentDefinitionName:      testNetAttachDefName,
+				NetworkAttachmentDefinitionNamespace: testNamespace,
+				TargetNodeName:                       testSourceNodeName,
+				SourceNodeName:                       testTargetNodeName,
+				SampleDurationSeconds:                testSampleDurationSeconds,
+				DesiredMaxLatencyMilliseconds:        testDesiredMaxLatencyMilliseconds,
+			},
+		},
+		{
+			description: "fallback to deprecated parameters when new form is missing",
+			params: map[string]string{
+				config.NetworkNameDeprecatedParamName:                   testNetAttachDefName,
+				config.NetworkNamespaceDeprecatedParamName:              testNamespace,
+				config.TargetNodeNameDeprecatedParamName:                testSourceNodeName,
+				config.SourceNodeNameDeprecatedParamName:                testTargetNodeName,
+				config.DesiredMaxLatencyMillisecondsDeprecatedParamName: fmt.Sprint(testDesiredMaxLatencyMilliseconds),
+				config.SampleDurationSecondsDeprecatedParamName:         fmt.Sprint(testSampleDurationSeconds),
+			},
+			expectedConfig: config.Config{
+				PodName:                              testPodName,
+				PodUID:                               testPodUID,
+				NetworkAttachmentDefinitionName:      testNetAttachDefName,
+				NetworkAttachmentDefinitionNamespace: testNamespace,
+				TargetNodeName:                       testSourceNodeName,
+				SourceNodeName:                       testTargetNodeName,
+				SampleDurationSeconds:                testSampleDurationSeconds,
+				DesiredMaxLatencyMilliseconds:        testDesiredMaxLatencyMilliseconds,
+			},
+		},
+	}
 	for _, testCase := range testCases {
 		t.Run(testCase.description, func(t *testing.T) {
 			baseConfig := kconfig.Config{

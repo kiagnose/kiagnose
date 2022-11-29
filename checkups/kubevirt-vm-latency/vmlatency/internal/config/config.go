@@ -22,6 +22,7 @@ package config
 import (
 	"errors"
 	"fmt"
+	"log"
 	"math"
 	"strconv"
 
@@ -29,12 +30,33 @@ import (
 )
 
 const (
-	NetworkNamespaceParamName              = "network_attachment_definition_namespace"
-	NetworkNameParamName                   = "network_attachment_definition_name"
-	SampleDurationSecondsParamName         = "sample_duration_seconds"
-	SourceNodeNameParamName                = "source_node"
-	TargetNodeNameParamName                = "target_node"
-	DesiredMaxLatencyMillisecondsParamName = "max_desired_latency_milliseconds"
+	NetworkNamespaceParamName              = "networkAttachmentDefinitionNamespace"
+	NetworkNameParamName                   = "networkAttachmentDefinitionName"
+	SourceNodeNameParamName                = "sourceNode"
+	TargetNodeNameParamName                = "targetNode"
+	SampleDurationSecondsParamName         = "sampleDurationSeconds"
+	DesiredMaxLatencyMillisecondsParamName = "maxDesiredLatencyMilliseconds"
+)
+
+const (
+	// NetworkNamespaceDeprecatedParamName
+	// Deprecated
+	NetworkNamespaceDeprecatedParamName = "network_attachment_definition_namespace"
+	// NetworkNameDeprecatedParamName
+	// Deprecated
+	NetworkNameDeprecatedParamName = "network_attachment_definition_name"
+	// SampleDurationSecondsDeprecatedParamName
+	// Deprecated
+	SampleDurationSecondsDeprecatedParamName = "sample_duration_seconds"
+	// SourceNodeNameDeprecatedParamName
+	// Deprecated
+	SourceNodeNameDeprecatedParamName = "source_node"
+	// TargetNodeNameDeprecatedParamName
+	// Deprecated
+	TargetNodeNameDeprecatedParamName = "target_node"
+	// DesiredMaxLatencyMillisecondsDeprecatedParamName
+	// Deprecated
+	DesiredMaxLatencyMillisecondsDeprecatedParamName = "max_desired_latency_milliseconds"
 )
 
 type Config struct {
@@ -68,28 +90,26 @@ func New(baseConfig kconfig.Config) (Config, error) {
 	newConfig := Config{
 		PodName:                              baseConfig.PodName,
 		PodUID:                               baseConfig.PodUID,
-		NetworkAttachmentDefinitionName:      baseConfig.Params[NetworkNameParamName],
-		NetworkAttachmentDefinitionNamespace: baseConfig.Params[NetworkNamespaceParamName],
-		TargetNodeName:                       baseConfig.Params[TargetNodeNameParamName],
-		SourceNodeName:                       baseConfig.Params[SourceNodeNameParamName],
+		SampleDurationSeconds:                DefaultSampleDurationSeconds,
+		DesiredMaxLatencyMilliseconds:        DefaultDesiredMaxLatencyMilliseconds,
+		NetworkAttachmentDefinitionNamespace: readConfig(baseConfig.Params, NetworkNamespaceParamName, NetworkNamespaceDeprecatedParamName),
+		NetworkAttachmentDefinitionName:      readConfig(baseConfig.Params, NetworkNameParamName, NetworkNameDeprecatedParamName),
+		SourceNodeName:                       readConfig(baseConfig.Params, SourceNodeNameParamName, SourceNodeNameDeprecatedParamName),
+		TargetNodeName:                       readConfig(baseConfig.Params, TargetNodeNameParamName, TargetNodeNameDeprecatedParamName),
 	}
 
 	var err error
-	sampleDuration := DefaultSampleDurationSeconds
-	if value, exists := baseConfig.Params[SampleDurationSecondsParamName]; exists {
-		if sampleDuration, err = strconv.Atoi(value); err != nil {
-			return Config{}, fmt.Errorf("%q parameter is invalid: %v", SampleDurationSecondsParamName, err)
+	if v := readConfig(baseConfig.Params, SampleDurationSecondsParamName, SampleDurationSecondsDeprecatedParamName); v != "" {
+		if newConfig.SampleDurationSeconds, err = strconv.Atoi(v); err != nil {
+			return Config{}, fmt.Errorf("%q parameter is invalid: %v", SampleDurationSecondsDeprecatedParamName, err)
 		}
 	}
-	newConfig.SampleDurationSeconds = sampleDuration
 
-	desiredMaxLatency := DefaultDesiredMaxLatencyMilliseconds
-	if value, exists := baseConfig.Params[DesiredMaxLatencyMillisecondsParamName]; exists {
-		if desiredMaxLatency, err = strconv.Atoi(value); err != nil {
+	if v := readConfig(baseConfig.Params, DesiredMaxLatencyMillisecondsParamName, DesiredMaxLatencyMillisecondsDeprecatedParamName); v != "" {
+		if newConfig.DesiredMaxLatencyMilliseconds, err = strconv.Atoi(v); err != nil {
 			return Config{}, fmt.Errorf("%q parameter is invalid: %v", DesiredMaxLatencyMillisecondsParamName, err)
 		}
 	}
-	newConfig.DesiredMaxLatencyMilliseconds = desiredMaxLatency
 
 	err = newConfig.validate()
 	if err != nil {
@@ -97,6 +117,16 @@ func New(baseConfig kconfig.Config) (Config, error) {
 	}
 
 	return newConfig, nil
+}
+
+func readConfig(config map[string]string, paramName, paramDeprecatedName string) string {
+	if value, exists := config[paramName]; exists {
+		return value
+	} else if value, exists := config[paramDeprecatedName]; exists {
+		log.Printf("warning: %q parameter is DEPRECATED, please use the new form: %q", paramDeprecatedName, paramName)
+		return value
+	}
+	return ""
 }
 
 func (c Config) validate() error {
