@@ -359,7 +359,7 @@ func (c *clientStub) CreateVirtualMachineInstance(
 	return v, nil
 }
 
-func (c *clientStub) DeleteVirtualMachineInstance(_, _ string) error {
+func (c *clientStub) DeleteVirtualMachineInstance(_ context.Context, _, _ string) error {
 	return c.failDeleteVmi
 }
 
