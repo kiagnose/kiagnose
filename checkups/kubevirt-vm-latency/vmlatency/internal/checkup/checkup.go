@@ -80,6 +80,7 @@ func (c *checkup) Setup(ctx context.Context) error {
 	)
 
 	netAttachDef, err := c.client.GetNetworkAttachmentDefinition(
+		ctx,
 		c.params.NetworkAttachmentDefinitionNamespace,
 		c.params.NetworkAttachmentDefinitionName)
 	if err != nil {

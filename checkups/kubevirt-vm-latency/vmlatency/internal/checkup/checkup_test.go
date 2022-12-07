@@ -367,7 +367,7 @@ func (c *clientStub) SerialConsole(_, _ string, _ time.Duration) (kubecli.Stream
 	return nil, nil
 }
 
-func (c *clientStub) GetNetworkAttachmentDefinition(_, _ string) (*netattdefv1.NetworkAttachmentDefinition, error) {
+func (c *clientStub) GetNetworkAttachmentDefinition(_ context.Context, _, _ string) (*netattdefv1.NetworkAttachmentDefinition, error) {
 	return c.returnNetAttachDef, c.failGetNetAttachDef
 }
 
