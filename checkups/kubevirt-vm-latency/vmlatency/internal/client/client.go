@@ -57,8 +57,25 @@ func New() (*Client, error) {
 	return &Client{c, cniClient}, nil
 }
 
-func (c *Client) GetVirtualMachineInstance(namespace, name string) (*kvcorev1.VirtualMachineInstance, error) {
-	return c.KubevirtClient.VirtualMachineInstance(namespace).Get(name, &metav1.GetOptions{})
+func (c *Client) GetVirtualMachineInstance(ctx context.Context, namespace, name string) (*kvcorev1.VirtualMachineInstance, error) {
+	type resultWrapper struct {
+		vmi *kvcorev1.VirtualMachineInstance
+		err error
+	}
+
+	resultCh := make(chan resultWrapper, 1)
+
+	go func() {
+		vmi, err := c.KubevirtClient.VirtualMachineInstance(namespace).Get(name, &metav1.GetOptions{})
+		resultCh <- resultWrapper{vmi, err}
+	}()
+
+	select {
+	case result := <-resultCh:
+		return result.vmi, result.err
+	case <-ctx.Done():
+		return nil, ctx.Err()
+	}
 }
 
 func (c *Client) CreateVirtualMachineInstance(
