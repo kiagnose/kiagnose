@@ -36,7 +36,10 @@ import (
 
 type KubevirtVmisClient interface {
 	GetVirtualMachineInstance(ctx context.Context, namespace, name string) (*kvcorev1.VirtualMachineInstance, error)
-	CreateVirtualMachineInstance(namespace string, vmi *kvcorev1.VirtualMachineInstance) (*kvcorev1.VirtualMachineInstance, error)
+	CreateVirtualMachineInstance(
+		ctx context.Context,
+		namespace string,
+		vmi *kvcorev1.VirtualMachineInstance) (*kvcorev1.VirtualMachineInstance, error)
 	DeleteVirtualMachineInstance(namespace, name string) error
 	SerialConsole(namespace, vmiName string, timeout time.Duration) (kubecli.StreamInterface, error)
 	GetNetworkAttachmentDefinition(namespace, name string) (*netattdefv1.NetworkAttachmentDefinition, error)
@@ -44,7 +47,7 @@ type KubevirtVmisClient interface {
 
 func Start(c KubevirtVmisClient, namespace string, vmi *kvcorev1.VirtualMachineInstance) error {
 	log.Printf("starting VMI %s/%s..", namespace, vmi.Name)
-	if _, err := c.CreateVirtualMachineInstance(namespace, vmi); err != nil {
+	if _, err := c.CreateVirtualMachineInstance(context.Background(), namespace, vmi); err != nil {
 		return fmt.Errorf("failed to start VMI %s/%s: %v", vmi.Namespace, vmi.Name, err)
 	}
 	return nil

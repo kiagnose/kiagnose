@@ -342,7 +342,10 @@ func (c *clientStub) GetVirtualMachineInstance(_ context.Context, _, name string
 	return c.createdVmis[name], c.failGetVmi
 }
 
-func (c *clientStub) CreateVirtualMachineInstance(_ string, v *kvcorev1.VirtualMachineInstance) (*kvcorev1.VirtualMachineInstance, error) {
+func (c *clientStub) CreateVirtualMachineInstance(
+	_ context.Context,
+	_ string,
+	v *kvcorev1.VirtualMachineInstance) (*kvcorev1.VirtualMachineInstance, error) {
 	if c.failCreateVmi != nil {
 		return nil, c.failCreateVmi
 	}
