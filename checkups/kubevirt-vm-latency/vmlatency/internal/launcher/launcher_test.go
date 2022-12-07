@@ -278,7 +278,7 @@ func (c *fakeClient) SerialConsole(namespace, vmiName string, timeout time.Durat
 	return nil, nil
 }
 
-func (c *fakeClient) GetNetworkAttachmentDefinition(_, _ string) (*netattdefv1.NetworkAttachmentDefinition, error) {
+func (c *fakeClient) GetNetworkAttachmentDefinition(_ context.Context, _, _ string) (*netattdefv1.NetworkAttachmentDefinition, error) {
 	return c.returnNetAttachDef, nil
 }
 

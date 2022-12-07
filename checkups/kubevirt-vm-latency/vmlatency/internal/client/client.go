@@ -117,6 +117,8 @@ func (c *Client) SerialConsole(namespace, vmiName string, timeout time.Duration)
 	return c.KubevirtClient.VirtualMachineInstance(namespace).SerialConsole(vmiName, &kubecli.SerialConsoleOptions{ConnectionTimeout: timeout})
 }
 
-func (c *Client) GetNetworkAttachmentDefinition(namespace, name string) (*netattdefv1.NetworkAttachmentDefinition, error) {
-	return c.K8sCniCncfIoV1Interface.NetworkAttachmentDefinitions(namespace).Get(context.Background(), name, metav1.GetOptions{})
+func (c *Client) GetNetworkAttachmentDefinition(
+	ctx context.Context,
+	namespace, name string) (*netattdefv1.NetworkAttachmentDefinition, error) {
+	return c.K8sCniCncfIoV1Interface.NetworkAttachmentDefinitions(namespace).Get(ctx, name, metav1.GetOptions{})
 }

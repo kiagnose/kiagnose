@@ -42,7 +42,7 @@ type KubevirtVmisClient interface {
 		vmi *kvcorev1.VirtualMachineInstance) (*kvcorev1.VirtualMachineInstance, error)
 	DeleteVirtualMachineInstance(ctx context.Context, namespace, name string) error
 	SerialConsole(namespace, vmiName string, timeout time.Duration) (kubecli.StreamInterface, error)
-	GetNetworkAttachmentDefinition(namespace, name string) (*netattdefv1.NetworkAttachmentDefinition, error)
+	GetNetworkAttachmentDefinition(ctx context.Context, namespace, name string) (*netattdefv1.NetworkAttachmentDefinition, error)
 }
 
 func Start(c KubevirtVmisClient, namespace string, vmi *kvcorev1.VirtualMachineInstance) error {
