@@ -35,7 +35,7 @@ import (
 )
 
 type KubevirtVmisClient interface {
-	GetVirtualMachineInstance(namespace, name string) (*kvcorev1.VirtualMachineInstance, error)
+	GetVirtualMachineInstance(ctx context.Context, namespace, name string) (*kvcorev1.VirtualMachineInstance, error)
 	CreateVirtualMachineInstance(namespace string, vmi *kvcorev1.VirtualMachineInstance) (*kvcorev1.VirtualMachineInstance, error)
 	DeleteVirtualMachineInstance(namespace, name string) error
 	SerialConsole(namespace, vmiName string, timeout time.Duration) (kubecli.StreamInterface, error)
@@ -56,7 +56,7 @@ func WaitForStatusIPAddress(ctx context.Context, c KubevirtVmisClient, namespace
 
 	conditionFn := func(ctx context.Context) (bool, error) {
 		var err error
-		updatedVMI, err = c.GetVirtualMachineInstance(namespace, name)
+		updatedVMI, err = c.GetVirtualMachineInstance(ctx, namespace, name)
 		if err != nil {
 			return false, nil
 		}
@@ -87,7 +87,7 @@ func WaitForVmiDispose(ctx context.Context, c KubevirtVmisClient, namespace, nam
 	log.Printf("waiting for VMI %s/%s to dispose..\n", namespace, name)
 
 	conditionFn := func(ctx context.Context) (bool, error) {
-		_, err := c.GetVirtualMachineInstance(namespace, name)
+		_, err := c.GetVirtualMachineInstance(ctx, namespace, name)
 		if k8serrors.IsNotFound(err) {
 			return true, nil
 		}

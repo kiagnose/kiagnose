@@ -213,10 +213,10 @@ func TestCheckupSetupShouldCreateOwnerReference(t *testing.T) {
 	sourceVMIName := testClient.SourceVMIName()
 	targetVMIName := testClient.TargetVMIName()
 
-	sourceVMI, err := testClient.GetVirtualMachineInstance(testNamespace, sourceVMIName)
+	sourceVMI, err := testClient.GetVirtualMachineInstance(context.Background(), testNamespace, sourceVMIName)
 	assert.NoError(t, err)
 
-	targetVMI, err := testClient.GetVirtualMachineInstance(testNamespace, targetVMIName)
+	targetVMI, err := testClient.GetVirtualMachineInstance(context.Background(), testNamespace, targetVMIName)
 	assert.NoError(t, err)
 
 	assertOwnerReferenceExists(t, sourceVMI, testPodName, testPodUID)
@@ -243,10 +243,10 @@ func TestCheckupSetupShouldNotCreateOwnerReferenceWhenPodUIDIsEmpty(t *testing.T
 	sourceVMIName := testClient.SourceVMIName()
 	targetVMIName := testClient.TargetVMIName()
 
-	sourceVMI, err := testClient.GetVirtualMachineInstance(testNamespace, sourceVMIName)
+	sourceVMI, err := testClient.GetVirtualMachineInstance(context.Background(), testNamespace, sourceVMIName)
 	assert.NoError(t, err)
 
-	targetVMI, err := testClient.GetVirtualMachineInstance(testNamespace, targetVMIName)
+	targetVMI, err := testClient.GetVirtualMachineInstance(context.Background(), testNamespace, targetVMIName)
 	assert.NoError(t, err)
 
 	assertOwnerReferenceDoesNotExists(t, sourceVMI, testPodName, emptyPodUID)
@@ -254,7 +254,7 @@ func TestCheckupSetupShouldNotCreateOwnerReferenceWhenPodUIDIsEmpty(t *testing.T
 }
 
 func assertVmiPodAntiAffinityExist(t *testing.T, testClient *clientStub, vmiName string) {
-	actualVmi, err := testClient.GetVirtualMachineInstance(testNamespace, vmiName)
+	actualVmi, err := testClient.GetVirtualMachineInstance(context.Background(), testNamespace, vmiName)
 	assert.NoError(t, err)
 	assert.NotNil(t, actualVmi.Spec.Affinity.PodAntiAffinity)
 	expectedPodAntiAffinity := vmi.NewPodAntiAffinity(vmi.Label{Key: checkup.LabelLatencyCheckUID, Value: testCheckupUID})
@@ -262,14 +262,14 @@ func assertVmiPodAntiAffinityExist(t *testing.T, testClient *clientStub, vmiName
 }
 
 func assertVmiPodAntiAffinityNotExist(t *testing.T, testClient *clientStub, name string) {
-	actualVmi, err := testClient.GetVirtualMachineInstance(testNamespace, name)
+	actualVmi, err := testClient.GetVirtualMachineInstance(context.Background(), testNamespace, name)
 	assert.NoError(t, err)
 
 	assert.Nil(t, actualVmi.Spec.Affinity.PodAntiAffinity)
 }
 
 func assertVmiNodeAffinityExist(t *testing.T, testClient *clientStub, vmiName, nodeName string) {
-	actualVmi, err := testClient.GetVirtualMachineInstance(testNamespace, vmiName)
+	actualVmi, err := testClient.GetVirtualMachineInstance(context.Background(), testNamespace, vmiName)
 	assert.NoError(t, err)
 
 	actualVmiNodeAffinity := actualVmi.Spec.Affinity.NodeAffinity
@@ -280,7 +280,7 @@ func assertVmiNodeAffinityExist(t *testing.T, testClient *clientStub, vmiName, n
 }
 
 func assertVmiNodeAffinityNotExist(t *testing.T, testClient *clientStub, name string) {
-	actualVmi, err := testClient.GetVirtualMachineInstance(testNamespace, name)
+	actualVmi, err := testClient.GetVirtualMachineInstance(context.Background(), testNamespace, name)
 	assert.NoError(t, err)
 
 	assert.Nil(t, actualVmi.Spec.Affinity.NodeAffinity)
@@ -338,7 +338,7 @@ type clientStub struct {
 	failDeleteVmi       error
 }
 
-func (c *clientStub) GetVirtualMachineInstance(_, name string) (*kvcorev1.VirtualMachineInstance, error) {
+func (c *clientStub) GetVirtualMachineInstance(_ context.Context, _, name string) (*kvcorev1.VirtualMachineInstance, error) {
 	return c.createdVmis[name], c.failGetVmi
 }
 

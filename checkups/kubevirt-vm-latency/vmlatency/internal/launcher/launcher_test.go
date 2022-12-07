@@ -238,7 +238,7 @@ func newFakeClient() *fakeClient {
 	}
 }
 
-func (c *fakeClient) GetVirtualMachineInstance(namespace, name string) (*kvcorev1.VirtualMachineInstance, error) {
+func (c *fakeClient) GetVirtualMachineInstance(_ context.Context, namespace, name string) (*kvcorev1.VirtualMachineInstance, error) {
 	vmi, exists := c.vmiTracker[vmiKey(namespace, name)]
 	if !exists {
 		return nil, k8serrors.NewNotFound(kvcorev1.Resource("VirtualMachineInstance"), "")
