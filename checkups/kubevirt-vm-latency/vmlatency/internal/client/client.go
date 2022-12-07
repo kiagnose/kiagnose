@@ -38,6 +38,11 @@ type Client struct {
 	netattdefclient.K8sCniCncfIoV1Interface
 }
 
+type resultWrapper struct {
+	vmi *kvcorev1.VirtualMachineInstance
+	err error
+}
+
 func New() (*Client, error) {
 	kubeconfig, err := rest.InClusterConfig()
 	if err != nil {
@@ -58,11 +63,6 @@ func New() (*Client, error) {
 }
 
 func (c *Client) GetVirtualMachineInstance(ctx context.Context, namespace, name string) (*kvcorev1.VirtualMachineInstance, error) {
-	type resultWrapper struct {
-		vmi *kvcorev1.VirtualMachineInstance
-		err error
-	}
-
 	resultCh := make(chan resultWrapper, 1)
 
 	go func() {
@@ -79,9 +79,22 @@ func (c *Client) GetVirtualMachineInstance(ctx context.Context, namespace, name 
 }
 
 func (c *Client) CreateVirtualMachineInstance(
+	ctx context.Context,
 	namespace string,
 	vmi *kvcorev1.VirtualMachineInstance) (*kvcorev1.VirtualMachineInstance, error) {
-	return c.KubevirtClient.VirtualMachineInstance(namespace).Create(vmi)
+	resultCh := make(chan resultWrapper, 1)
+
+	go func() {
+		createdVMI, err := c.KubevirtClient.VirtualMachineInstance(namespace).Create(vmi)
+		resultCh <- resultWrapper{createdVMI, err}
+	}()
+
+	select {
+	case result := <-resultCh:
+		return result.vmi, result.err
+	case <-ctx.Done():
+		return nil, ctx.Err()
+	}
 }
 
 func (c *Client) DeleteVirtualMachineInstance(namespace, name string) error {

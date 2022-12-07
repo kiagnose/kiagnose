@@ -250,6 +250,7 @@ func (c *fakeClient) GetVirtualMachineInstance(_ context.Context, namespace, nam
 // adds VirtualMachineInstanceAgentConnected condition to the VMI status and
 // the node name according to node affinity rule with 'kubernetes.io/hostname' label selector.
 func (c *fakeClient) CreateVirtualMachineInstance(
+	_ context.Context,
 	namespace string,
 	vmi *kvcorev1.VirtualMachineInstance) (*kvcorev1.VirtualMachineInstance, error) {
 	vmi.Status.Interfaces = append(vmi.Status.Interfaces, kvcorev1.VirtualMachineInstanceNetworkInterface{
