@@ -269,7 +269,7 @@ func (c *fakeClient) CreateVirtualMachineInstance(
 	return vmi, nil
 }
 
-func (c *fakeClient) DeleteVirtualMachineInstance(namespace, name string) error {
+func (c *fakeClient) DeleteVirtualMachineInstance(_ context.Context, namespace, name string) error {
 	delete(c.vmiTracker, vmiKey(namespace, name))
 	return nil
 }

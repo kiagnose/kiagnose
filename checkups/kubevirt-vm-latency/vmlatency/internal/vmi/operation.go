@@ -40,7 +40,7 @@ type KubevirtVmisClient interface {
 		ctx context.Context,
 		namespace string,
 		vmi *kvcorev1.VirtualMachineInstance) (*kvcorev1.VirtualMachineInstance, error)
-	DeleteVirtualMachineInstance(namespace, name string) error
+	DeleteVirtualMachineInstance(ctx context.Context, namespace, name string) error
 	SerialConsole(namespace, vmiName string, timeout time.Duration) (kubecli.StreamInterface, error)
 	GetNetworkAttachmentDefinition(namespace, name string) (*netattdefv1.NetworkAttachmentDefinition, error)
 }
@@ -80,7 +80,7 @@ func vmiIPAddressExists(vmi *kvcorev1.VirtualMachineInstance) bool {
 func Delete(c KubevirtVmisClient, namespace, name string) error {
 	log.Printf("deleting VMI %s/%s..\n", namespace, name)
 
-	if err := c.DeleteVirtualMachineInstance(namespace, name); err != nil {
+	if err := c.DeleteVirtualMachineInstance(context.Background(), namespace, name); err != nil {
 		return fmt.Errorf("failed to delete VMI %s/%s: %v", namespace, name, err)
 	}
 	return nil

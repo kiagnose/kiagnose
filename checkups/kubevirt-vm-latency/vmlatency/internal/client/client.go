@@ -97,8 +97,20 @@ func (c *Client) CreateVirtualMachineInstance(
 	}
 }
 
-func (c *Client) DeleteVirtualMachineInstance(namespace, name string) error {
-	return c.KubevirtClient.VirtualMachineInstance(namespace).Delete(name, &metav1.DeleteOptions{})
+func (c *Client) DeleteVirtualMachineInstance(ctx context.Context, namespace, name string) error {
+	resultCh := make(chan error, 1)
+
+	go func() {
+		err := c.KubevirtClient.VirtualMachineInstance(namespace).Delete(name, &metav1.DeleteOptions{})
+		resultCh <- err
+	}()
+
+	select {
+	case err := <-resultCh:
+		return err
+	case <-ctx.Done():
+		return ctx.Err()
+	}
 }
 
 func (c *Client) SerialConsole(namespace, vmiName string, timeout time.Duration) (kubecli.StreamInterface, error) {
