@@ -224,10 +224,10 @@ status.succeeded: "true"
 status.failureReason: ""
 ```
 
-In case an environment variable is missing (e.g: `MAX_DESIRED_LATENCY_MILLISECONDS`:
+In case a parameter is missing or contains an empty string (""):
 ```yaml
 status.succeeded: "false"
-status.failureReason: "MAX_DESIRED_LATENCY_MILLISECONDS environment variable is missing"
+status.failureReason: "\"<param_name>\" parameter is invalid"
 ```
 
 In case of a connectivity issues between the VMs:
