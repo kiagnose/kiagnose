@@ -163,7 +163,7 @@ func (c *checkup) Run() error {
 	return nil
 }
 
-func (c *checkup) Teardown(waitCtx context.Context) error {
+func (c *checkup) Teardown(ctx context.Context) error {
 	const (
 		errMessagePrefix = "teardown"
 
@@ -171,15 +171,15 @@ func (c *checkup) Teardown(waitCtx context.Context) error {
 	)
 
 	var teardownErrors []string
-	if err := vmi.Delete(c.client, c.namespace, c.sourceVM.Name); err != nil {
+	if err := vmi.Delete(ctx, c.client, c.namespace, c.sourceVM.Name); err != nil {
 		teardownErrors = append(teardownErrors, fmt.Sprintf("'%s/%s': %v", c.namespace, c.sourceVM.Name, err))
 	}
 
-	if err := vmi.Delete(c.client, c.namespace, c.targetVM.Name); err != nil {
+	if err := vmi.Delete(ctx, c.client, c.namespace, c.targetVM.Name); err != nil {
 		teardownErrors = append(teardownErrors, fmt.Sprintf("'%s/%s': %v", c.namespace, c.targetVM.Name, err))
 	}
 
-	waitCtx, cancel := context.WithTimeout(waitCtx, defaultTeardownTimeout)
+	waitCtx, cancel := context.WithTimeout(ctx, defaultTeardownTimeout)
 	defer cancel()
 
 	if err := vmi.WaitForVmiDispose(waitCtx, c.client, c.namespace, c.sourceVM.Name); err != nil {
