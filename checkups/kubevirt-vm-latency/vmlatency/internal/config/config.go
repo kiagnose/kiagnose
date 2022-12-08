@@ -38,24 +38,13 @@ const (
 	DesiredMaxLatencyMillisecondsParamName = "maxDesiredLatencyMilliseconds"
 )
 
+// Deprecated
 const (
-	// NetworkNamespaceDeprecatedParamName
-	// Deprecated
-	NetworkNamespaceDeprecatedParamName = "network_attachment_definition_namespace"
-	// NetworkNameDeprecatedParamName
-	// Deprecated
-	NetworkNameDeprecatedParamName = "network_attachment_definition_name"
-	// SampleDurationSecondsDeprecatedParamName
-	// Deprecated
-	SampleDurationSecondsDeprecatedParamName = "sample_duration_seconds"
-	// SourceNodeNameDeprecatedParamName
-	// Deprecated
-	SourceNodeNameDeprecatedParamName = "source_node"
-	// TargetNodeNameDeprecatedParamName
-	// Deprecated
-	TargetNodeNameDeprecatedParamName = "target_node"
-	// DesiredMaxLatencyMillisecondsDeprecatedParamName
-	// Deprecated
+	NetworkNamespaceDeprecatedParamName              = "network_attachment_definition_namespace"
+	NetworkNameDeprecatedParamName                   = "network_attachment_definition_name"
+	SampleDurationSecondsDeprecatedParamName         = "sample_duration_seconds"
+	SourceNodeNameDeprecatedParamName                = "source_node"
+	TargetNodeNameDeprecatedParamName                = "target_node"
 	DesiredMaxLatencyMillisecondsDeprecatedParamName = "max_desired_latency_milliseconds"
 )
 
