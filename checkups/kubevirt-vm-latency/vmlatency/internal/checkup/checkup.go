@@ -93,10 +93,10 @@ func (c *checkup) Setup(ctx context.Context) error {
 	sourceVmi := newLatencyCheckVmi(c.uid, sourceVMIName, c.params.SourceNodeName, c.params.PodName, c.params.PodUID, netAttachDef)
 	targetVmi := newLatencyCheckVmi(c.uid, targetVMIName, c.params.TargetNodeName, c.params.PodName, c.params.PodUID, netAttachDef)
 
-	if err = vmi.Start(c.client, c.namespace, sourceVmi); err != nil {
+	if err = vmi.Start(ctx, c.client, c.namespace, sourceVmi); err != nil {
 		return fmt.Errorf("%s: %v", errMessagePrefix, err)
 	}
-	if err = vmi.Start(c.client, c.namespace, targetVmi); err != nil {
+	if err = vmi.Start(ctx, c.client, c.namespace, targetVmi); err != nil {
 		return fmt.Errorf("%s: %v", errMessagePrefix, err)
 	}
 
