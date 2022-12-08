@@ -68,7 +68,7 @@ func (l launcher) Run(ctx context.Context) (runErr error) {
 		runErr = failureReason(runStatus)
 	}()
 
-	if err := l.checkup.Setup(context.Background()); err != nil {
+	if err := l.checkup.Setup(ctx); err != nil {
 		runStatus.FailureReason = append(runStatus.FailureReason, err.Error())
 		return err
 	}
