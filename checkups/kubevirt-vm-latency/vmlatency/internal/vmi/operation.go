@@ -45,9 +45,9 @@ type KubevirtVmisClient interface {
 	GetNetworkAttachmentDefinition(ctx context.Context, namespace, name string) (*netattdefv1.NetworkAttachmentDefinition, error)
 }
 
-func Start(c KubevirtVmisClient, namespace string, vmi *kvcorev1.VirtualMachineInstance) error {
+func Start(ctx context.Context, c KubevirtVmisClient, namespace string, vmi *kvcorev1.VirtualMachineInstance) error {
 	log.Printf("starting VMI %s/%s..", namespace, vmi.Name)
-	if _, err := c.CreateVirtualMachineInstance(context.Background(), namespace, vmi); err != nil {
+	if _, err := c.CreateVirtualMachineInstance(ctx, namespace, vmi); err != nil {
 		return fmt.Errorf("failed to start VMI %s/%s: %v", vmi.Namespace, vmi.Name, err)
 	}
 	return nil
