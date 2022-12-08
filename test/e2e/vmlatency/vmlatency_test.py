@@ -30,10 +30,10 @@ def test_successful_run(kclient, checkup_sa, checkup_role_binding, configmap_rol
         namespace=namespace,
         data={
             "spec.timeout": "5m",
-            "spec.param.network_attachment_definition_namespace": nad.namespace,
-            "spec.param.network_attachment_definition_name": nad.name,
-            "spec.param.max_desired_latency_milliseconds": "500",
-            "spec.param.sample_duration_seconds": "5",
+            "spec.param.networkAttachmentDefinitionNamespace": nad.namespace,
+            "spec.param.networkAttachmentDefinitionName": nad.name,
+            "spec.param.maxDesiredLatencyMilliseconds": "500",
+            "spec.param.sampleDurationSeconds": "5",
         },
         client=kclient,
     )
