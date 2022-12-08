@@ -20,6 +20,8 @@
 package vmlatency
 
 import (
+	"context"
+
 	kconfig "github.com/kiagnose/kiagnose/kiagnose/config"
 
 	"github.com/kiagnose/kiagnose/checkups/kubevirt-vm-latency/vmlatency/internal/checkup"
@@ -50,5 +52,9 @@ func Run(rawEnv map[string]string, namespace string) error {
 		checkup.New(c, baseConfig.UID, namespace, cfg, latency.New(c)),
 		reporter.New(c, baseConfig.ConfigMapNamespace, baseConfig.ConfigMapName),
 	)
-	return l.Run()
+
+	ctx, cancel := context.WithTimeout(context.Background(), baseConfig.Timeout)
+	defer cancel()
+
+	return l.Run(ctx)
 }

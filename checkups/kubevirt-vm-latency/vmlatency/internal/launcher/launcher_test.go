@@ -62,7 +62,7 @@ func TestLauncherShouldFail(t *testing.T) {
 	)
 	testLauncher := launcher.New(testCheckup, &reporterStub{})
 
-	assert.ErrorContains(t, testLauncher.Run(), errorCheck.Error())
+	assert.ErrorContains(t, testLauncher.Run(context.Background()), errorCheck.Error())
 }
 
 func TestLauncherShouldRunSuccessfully(t *testing.T) {
@@ -76,23 +76,23 @@ func TestLauncherShouldRunSuccessfully(t *testing.T) {
 	)
 	testLauncher := launcher.New(testCheckup, &reporterStub{})
 
-	assert.NoError(t, testLauncher.Run())
+	assert.NoError(t, testLauncher.Run(context.Background()))
 }
 
 func TestLauncherShould(t *testing.T) {
 	t.Run("run successfully", func(t *testing.T) {
 		testLauncher := launcher.New(checkupStub{}, &reporterStub{})
-		assert.NoError(t, testLauncher.Run())
+		assert.NoError(t, testLauncher.Run(context.Background()))
 	})
 
 	t.Run("fail when report is failing", func(t *testing.T) {
 		testLauncher := launcher.New(checkupStub{}, &reporterStub{failReport: errorReport})
-		assert.ErrorContains(t, testLauncher.Run(), errorReport.Error())
+		assert.ErrorContains(t, testLauncher.Run(context.Background()), errorReport.Error())
 	})
 
 	t.Run("fail when setup is failing", func(t *testing.T) {
 		testLauncher := launcher.New(checkupStub{failSetup: errorSetup}, &reporterStub{})
-		assert.ErrorContains(t, testLauncher.Run(), errorSetup.Error())
+		assert.ErrorContains(t, testLauncher.Run(context.Background()), errorSetup.Error())
 	})
 
 	t.Run("fail when setup and 2nd report are failing", func(t *testing.T) {
@@ -100,19 +100,19 @@ func TestLauncherShould(t *testing.T) {
 			checkupStub{failSetup: errorSetup},
 			&reporterStub{failReport: errorReport, failOnSecondReport: true},
 		)
-		err := testLauncher.Run()
+		err := testLauncher.Run(context.Background())
 		assert.ErrorContains(t, err, errorSetup.Error())
 		assert.ErrorContains(t, err, errorReport.Error())
 	})
 
 	t.Run("fail when run is failing", func(t *testing.T) {
 		testLauncher := launcher.New(checkupStub{failRun: errorRun}, &reporterStub{})
-		assert.ErrorContains(t, testLauncher.Run(), errorRun.Error())
+		assert.ErrorContains(t, testLauncher.Run(context.Background()), errorRun.Error())
 	})
 
 	t.Run("fail when teardown is failing", func(t *testing.T) {
 		testLauncher := launcher.New(checkupStub{failTeardown: errorTeardown}, &reporterStub{})
-		assert.ErrorContains(t, testLauncher.Run(), errorTeardown.Error())
+		assert.ErrorContains(t, testLauncher.Run(context.Background()), errorTeardown.Error())
 	})
 
 	t.Run("fail when run and report are failing", func(t *testing.T) {
@@ -120,7 +120,7 @@ func TestLauncherShould(t *testing.T) {
 			checkupStub{failRun: errorRun},
 			&reporterStub{failReport: errorReport, failOnSecondReport: true},
 		)
-		err := testLauncher.Run()
+		err := testLauncher.Run(context.Background())
 		assert.ErrorContains(t, err, errorRun.Error())
 		assert.ErrorContains(t, err, errorReport.Error())
 	})
@@ -130,7 +130,7 @@ func TestLauncherShould(t *testing.T) {
 			checkupStub{failTeardown: errorTeardown},
 			&reporterStub{failReport: errorReport, failOnSecondReport: true},
 		)
-		err := testLauncher.Run()
+		err := testLauncher.Run(context.Background())
 		assert.ErrorContains(t, err, errorTeardown.Error())
 		assert.ErrorContains(t, err, errorReport.Error())
 	})
@@ -140,7 +140,7 @@ func TestLauncherShould(t *testing.T) {
 			checkupStub{failRun: errorRun, failTeardown: errorTeardown},
 			&reporterStub{failReport: errorReport, failOnSecondReport: true},
 		)
-		err := testLauncher.Run()
+		err := testLauncher.Run(context.Background())
 		assert.ErrorContains(t, err, errorRun.Error())
 		assert.ErrorContains(t, err, errorTeardown.Error())
 		assert.ErrorContains(t, err, errorReport.Error())
@@ -166,7 +166,7 @@ func TestLauncherShouldSuccessfullyProduceStatusResults(t *testing.T) {
 	)
 	testLauncher := launcher.New(testCheckup, testReporter)
 
-	assert.NoError(t, testLauncher.Run())
+	assert.NoError(t, testLauncher.Run(context.Background()))
 
 	expectedResults := status.Results{
 		SourceNode: sourceNodeName,

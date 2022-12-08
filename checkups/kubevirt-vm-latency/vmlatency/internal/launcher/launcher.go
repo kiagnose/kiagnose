@@ -51,7 +51,7 @@ func New(checkup checkup, reporter reporter) launcher {
 	}
 }
 
-func (l launcher) Run() (runErr error) {
+func (l launcher) Run(ctx context.Context) (runErr error) {
 	var runStatus status.Status
 	runStatus.StartTimestamp = time.Now()
 
