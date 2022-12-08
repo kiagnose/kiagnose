@@ -73,11 +73,7 @@ const (
 )
 
 func (c *checkup) Setup(ctx context.Context) error {
-	const (
-		errMessagePrefix = "setup"
-
-		defaultSetupTimeout = time.Minute * 10
-	)
+	const errMessagePrefix = "setup"
 
 	netAttachDef, err := c.client.GetNetworkAttachmentDefinition(
 		ctx,
@@ -100,13 +96,11 @@ func (c *checkup) Setup(ctx context.Context) error {
 		return fmt.Errorf("%s: %v", errMessagePrefix, err)
 	}
 
-	waitCtx, cancel := context.WithTimeout(ctx, defaultSetupTimeout)
-	defer cancel()
-	if c.targetVM, err = vmi.WaitForStatusIPAddress(waitCtx, c.client, c.namespace, targetVmi.Name); err != nil {
+	if c.targetVM, err = vmi.WaitForStatusIPAddress(ctx, c.client, c.namespace, targetVmi.Name); err != nil {
 		return fmt.Errorf("%s: %v", errMessagePrefix, err)
 	}
 
-	if c.sourceVM, err = vmi.WaitForStatusIPAddress(waitCtx, c.client, c.namespace, sourceVmi.Name); err != nil {
+	if c.sourceVM, err = vmi.WaitForStatusIPAddress(ctx, c.client, c.namespace, sourceVmi.Name); err != nil {
 		return fmt.Errorf("%s: %v", errMessagePrefix, err)
 	}
 
