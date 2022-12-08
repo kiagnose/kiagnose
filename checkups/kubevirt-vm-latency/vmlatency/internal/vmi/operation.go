@@ -77,10 +77,10 @@ func vmiIPAddressExists(vmi *kvcorev1.VirtualMachineInstance) bool {
 	return len(vmi.Status.Interfaces) > 0 && vmi.Status.Interfaces[0].IP != ""
 }
 
-func Delete(c KubevirtVmisClient, namespace, name string) error {
+func Delete(ctx context.Context, c KubevirtVmisClient, namespace, name string) error {
 	log.Printf("deleting VMI %s/%s..\n", namespace, name)
 
-	if err := c.DeleteVirtualMachineInstance(context.Background(), namespace, name); err != nil {
+	if err := c.DeleteVirtualMachineInstance(ctx, namespace, name); err != nil {
 		return fmt.Errorf("failed to delete VMI %s/%s: %v", namespace, name, err)
 	}
 	return nil
