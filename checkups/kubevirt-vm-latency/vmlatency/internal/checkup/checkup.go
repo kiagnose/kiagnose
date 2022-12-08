@@ -164,11 +164,7 @@ func (c *checkup) Run() error {
 }
 
 func (c *checkup) Teardown(ctx context.Context) error {
-	const (
-		errMessagePrefix = "teardown"
-
-		defaultTeardownTimeout = time.Minute * 3
-	)
+	const errMessagePrefix = "teardown"
 
 	var teardownErrors []string
 	if err := vmi.Delete(ctx, c.client, c.namespace, c.sourceVM.Name); err != nil {
@@ -179,14 +175,11 @@ func (c *checkup) Teardown(ctx context.Context) error {
 		teardownErrors = append(teardownErrors, fmt.Sprintf("'%s/%s': %v", c.namespace, c.targetVM.Name, err))
 	}
 
-	waitCtx, cancel := context.WithTimeout(ctx, defaultTeardownTimeout)
-	defer cancel()
-
-	if err := vmi.WaitForVmiDispose(waitCtx, c.client, c.namespace, c.sourceVM.Name); err != nil {
+	if err := vmi.WaitForVmiDispose(ctx, c.client, c.namespace, c.sourceVM.Name); err != nil {
 		teardownErrors = append(teardownErrors, fmt.Sprintf("'%s/%s': %v", c.namespace, c.sourceVM.Name, err))
 	}
 
-	if err := vmi.WaitForVmiDispose(waitCtx, c.client, c.namespace, c.targetVM.Name); err != nil {
+	if err := vmi.WaitForVmiDispose(ctx, c.client, c.namespace, c.targetVM.Name); err != nil {
 		teardownErrors = append(teardownErrors, fmt.Sprintf("'%s/%s': %v", c.namespace, c.targetVM.Name, err))
 	}
 
