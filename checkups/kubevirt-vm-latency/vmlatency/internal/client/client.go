@@ -38,11 +38,6 @@ type Client struct {
 	netattdefclient.K8sCniCncfIoV1Interface
 }
 
-type resultWrapper struct {
-	vmi *kvcorev1.VirtualMachineInstance
-	err error
-}
-
 func New() (*Client, error) {
 	kubeconfig, err := rest.InClusterConfig()
 	if err != nil {
@@ -63,54 +58,41 @@ func New() (*Client, error) {
 }
 
 func (c *Client) GetVirtualMachineInstance(ctx context.Context, namespace, name string) (*kvcorev1.VirtualMachineInstance, error) {
-	resultCh := make(chan resultWrapper, 1)
-
-	go func() {
-		vmi, err := c.KubevirtClient.VirtualMachineInstance(namespace).Get(name, &metav1.GetOptions{})
-		resultCh <- resultWrapper{vmi, err}
-	}()
-
-	select {
-	case result := <-resultCh:
-		return result.vmi, result.err
-	case <-ctx.Done():
-		return nil, ctx.Err()
+	var vmi *kvcorev1.VirtualMachineInstance
+	var getErr error
+	ctxErr := withContext(ctx, func() {
+		vmi, getErr = c.KubevirtClient.VirtualMachineInstance(namespace).Get(name, &metav1.GetOptions{})
+	})
+	if ctxErr != nil {
+		return nil, ctxErr
 	}
+	return vmi, getErr
 }
 
 func (c *Client) CreateVirtualMachineInstance(
 	ctx context.Context,
 	namespace string,
 	vmi *kvcorev1.VirtualMachineInstance) (*kvcorev1.VirtualMachineInstance, error) {
-	resultCh := make(chan resultWrapper, 1)
-
-	go func() {
-		createdVMI, err := c.KubevirtClient.VirtualMachineInstance(namespace).Create(vmi)
-		resultCh <- resultWrapper{createdVMI, err}
-	}()
-
-	select {
-	case result := <-resultCh:
-		return result.vmi, result.err
-	case <-ctx.Done():
-		return nil, ctx.Err()
+	var createdVMI *kvcorev1.VirtualMachineInstance
+	var createErr error
+	ctxErr := withContext(ctx, func() {
+		createdVMI, createErr = c.KubevirtClient.VirtualMachineInstance(namespace).Create(vmi)
+	})
+	if ctxErr != nil {
+		return nil, ctxErr
 	}
+	return createdVMI, createErr
 }
 
 func (c *Client) DeleteVirtualMachineInstance(ctx context.Context, namespace, name string) error {
-	resultCh := make(chan error, 1)
-
-	go func() {
-		err := c.KubevirtClient.VirtualMachineInstance(namespace).Delete(name, &metav1.DeleteOptions{})
-		resultCh <- err
-	}()
-
-	select {
-	case err := <-resultCh:
-		return err
-	case <-ctx.Done():
-		return ctx.Err()
+	var deleteErr error
+	ctxErr := withContext(ctx, func() {
+		deleteErr = c.KubevirtClient.VirtualMachineInstance(namespace).Delete(name, &metav1.DeleteOptions{})
+	})
+	if ctxErr != nil {
+		return ctxErr
 	}
+	return deleteErr
 }
 
 func (c *Client) SerialConsole(namespace, vmiName string, timeout time.Duration) (kubecli.StreamInterface, error) {
