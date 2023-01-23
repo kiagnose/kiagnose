@@ -15,9 +15,12 @@
 # Copyright 2022 Red Hat, Inc.
 
 import contextlib
+import time
 
 from ocp_resources.configmap import ConfigMap
 from ocp_resources.resource import NamespacedResource
+from ocp_resources.utils import TimeoutExpiredError
+from ocp_resources.virtual_machine_instance import VirtualMachineInstance
 
 from .job import job
 from . import vmi
@@ -58,6 +61,41 @@ def test_successful_run(kclient, checkup_sa, checkup_role_binding, configmap_rol
 
         data = cm.instance.data
         assert "true" == data.get("status.succeeded")
+
+
+def test_checkup_setup_failure(kclient, checkup_sa, checkup_role_binding, configmap_role_binding, nad):
+    namespace = checkup_sa.namespace
+    config_map = ConfigMap(
+        name="vmlatency-checkup-test",
+        namespace=namespace,
+        data={
+            "spec.timeout": "2m",
+            "spec.param.networkAttachmentDefinitionNamespace": nad.namespace,
+            "spec.param.networkAttachmentDefinitionName": nad.name,
+            "spec.param.maxDesiredLatencyMilliseconds": "500",
+            "spec.param.sampleDurationSeconds": "5",
+            "spec.param.sourceNode": "kind-worker",
+            "spec.param.targetNode": "no-such-worker",
+        },
+        client=kclient,
+    )
+    with resource_dump(config_map) as cm:
+        with job(kclient, namespace, checkup_sa.name, cm) as j:
+            wait_for(lambda: "false" == cm.instance.data.get("status.succeeded"), 200)
+
+            vmis = list(VirtualMachineInstance.get(dyn_client=kclient))
+            assert len(vmis) == 0, f"Checkup VMI/s: {[v.instance for v in vmis]}"
+
+
+def wait_for(condition, timeout):
+    while timeout > 0:
+        time.sleep(1)
+        timeout -= 1
+
+        if condition():
+            return
+
+    raise TimeoutError
 
 
 @contextlib.contextmanager
