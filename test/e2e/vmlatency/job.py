@@ -23,7 +23,7 @@ from ocp_resources.pod import Pod
 
 from openshift.dynamic import DynamicClient
 
-CHECKUP_IMAGE = os.getenv("CHECKUP_IMAGE", "quay.io/kiagnose/kubevirt-vm-latency:main")
+CHECKUP_IMAGE = os.getenv("CHECKUP_IMAGE", "quay.io/kiagnose/kubevirt-vm-latency:devel")
 
 ENV_CONFIGMAP_NAMESPACE_KEY = "CONFIGMAP_NAMESPACE"
 ENV_CONFIGMAP_NAME_KEY = "CONFIGMAP_NAME"
