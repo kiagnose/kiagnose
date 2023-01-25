@@ -28,6 +28,9 @@ import (
 
 	assert "github.com/stretchr/testify/require"
 
+	k8serrors "k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/runtime/schema"
+
 	kvcorev1 "kubevirt.io/api/core/v1"
 	"kubevirt.io/client-go/kubecli"
 
@@ -77,6 +80,7 @@ func TestCheckupSetupShouldFailWhen(t *testing.T) {
 		defer cancel()
 
 		assert.ErrorContains(t, testCheckup.Setup(testCtx), expectedError.Error())
+		assert.Len(t, testClient.createdVmis, 0)
 	})
 }
 
@@ -100,6 +104,7 @@ func TestCheckupTeardownShouldFailWhen(t *testing.T) {
 	t.Run("VMs were not disposed before timeout expiration", func(t *testing.T) {
 		testClient := newTestClient()
 		testClient.returnNetAttachDef = &netattdefv1.NetworkAttachmentDefinition{}
+		testClient.skipDeletion = true
 		testCheckup := checkup.New(testClient, testCheckupUID, testNamespace, newTestsCheckupParameters(), &checkerStub{})
 
 		assert.NoError(t, testCheckup.Setup(context.Background()))
@@ -248,10 +253,16 @@ type clientStub struct {
 	failGetVmi          error
 	failCreateVmi       error
 	failDeleteVmi       error
+
+	skipDeletion bool
 }
 
 func (c *clientStub) GetVirtualMachineInstance(_, name string) (*kvcorev1.VirtualMachineInstance, error) {
-	return c.createdVmis[name], c.failGetVmi
+	v, exists := c.createdVmis[name]
+	if !exists {
+		return nil, k8serrors.NewNotFound(schema.GroupResource{}, "")
+	}
+	return v, c.failGetVmi
 }
 
 func (c *clientStub) CreateVirtualMachineInstance(_ string, v *kvcorev1.VirtualMachineInstance) (*kvcorev1.VirtualMachineInstance, error) {
@@ -268,7 +279,10 @@ func (c *clientStub) CreateVirtualMachineInstance(_ string, v *kvcorev1.VirtualM
 	return v, nil
 }
 
-func (c *clientStub) DeleteVirtualMachineInstance(_, _ string) error {
+func (c *clientStub) DeleteVirtualMachineInstance(_, vmiName string) error {
+	if !c.skipDeletion {
+		delete(c.createdVmis, vmiName)
+	}
 	return c.failDeleteVmi
 }
 
