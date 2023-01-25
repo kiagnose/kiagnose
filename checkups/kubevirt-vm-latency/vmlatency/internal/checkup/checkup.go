@@ -22,6 +22,7 @@ package checkup
 import (
 	"context"
 	"fmt"
+	"log"
 	"strings"
 	"time"
 
@@ -71,7 +72,7 @@ const (
 	LabelLatencyCheckUID = "latency-check/uid"
 )
 
-func (c *checkup) Setup(ctx context.Context) error {
+func (c *checkup) Setup(ctx context.Context) (setupErr error) {
 	const (
 		errMessagePrefix = "setup"
 
@@ -96,9 +97,20 @@ func (c *checkup) Setup(ctx context.Context) error {
 	if err = vmi.Start(c.client, c.namespace, sourceVmi); err != nil {
 		return fmt.Errorf("%s: %v", errMessagePrefix, err)
 	}
+	defer func() {
+		if setupErr != nil {
+			c.cleanupVMI(sourceVmi.Name)
+		}
+	}()
+
 	if err = vmi.Start(c.client, c.namespace, targetVmi); err != nil {
 		return fmt.Errorf("%s: %v", errMessagePrefix, err)
 	}
+	defer func() {
+		if setupErr != nil {
+			c.cleanupVMI(targetVmi.Name)
+		}
+	}()
 
 	waitCtx, cancel := context.WithTimeout(ctx, defaultSetupTimeout)
 	defer cancel()
@@ -113,6 +125,18 @@ func (c *checkup) Setup(ctx context.Context) error {
 	c.results.TargetNode = c.targetVM.Status.NodeName
 	c.results.SourceNode = c.sourceVM.Status.NodeName
 	return nil
+}
+
+func (c *checkup) cleanupVMI(vmiName string) {
+	const setupCleanupTimeout = 30 * time.Second
+
+	log.Printf("setup failed, cleanup VMI '%s/%s'", c.namespace, vmiName)
+	delCtx, cancel := context.WithTimeout(context.Background(), setupCleanupTimeout)
+	defer cancel()
+	_ = vmi.Delete(c.client, c.namespace, vmiName)
+	if derr := vmi.WaitForVmiDispose(delCtx, c.client, c.namespace, vmiName); derr != nil {
+		log.Printf("Failed to cleanup VMI '%s/%s': %v", c.namespace, vmiName, derr)
+	}
 }
 
 func newLatencyCheckVmi(
