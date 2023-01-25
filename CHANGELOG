@@ -1,4 +1,8 @@
 # Changelog
+## [0.2.2] - 2023-01-25
+### Bug Fixes
+ - VMIs are now deleted when setup fails
+
 ## [0.2.1] - 2022-10-27
 ### Breaking Changes
  - VM latency checkup is now running as a standalone application and using Kiagnose packages as a library
