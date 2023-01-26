@@ -25,6 +25,7 @@ import (
 	"log"
 	"math"
 	"strconv"
+	"time"
 
 	kconfig "github.com/kiagnose/kiagnose/kiagnose/config"
 )
@@ -56,7 +57,7 @@ type Config struct {
 	TargetNodeName                       string
 	SourceNodeName                       string
 	SampleDurationSeconds                int
-	DesiredMaxLatencyMilliseconds        int
+	DesiredMaxLatency                    time.Duration
 }
 
 var (
@@ -80,7 +81,7 @@ func New(baseConfig kconfig.Config) (Config, error) {
 		PodName:                              baseConfig.PodName,
 		PodUID:                               baseConfig.PodUID,
 		SampleDurationSeconds:                DefaultSampleDurationSeconds,
-		DesiredMaxLatencyMilliseconds:        DefaultDesiredMaxLatencyMilliseconds,
+		DesiredMaxLatency:                    DefaultDesiredMaxLatencyMilliseconds,
 		NetworkAttachmentDefinitionNamespace: readConfig(baseConfig.Params, NetworkNamespaceParamName, NetworkNamespaceDeprecatedParamName),
 		NetworkAttachmentDefinitionName:      readConfig(baseConfig.Params, NetworkNameParamName, NetworkNameDeprecatedParamName),
 		SourceNodeName:                       readConfig(baseConfig.Params, SourceNodeNameParamName, SourceNodeNameDeprecatedParamName),
@@ -95,9 +96,13 @@ func New(baseConfig kconfig.Config) (Config, error) {
 	}
 
 	if v := readConfig(baseConfig.Params, DesiredMaxLatencyMillisecondsParamName, DesiredMaxLatencyMillisecondsDeprecatedParamName); v != "" {
-		if newConfig.DesiredMaxLatencyMilliseconds, err = strconv.Atoi(v); err != nil {
+		var rawDesiredMaxLatencyMilliseconds int
+
+		if rawDesiredMaxLatencyMilliseconds, err = strconv.Atoi(v); err != nil {
 			return Config{}, fmt.Errorf("%q parameter is invalid: %v", DesiredMaxLatencyMillisecondsParamName, err)
 		}
+
+		newConfig.DesiredMaxLatency = time.Duration(rawDesiredMaxLatencyMilliseconds) * time.Millisecond
 	}
 
 	err = newConfig.validate()

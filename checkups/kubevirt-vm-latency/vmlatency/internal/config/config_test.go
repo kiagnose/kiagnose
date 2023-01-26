@@ -23,6 +23,7 @@ import (
 	"fmt"
 	"strconv"
 	"testing"
+	"time"
 
 	assert "github.com/stretchr/testify/require"
 
@@ -63,7 +64,7 @@ func TestCreateConfigFromParamsShould(t *testing.T) {
 				SampleDurationSeconds:                config.DefaultSampleDurationSeconds,
 				NetworkAttachmentDefinitionName:      testNetAttachDefName,
 				NetworkAttachmentDefinitionNamespace: testNamespace,
-				DesiredMaxLatencyMilliseconds:        testDesiredMaxLatencyMilliseconds,
+				DesiredMaxLatency:                    testDesiredMaxLatencyMilliseconds * time.Millisecond,
 			},
 		},
 		{
@@ -76,7 +77,7 @@ func TestCreateConfigFromParamsShould(t *testing.T) {
 			expectedConfig: config.Config{
 				PodName:                              testPodName,
 				PodUID:                               testPodUID,
-				DesiredMaxLatencyMilliseconds:        config.DefaultDesiredMaxLatencyMilliseconds,
+				DesiredMaxLatency:                    config.DefaultDesiredMaxLatencyMilliseconds,
 				NetworkAttachmentDefinitionName:      testNetAttachDefName,
 				NetworkAttachmentDefinitionNamespace: testNamespace,
 				SampleDurationSeconds:                testSampleDurationSeconds,
@@ -94,7 +95,7 @@ func TestCreateConfigFromParamsShould(t *testing.T) {
 			expectedConfig: config.Config{
 				PodName:                              testPodName,
 				PodUID:                               testPodUID,
-				DesiredMaxLatencyMilliseconds:        config.DefaultDesiredMaxLatencyMilliseconds,
+				DesiredMaxLatency:                    config.DefaultDesiredMaxLatencyMilliseconds,
 				NetworkAttachmentDefinitionName:      testNetAttachDefName,
 				NetworkAttachmentDefinitionNamespace: testNamespace,
 				SampleDurationSeconds:                testSampleDurationSeconds,
@@ -143,7 +144,7 @@ func TestCreateConfigShouldPreferNonDeprecatedParameters(t *testing.T) {
 				TargetNodeName:                       testSourceNodeName,
 				SourceNodeName:                       testTargetNodeName,
 				SampleDurationSeconds:                testSampleDurationSeconds,
-				DesiredMaxLatencyMilliseconds:        testDesiredMaxLatencyMilliseconds,
+				DesiredMaxLatency:                    testDesiredMaxLatencyMilliseconds * time.Millisecond,
 			},
 		},
 		{
@@ -164,7 +165,7 @@ func TestCreateConfigShouldPreferNonDeprecatedParameters(t *testing.T) {
 				TargetNodeName:                       testSourceNodeName,
 				SourceNodeName:                       testTargetNodeName,
 				SampleDurationSeconds:                testSampleDurationSeconds,
-				DesiredMaxLatencyMilliseconds:        testDesiredMaxLatencyMilliseconds,
+				DesiredMaxLatency:                    testDesiredMaxLatencyMilliseconds * time.Millisecond,
 			},
 		},
 	}

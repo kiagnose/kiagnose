@@ -323,7 +323,7 @@ func newTestsCheckupParameters() config.Config {
 		TargetNodeName:                       "",
 		SourceNodeName:                       "",
 		SampleDurationSeconds:                testSampleDurationSeconds,
-		DesiredMaxLatencyMilliseconds:        0,
+		DesiredMaxLatency:                    0,
 	}
 }
 
