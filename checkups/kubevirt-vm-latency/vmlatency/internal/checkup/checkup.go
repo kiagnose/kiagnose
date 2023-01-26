@@ -178,8 +178,8 @@ func (c *checkup) Run() error {
 	c.results.MaxLatency = c.checker.MaxLatency()
 	c.results.MeasurementDuration = c.checker.CheckDuration()
 
-	actualMaxLatency := c.results.MaxLatency.Milliseconds()
-	maxLatencyDesired := int64(c.params.DesiredMaxLatencyMilliseconds)
+	actualMaxLatency := c.results.MaxLatency
+	maxLatencyDesired := c.params.DesiredMaxLatency
 	if actualMaxLatency > maxLatencyDesired {
 		return fmt.Errorf("run : actual max latency (%d) is greater then desired (%d)", actualMaxLatency, maxLatencyDesired)
 	}
