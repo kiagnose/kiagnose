@@ -181,7 +181,10 @@ func (c *checkup) Run() error {
 	actualMaxLatency := c.results.MaxLatency
 	maxLatencyDesired := c.params.DesiredMaxLatency
 	if actualMaxLatency > maxLatencyDesired {
-		return fmt.Errorf("run : actual max latency (%d) is greater then desired (%d)", actualMaxLatency, maxLatencyDesired)
+		return fmt.Errorf("run : actual max latency %q is greater than desired %q",
+			actualMaxLatency.String(),
+			maxLatencyDesired.String(),
+		)
 	}
 
 	return nil
