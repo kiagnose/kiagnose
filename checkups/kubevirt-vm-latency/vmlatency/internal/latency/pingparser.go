@@ -41,7 +41,7 @@ func ParsePingResults(pingResult string) Results {
 	const (
 		errMessagePrefix = "ping parser"
 
-		millisecondsPrefix = "ms"
+		millisecondsSuffix = "ms"
 	)
 	var results Results
 	var err error
@@ -57,7 +57,7 @@ func ParsePingResults(pingResult string) Results {
 			log.Printf("%s: failed to parse 'time': %v", errMessagePrefix, err)
 		}
 
-		if results.Time, err = time.ParseDuration(fmt.Sprintf("%s%s", strings.TrimSpace(item[6]), millisecondsPrefix)); err != nil {
+		if results.Time, err = time.ParseDuration(fmt.Sprintf("%s%s", strings.TrimSpace(item[6]), millisecondsSuffix)); err != nil {
 			log.Printf("%s: failed to parse 'time': %v", errMessagePrefix, err)
 		}
 	}
@@ -65,15 +65,15 @@ func ParsePingResults(pingResult string) Results {
 	latencyPattern := regexp.MustCompile(`(round-trip|rtt)\s+\S+\s*=\s*([0-9.]+)/([0-9.]+)/([0-9.]+)(/[0-9.]+)?\s*ms`)
 	latencyPatternMatches := latencyPattern.FindAllStringSubmatch(pingResult, -1)
 	for _, item := range latencyPatternMatches {
-		if results.Min, err = time.ParseDuration(fmt.Sprintf("%s%s", strings.TrimSpace(item[2]), millisecondsPrefix)); err != nil {
+		if results.Min, err = time.ParseDuration(fmt.Sprintf("%s%s", strings.TrimSpace(item[2]), millisecondsSuffix)); err != nil {
 			log.Printf("%s: failed to parse 'min': %v", errMessagePrefix, err)
 		}
 
-		if results.Average, err = time.ParseDuration(fmt.Sprintf("%s%s", strings.TrimSpace(item[3]), millisecondsPrefix)); err != nil {
+		if results.Average, err = time.ParseDuration(fmt.Sprintf("%s%s", strings.TrimSpace(item[3]), millisecondsSuffix)); err != nil {
 			log.Printf("%s: failed to parse 'avg': %v", errMessagePrefix, err)
 		}
 
-		if results.Max, err = time.ParseDuration(fmt.Sprintf("%s%s", strings.TrimSpace(item[4]), millisecondsPrefix)); err != nil {
+		if results.Max, err = time.ParseDuration(fmt.Sprintf("%s%s", strings.TrimSpace(item[4]), millisecondsSuffix)); err != nil {
 			log.Printf("%s: failed to parse 'max': %v", errMessagePrefix, err)
 		}
 	}
