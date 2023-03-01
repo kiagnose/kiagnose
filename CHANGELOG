@@ -1,5 +1,22 @@
 # Changelog
-## [0.3.0]
+## [0.3.0] - 2023-03-02
+### Breaking Changes
+ - VM latency checkup: User config field names were changed to Camel-case to match the reported field names
+ - VM latency checkup: Reported error messages were updated
+
+### New Features
+ - VM latency checkup: Source and target VMI are now owned by the checkup, so they could be automatically garbage-collected
+ - VM latency checkup: It is now possible to execute multiple instances simultaneously
+ - VM latency checkup: Base image upgraded to `ubi-minimal:9.1.0-1793`
+
+### Bug Fixes
+ - VM latency checkup: The `timeout` config is now respected during setup and teardown
+
+## [0.2.2] - 2023-01-25
+### Bug Fixes
+ - VMIs are now deleted when setup fails
+
+## [0.2.1] - 2022-10-27
 ### Breaking Changes
  - VM latency checkup is now running as a standalone application and using Kiagnose packages as a library
  - VM latency checkup no longer requires cluster-admin intervention to be deployed and executed
