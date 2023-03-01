@@ -1,8 +1,8 @@
-FROM registry.access.redhat.com/ubi8/ubi-minimal:8.6-994
+FROM registry.access.redhat.com/ubi9/ubi-minimal:9.1.0-1793
 
-RUN microdnf install shadow-utils && \
+RUN microdnf install -y shadow-utils && \
     adduser --system --no-create-home -u 1001 vm-latency && \
-    microdnf remove shadow-utils && \
+    microdnf remove -y shadow-utils && \
     microdnf clean all
 
 COPY ./bin/kubevirt-vm-latency /usr/bin
