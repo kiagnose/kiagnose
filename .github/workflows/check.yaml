@@ -71,7 +71,7 @@ jobs:
         run: ./automation/make.sh --build-core
   e2e-test:
     name: e2e
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-20.04
     env:
       KIND: /usr/local/bin/kind
       KUBECTL: /usr/local/bin/kubectl
