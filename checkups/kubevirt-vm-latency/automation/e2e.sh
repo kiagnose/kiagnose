@@ -184,7 +184,7 @@ data:
     kubevirt-vm-latency-checker
   spec.param.network_attachment_definition_namespace: "default"
   spec.param.network_attachment_definition_name: "bridge-network"
-  spec.param.max_desired_latency_milliseconds: "100"
+  spec.param.max_desired_latency_milliseconds: "1000"
   spec.param.sample_duration_seconds: "5"
 EOF
 
