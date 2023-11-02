@@ -216,6 +216,8 @@ EOF
 
     ${KUBECTL} wait --for=condition=complete --timeout=20m job.batch/${KIAGNOSE_JOB} -n ${KIAGNOSE_NAMESPACE}
 
+    ${KUBECTL} get vmi -A -o yaml
+
     echo
     echo "Result:"
     echo
