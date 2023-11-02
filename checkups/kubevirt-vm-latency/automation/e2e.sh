@@ -179,7 +179,7 @@ metadata:
   namespace: ${KIAGNOSE_NAMESPACE}
 data:
   spec.image: ${CHECKUP_IMAGE}
-  spec.timeout: 10m
+  spec.timeout: 20m
   spec.clusterRoles: |
     kubevirt-vm-latency-checker
   spec.param.network_attachment_definition_namespace: "default"
@@ -214,7 +214,7 @@ spec:
               value: ${VM_LATENCY_CONFIGMAP}
 EOF
 
-    ${KUBECTL} wait --for=condition=complete --timeout=10m job.batch/${KIAGNOSE_JOB} -n ${KIAGNOSE_NAMESPACE}
+    ${KUBECTL} wait --for=condition=complete --timeout=20m job.batch/${KIAGNOSE_JOB} -n ${KIAGNOSE_NAMESPACE}
 
     echo
     echo "Result:"
