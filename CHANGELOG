@@ -1,4 +1,11 @@
 # Changelog
+## [0.4.0] - 2024-01-08
+### New Features
+ - VM latency checkup: Base image upgraded to `ubi-minimal:9.3-1475`
+
+### Bug Fixes
+ - VM latency checkup: Deprecation warning message is not repeatedly printed to log
+
 ## [0.3.0] - 2023-03-02
 ### Breaking Changes
  - VM latency checkup: User config field names were changed to Camel-case to match the reported field names
