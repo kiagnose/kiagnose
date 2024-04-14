@@ -57,9 +57,12 @@ func (l *Latency) CheckDuration() time.Duration {
 
 func (l *Latency) Check(sourceVMI, targetVMI *kvcorev1.VirtualMachineInstance, sampleTime time.Duration) error {
 	const errMessagePrefix = "failed to run check"
+
+	var err error
+
 	sourceVMIConsole := console.NewConsole(l.client, sourceVMI)
 
-	if err := sourceVMIConsole.LoginToAlpine(); err != nil {
+	if err = sourceVMIConsole.LoginToAlpine(); err != nil {
 		return fmt.Errorf("%s: %v", errMessagePrefix, err)
 	}
 
@@ -71,7 +74,11 @@ func (l *Latency) Check(sourceVMI, targetVMI *kvcorev1.VirtualMachineInstance, s
 	if err != nil {
 		return err
 	}
-	l.results = ParsePingResults(res)
+
+	l.results, err = ParsePingResults(res)
+	if err != nil {
+		return err
+	}
 
 	if l.results.Time == 0 {
 		l.results.Time = pingTime
