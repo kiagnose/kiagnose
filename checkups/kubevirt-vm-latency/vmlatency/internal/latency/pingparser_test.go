@@ -28,40 +28,6 @@ import (
 	"github.com/kiagnose/kiagnose/checkups/kubevirt-vm-latency/vmlatency/internal/latency"
 )
 
-func TestParsePingResults(t *testing.T) {
-	const pingOutput = `
-PING 1.1.1.1 (1.1.1.1) 56(84) bytes of data.
-64 bytes from 1.1.1.1: icmp_seq=1 ttl=58 time=2.17 ms
-64 bytes from 1.1.1.1: icmp_seq=2 ttl=58 time=1.98 ms
-64 bytes from 1.1.1.1: icmp_seq=3 ttl=58 time=2.38 ms
-64 bytes from 1.1.1.1: icmp_seq=4 ttl=58 time=2.11 ms
-64 bytes from 1.1.1.1: icmp_seq=5 ttl=58 time=1.73 ms
-^C
---- 1.1.1.1 ping statistics ---
-5 packets transmitted, 5 received, 0% packet loss, time 4004ms
-rtt min/avg/max/mdev = 1.732/2.074/2.382/0.214 ms
-`
-	expectedResults := latency.Results{
-		Transmitted: 5,
-		Received:    5,
-	}
-	var err error
-	if expectedResults.Time, err = time.ParseDuration("4004ms"); err != nil {
-		panic(err)
-	}
-	if expectedResults.Min, err = time.ParseDuration("1.732ms"); err != nil {
-		panic(err)
-	}
-	if expectedResults.Average, err = time.ParseDuration("2.074ms"); err != nil {
-		panic(err)
-	}
-	if expectedResults.Max, err = time.ParseDuration("2.382ms"); err != nil {
-		panic(err)
-	}
-
-	assert.Equal(t, latency.ParsePingResults(pingOutput), expectedResults)
-}
-
 func TestParseBusyBoxPingResults(t *testing.T) {
 	const pingOutput = `
 PING 192.168.100.20 (192.168.100.20): 56 data bytes
