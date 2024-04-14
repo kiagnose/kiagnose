@@ -37,7 +37,7 @@ type Results struct {
 	Received    int
 }
 
-func ParsePingResults(pingResult string) Results {
+func ParsePingResults(pingResult string) (Results, error) {
 	const (
 		errMessagePrefix = "ping parser"
 
@@ -78,5 +78,5 @@ func ParsePingResults(pingResult string) Results {
 		}
 	}
 
-	return results
+	return results, nil
 }

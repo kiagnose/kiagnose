@@ -57,5 +57,8 @@ round-trip min/avg/max = 0.314/0.368/0.461 ms
 	expectedResults.Max, err = time.ParseDuration("0.461ms")
 	assert.NoError(t, err)
 
-	assert.Equal(t, expectedResults, latency.ParsePingResults(pingOutput))
+	actualResults, err := latency.ParsePingResults(pingOutput)
+	assert.NoError(t, err)
+
+	assert.Equal(t, expectedResults, actualResults)
 }
