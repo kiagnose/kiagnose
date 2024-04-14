@@ -24,7 +24,6 @@ import (
 	"log"
 	"regexp"
 	"strconv"
-	"strings"
 	"time"
 )
 
@@ -39,43 +38,50 @@ type Results struct {
 
 func ParsePingResults(pingResult string) (Results, error) {
 	const (
-		errMessagePrefix = "ping parser"
-
+		errMessagePrefix   = "ping parser"
 		millisecondsSuffix = "ms"
 	)
-	var results Results
-	var err error
 
-	p := regexp.MustCompile(`(\d+)\s*\S*packets\s*transmitted,\s*(\d+)\s*(packets )?received,\s*(\d+)%\s*packet\s*loss(, time (\d+))?`)
-	statisticsPatternMatches := p.FindAllStringSubmatch(pingResult, -1)
-	for _, item := range statisticsPatternMatches {
-		if results.Transmitted, err = strconv.Atoi(strings.TrimSpace(item[1])); err != nil {
-			log.Printf("%s: failed to parse 'time': %v", errMessagePrefix, err)
-		}
+	const (
+		statisticsPattern = `(\d+)\s+packets transmitted,\s+(\d+)\s+packets received,\s+(\d+)%\s+packet loss\s+` +
+			`round-trip min/avg/max = (\d+\.\d+)/(\d+\.\d+)/(\d+\.\d+) ms`
+		expectedElements = 7
+	)
 
-		if results.Received, err = strconv.Atoi(strings.TrimSpace(item[2])); err != nil {
-			log.Printf("%s: failed to parse 'time': %v", errMessagePrefix, err)
-		}
+	var (
+		results Results
+		err     error
+	)
 
-		if results.Time, err = time.ParseDuration(fmt.Sprintf("%s%s", strings.TrimSpace(item[6]), millisecondsSuffix)); err != nil {
-			log.Printf("%s: failed to parse 'time': %v", errMessagePrefix, err)
-		}
+	matches := regexp.MustCompile(statisticsPattern).FindStringSubmatch(pingResult)
+
+	if len(matches) != expectedElements {
+		return Results{}, fmt.Errorf("%s: input does not match regex", errMessagePrefix)
 	}
 
-	latencyPattern := regexp.MustCompile(`(round-trip|rtt)\s+\S+\s*=\s*([0-9.]+)/([0-9.]+)/([0-9.]+)(/[0-9.]+)?\s*ms`)
-	latencyPatternMatches := latencyPattern.FindAllStringSubmatch(pingResult, -1)
-	for _, item := range latencyPatternMatches {
-		if results.Min, err = time.ParseDuration(fmt.Sprintf("%s%s", strings.TrimSpace(item[2]), millisecondsSuffix)); err != nil {
-			log.Printf("%s: failed to parse 'min': %v", errMessagePrefix, err)
-		}
+	results.Transmitted, err = strconv.Atoi(matches[1])
+	if err != nil {
+		return Results{}, fmt.Errorf("%s: failed to parse 'packets transmitted': %v", errMessagePrefix, err)
+	}
 
-		if results.Average, err = time.ParseDuration(fmt.Sprintf("%s%s", strings.TrimSpace(item[3]), millisecondsSuffix)); err != nil {
-			log.Printf("%s: failed to parse 'avg': %v", errMessagePrefix, err)
-		}
+	results.Received, err = strconv.Atoi(matches[2])
+	if err != nil {
+		log.Printf("%s: failed to parse 'packets received': %v", errMessagePrefix, err)
+	}
 
-		if results.Max, err = time.ParseDuration(fmt.Sprintf("%s%s", strings.TrimSpace(item[4]), millisecondsSuffix)); err != nil {
-			log.Printf("%s: failed to parse 'max': %v", errMessagePrefix, err)
-		}
+	results.Min, err = time.ParseDuration(matches[4] + millisecondsSuffix)
+	if err != nil {
+		return Results{}, fmt.Errorf("%s: failed to parse 'min': %v", errMessagePrefix, err)
+	}
+
+	results.Average, err = time.ParseDuration(matches[5] + millisecondsSuffix)
+	if err != nil {
+		return Results{}, fmt.Errorf("%s: failed to parse 'avg': %v", errMessagePrefix, err)
+	}
+
+	results.Max, err = time.ParseDuration(matches[6] + millisecondsSuffix)
+	if err != nil {
+		return Results{}, fmt.Errorf("%s: failed to parse 'max': %v", errMessagePrefix, err)
 	}
 
 	return results, nil
