@@ -28,7 +28,7 @@ import (
 	"github.com/kiagnose/kiagnose/checkups/kubevirt-vm-latency/vmlatency/internal/latency"
 )
 
-func TestParseBusyBoxPingResults(t *testing.T) {
+func TestParsePingResults(t *testing.T) {
 	const pingOutput = `
 PING 192.168.100.20 (192.168.100.20): 56 data bytes
 64 bytes from 192.168.100.20: seq=0 ttl=64 time=0.314 ms
@@ -44,17 +44,18 @@ round-trip min/avg/max = 0.314/0.368/0.461 ms
 	expectedResults := latency.Results{
 		Transmitted: 5,
 		Received:    5,
-	}
-	var err error
-	if expectedResults.Min, err = time.ParseDuration("0.314ms"); err != nil {
-		panic(err)
-	}
-	if expectedResults.Average, err = time.ParseDuration("0.368ms"); err != nil {
-		panic(err)
-	}
-	if expectedResults.Max, err = time.ParseDuration("0.461ms"); err != nil {
-		panic(err)
+		Time:        time.Duration(0),
 	}
 
-	assert.Equal(t, latency.ParsePingResults(pingOutput), expectedResults)
+	var err error
+	expectedResults.Min, err = time.ParseDuration("0.314ms")
+	assert.NoError(t, err)
+
+	expectedResults.Average, err = time.ParseDuration("0.368ms")
+	assert.NoError(t, err)
+
+	expectedResults.Max, err = time.ParseDuration("0.461ms")
+	assert.NoError(t, err)
+
+	assert.Equal(t, expectedResults, latency.ParsePingResults(pingOutput))
 }
