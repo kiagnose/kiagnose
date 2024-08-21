@@ -1,4 +1,4 @@
-FROM registry.access.redhat.com/ubi9/ubi-minimal:9.4-949
+FROM registry.access.redhat.com/ubi9/ubi-minimal:9.4-1194
 
 RUN microdnf install -y shadow-utils && \
     adduser --system --no-create-home -u 1001 vm-latency && \
