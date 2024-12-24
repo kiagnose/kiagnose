@@ -62,3 +62,16 @@ round-trip min/avg/max = 0.314/0.368/0.461 ms
 
 	assert.Equal(t, expectedResults, actualResults)
 }
+
+func TestParsePingResultsCompletePacketLoss(t *testing.T) {
+	const pingOutput = `
+PING 10.14.137.156 (10.14.137.156): 56 data bytes
+
+--- 10.14.137.156 ping statistics ---
+5 packets transmitted, 0 packets received, 100% packet loss
+`
+	actualResults, err := latency.ParsePingResults(pingOutput)
+	assert.Error(t, err, "ping parser: no connectivity - 100% packet loss")
+
+	assert.Equal(t, latency.Results{}, actualResults)
+}
