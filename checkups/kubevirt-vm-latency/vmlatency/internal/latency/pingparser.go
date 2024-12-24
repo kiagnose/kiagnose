@@ -24,6 +24,7 @@ import (
 	"log"
 	"regexp"
 	"strconv"
+	"strings"
 	"time"
 )
 
@@ -43,6 +44,8 @@ func ParsePingResults(pingResult string) (Results, error) {
 	)
 
 	const (
+		totalPacketLoss = "100% packet loss"
+
 		statisticsPattern = `(\d+)\s+packets transmitted,\s+(\d+)\s+packets received,\s+(\d+)%\s+packet loss\s+` +
 			`round-trip min/avg/max = (\d+\.\d+)/(\d+\.\d+)/(\d+\.\d+) ms`
 		expectedElements = 7
@@ -52,6 +55,10 @@ func ParsePingResults(pingResult string) (Results, error) {
 		results Results
 		err     error
 	)
+
+	if strings.Contains(pingResult, totalPacketLoss) {
+		return Results{}, fmt.Errorf("%s: no connectivity - 100%% packet loss", errMessagePrefix)
+	}
 
 	matches := regexp.MustCompile(statisticsPattern).FindStringSubmatch(pingResult)
 
